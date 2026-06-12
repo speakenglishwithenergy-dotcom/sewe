@@ -32,10 +32,23 @@ export class TTSService {
       const fileName = `${String(index).padStart(3, '0')}.mp3`;
       const filePath = path.join(audioDir, fileName);
 
-      logger.info(`  [${index}/${script.length}] ${line.speaker}: "${line.text.slice(0, 60)}${line.text.length > 60 ? '…' : ''}"`);
-
       const voice = VOICE_MAP[line.speaker as Speaker];
-      await this.openai.generateSpeech(line.text, voice, filePath);
+
+      // Resume: skip TTS call if audio file already exists
+      let cached = false;
+      try {
+        await fs.access(filePath);
+        cached = true;
+      } catch {
+        // file does not exist — generate it
+      }
+
+      if (cached) {
+        logger.info(`  [${index}/${script.length}] ⏭  ${line.speaker}: (cached) "${line.text.slice(0, 60)}${line.text.length > 60 ? '…' : ''}"`);
+      } else {
+        logger.info(`  [${index}/${script.length}] ${line.speaker}: "${line.text.slice(0, 60)}${line.text.length > 60 ? '…' : ''}"`);
+        await this.openai.generateSpeech(line.text, voice, filePath);
+      }
 
       const duration = await this.ffmpeg.getAudioDuration(filePath);
 

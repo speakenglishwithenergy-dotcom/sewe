@@ -8,6 +8,7 @@ import { TTSService } from './audio/tts.service';
 import { SubtitleService } from './subtitles/subtitle.service';
 import { FFmpegService } from './ffmpeg/ffmpeg.service';
 import { VideoService } from './video/video.service';
+import { PodcastScript, PodcastScriptSchema } from './types';
 import { logger } from './utils/logger';
 
 // ─── Paths ───────────────────────────────────────────────────────────────────
@@ -22,6 +23,17 @@ const SCRIPT_PATH = path.join(OUTPUT_DIR, 'script.json');
 const PODCAST_AUDIO_PATH = path.join(OUTPUT_DIR, 'podcast.mp3');
 const SUBTITLES_PATH = path.join(OUTPUT_DIR, 'subtitles.srt');
 const VIDEO_PATH = path.join(OUTPUT_DIR, 'video.mp4');
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // ─── CLI arg parsing ──────────────────────────────────────────────────────────
 
@@ -75,9 +87,16 @@ async function main(): Promise<void> {
 
   // ── Step 1: Script ────────────────────────────────────────────────────────
   logger.step(1, 5, 'Generating podcast script...');
-  const podcastScript = await scriptService.generate(topic);
-  await fs.writeFile(SCRIPT_PATH, JSON.stringify(podcastScript, null, 2), 'utf-8');
-  logger.info(`Script saved → ${SCRIPT_PATH}`);
+  let podcastScript: PodcastScript;
+  if (await fileExists(SCRIPT_PATH)) {
+    logger.info(`⏭  Script already exists — loading from ${SCRIPT_PATH}`);
+    const raw = await fs.readFile(SCRIPT_PATH, 'utf-8');
+    podcastScript = JSON.parse(raw);
+  } else {
+    podcastScript = await scriptService.generate(topic);
+    await fs.writeFile(SCRIPT_PATH, JSON.stringify(podcastScript, null, 2), 'utf-8');
+    logger.info(`Script saved → ${SCRIPT_PATH}`);
+  }
 
   // ── Step 2: Voices ────────────────────────────────────────────────────────
   logger.step(2, 5, 'Generating voice audio...');
@@ -85,17 +104,29 @@ async function main(): Promise<void> {
 
   // ── Step 3: Subtitles ─────────────────────────────────────────────────────
   logger.step(3, 5, 'Generating subtitle file...');
-  await subtitleService.generate(segments, SUBTITLES_PATH);
+  if (await fileExists(SUBTITLES_PATH)) {
+    logger.info(`⏭  Subtitles already exist — skipping`);
+  } else {
+    await subtitleService.generate(segments, SUBTITLES_PATH);
+  }
 
   // ── Step 4: Merge audio ───────────────────────────────────────────────────
   logger.step(4, 5, 'Merging audio segments...');
-  const audioFiles = segments.map((s) => s.filePath);
-  await ffmpegService.mergeAudioFiles(audioFiles, PODCAST_AUDIO_PATH, 0.5);
-  logger.success(`Podcast audio saved → ${PODCAST_AUDIO_PATH}`);
+  if (await fileExists(PODCAST_AUDIO_PATH)) {
+    logger.info(`⏭  Merged audio already exists — skipping`);
+  } else {
+    const audioFiles = segments.map((s) => s.filePath);
+    await ffmpegService.mergeAudioFiles(audioFiles, PODCAST_AUDIO_PATH, 0.5);
+    logger.success(`Podcast audio saved → ${PODCAST_AUDIO_PATH}`);
+  }
 
   // ── Step 5: Video ─────────────────────────────────────────────────────────
   logger.step(5, 5, 'Rendering video...');
-  await videoService.generate(PODCAST_AUDIO_PATH, SUBTITLES_PATH, BACKGROUND_PATH, VIDEO_PATH);
+  if (await fileExists(VIDEO_PATH)) {
+    logger.info(`⏭  Video already exists — skipping`);
+  } else {
+    await videoService.generate(PODCAST_AUDIO_PATH, SUBTITLES_PATH, BACKGROUND_PATH, VIDEO_PATH);
+  }
 
   // ── Done ──────────────────────────────────────────────────────────────────
   logger.info('');
