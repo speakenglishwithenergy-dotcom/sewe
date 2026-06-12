@@ -40,8 +40,8 @@ export interface GenerateOptions {
   topic: string;
 }
 
-export const VOICE_MAP: Record<Speaker, 'cedar' | 'sage'> = {
-  Victor: 'cedar',
+export const VOICE_MAP: Record<Speaker, 'ash' | 'sage'> = {
+  Victor: 'ash',
   Lisa: 'sage',
 };
 
