@@ -1,4 +1,28 @@
-export function buildScriptPrompt(topic: string): string {
+export function buildScriptPrompt(topic: string, test = false): string {
+  if (test) {
+    return `You are a professional podcast script writer.
+
+Write a very short podcast script (TEST MODE) on this topic: "${topic}"
+
+Hosts: Victor (male) and Lisa (female).
+
+Requirements:
+- Exactly 12 dialogue lines total
+- English level: A2-B1
+- Natural conversation, short sentences
+
+Return ONLY a valid JSON object:
+{
+  "title": "Episode title",
+  "description": "Short description.",
+  "thumbnailText": "THUMBNAIL TEXT",
+  "script": [
+    { "speaker": "Victor", "text": "..." },
+    { "speaker": "Lisa", "text": "..." }
+  ]
+}`;
+  }
+
   return `You are a professional podcast script writer for the YouTube channel "Speak English With Energy".
 
 The podcast features two hosts:

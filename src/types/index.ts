@@ -17,7 +17,7 @@ export const PodcastScriptSchema = z.object({
   title: z.string().min(1),
   description: z.string().min(1),
   thumbnailText: z.string().min(1),
-  script: z.array(DialogueLineSchema).min(70),
+  script: z.array(DialogueLineSchema).min(10),
 });
 export type PodcastScript = z.infer<typeof PodcastScriptSchema>;
 

@@ -36,12 +36,13 @@ async function fileExists(filePath: string): Promise<boolean> {
 // ─── CLI arg parsing ──────────────────────────────────────────────────────────
 
 type CliArgs =
-  | { mode: 'new'; topic: string }
-  | { mode: 'resume'; projectId: string }
+  | { mode: 'new'; topic: string; test: boolean }
+  | { mode: 'resume'; projectId: string; test: boolean }
   | { mode: 'list' };
 
 function parseArgs(): CliArgs {
   const args = process.argv.slice(2);
+  const test = args.includes('--test');
 
   if (args.includes('--list')) return { mode: 'list' };
 
@@ -52,7 +53,7 @@ function parseArgs(): CliArgs {
       logger.error('--project value cannot be empty');
       process.exit(1);
     }
-    return { mode: 'resume', projectId };
+    return { mode: 'resume', projectId, test };
   }
 
   const topicArg = args.find((a) => a.startsWith('--topic='));
@@ -60,6 +61,7 @@ function parseArgs(): CliArgs {
     logger.error('Missing required argument: --topic, --project, or --list');
     logger.info('Usage:');
     logger.info('  npm run generate -- --topic="Why Smart People Stay Stuck"  # new project');
+    logger.info('  npm run generate -- --topic="..." --test                    # quick test (script only)');
     logger.info('  npm run generate -- --project=20260612-143022               # resume project');
     logger.info('  npm run generate -- --list                                  # list all projects');
     process.exit(1);
@@ -70,7 +72,7 @@ function parseArgs(): CliArgs {
     logger.error('--topic value cannot be empty');
     process.exit(1);
   }
-  return { mode: 'new', topic };
+  return { mode: 'new', topic, test };
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
@@ -115,6 +117,7 @@ async function main(): Promise<void> {
     logger.divider('═');
     logger.info(`Resuming project : ${project.id}`);
     logger.info(`Topic            : "${project.topic}"`);
+    if (args.test) logger.info('Mode             : TEST (script only)');
   } else {
     project = await projectService.create(args.topic);
     logger.divider('═');
@@ -122,6 +125,7 @@ async function main(): Promise<void> {
     logger.divider('═');
     logger.info(`New project      : ${project.id}`);
     logger.info(`Topic            : "${project.topic}"`);
+    if (args.test) logger.info('Mode             : TEST (script only)');
   }
 
   logger.info('');
@@ -140,24 +144,21 @@ async function main(): Promise<void> {
   const openaiService = new OpenAIService();
   const ffmpegService = new FFmpegService();
   const scriptService = new ScriptService(openaiService);
-  const supertonicService = new SupertonicService(SUPERTONIC_ONNX_DIR, SUPERTONIC_VOICES_DIR);
-  const ttsService = new TTSService(supertonicService, ffmpegService);
-  const subtitleService = new SubtitleService();
-  const videoService = new VideoService(ffmpegService);
 
   // ── Step 0: Preflight ─────────────────────────────────────────────────────
   await ffmpegService.checkDependencies();
   logger.success('FFmpeg dependencies verified');
 
   // ── Step 1: Script ────────────────────────────────────────────────────────
-  logger.step(1, 5, 'Generating podcast script...');
+  const totalSteps = args.test ? 1 : 5;
+  logger.step(1, totalSteps, 'Generating podcast script...');
   let podcastScript: PodcastScript;
   if (await fileExists(SCRIPT_PATH)) {
     logger.info(`⏭  Script already exists — loading from cache`);
     const raw = await fs.readFile(SCRIPT_PATH, 'utf-8');
     podcastScript = JSON.parse(raw);
   } else {
-    podcastScript = await scriptService.generate(project.topic);
+    podcastScript = await scriptService.generate(project.topic, args.test);
     await fs.writeFile(SCRIPT_PATH, JSON.stringify(podcastScript, null, 2), 'utf-8');
     logger.info(`Script saved → ${SCRIPT_PATH}`);
   }
@@ -170,12 +171,35 @@ async function main(): Promise<void> {
     await projectService.save(project);
   }
 
-  // ── Step 2: Voices ────────────────────────────────────────────────────────
-  logger.step(2, 5, 'Generating voice audio...');
+  // ── Test mode: stop after script ─────────────────────────────────────────
+  if (args.test) {
+    logger.info('');
+    logger.divider('═');
+    logger.success('[TEST] Script generated successfully.');
+    logger.divider('═');
+    console.log(`
+  Project ID : ${project.id}
+  Title      : ${podcastScript.title}
+  Lines      : ${podcastScript.script.length} dialogue lines
+  Script     : ${SCRIPT_PATH}
+  `);
+    console.log('First 3 lines:');
+    podcastScript.script.slice(0, 3).forEach((l) => console.log(`  ${l.speaker}: ${l.text}`));
+    return;
+  }
+
+  // ── Wire up TTS / video services ─────────────────────────────────────────
+  const supertonicService = new SupertonicService(SUPERTONIC_ONNX_DIR, SUPERTONIC_VOICES_DIR);
+  const ttsService = new TTSService(supertonicService, ffmpegService);
+  const subtitleService = new SubtitleService();
+  const videoService = new VideoService(ffmpegService);
+
+  // ── Step 2: Voices ───────────────────────────────────────────────────────────
+  logger.step(2, totalSteps, 'Generating voice audio...');
   const segments = await ttsService.generateSegments(podcastScript.script, AUDIO_DIR);
 
   // ── Step 3: Subtitles ─────────────────────────────────────────────────────
-  logger.step(3, 5, 'Generating subtitle file...');
+  logger.step(3, totalSteps, 'Generating subtitle file...');
   if (await fileExists(SUBTITLES_PATH)) {
     logger.info(`⏭  Subtitles already exist — skipping`);
   } else {
@@ -183,7 +207,7 @@ async function main(): Promise<void> {
   }
 
   // ── Step 4: Merge audio ───────────────────────────────────────────────────
-  logger.step(4, 5, 'Merging audio segments...');
+  logger.step(4, totalSteps, 'Merging audio segments...');
   if (await fileExists(PODCAST_AUDIO_PATH)) {
     logger.info(`⏭  Merged audio already exists — skipping`);
   } else {
@@ -193,7 +217,7 @@ async function main(): Promise<void> {
   }
 
   // ── Step 5: Video ─────────────────────────────────────────────────────────
-  logger.step(5, 5, 'Rendering video...');
+  logger.step(5, totalSteps, 'Rendering video...');
   if (await fileExists(VIDEO_PATH)) {
     logger.info(`⏭  Video already exists — skipping`);
   } else {
