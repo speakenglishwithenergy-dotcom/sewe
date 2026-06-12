@@ -1,0 +1,22 @@
+{
+  "name": "speak-english-with-energy",
+  "version": "1.0.0",
+  "description": "AI-powered English Podcast Generator for the Speak English With Energy YouTube channel",
+  "main": "dist/index.js",
+  "scripts": {
+    "generate": "tsx src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "openai": "^4.52.0",
+    "sharp": "^0.33.4",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.3"
+  }
+}

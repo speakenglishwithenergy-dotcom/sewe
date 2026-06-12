@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment variables
+.env
+
+# Generated output (keep structure, ignore generated files)
+output/audio/
+output/podcast.mp3
+output/subtitles.srt
+output/video.mp4
+output/script.json
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+*.swp
