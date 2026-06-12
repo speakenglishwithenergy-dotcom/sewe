@@ -6,6 +6,17 @@ import { logger } from '../utils/logger';
 
 const execFileAsync = promisify(execFile);
 
+// Candidate FFmpeg installations, ordered by preference.
+// ffmpeg-full (Homebrew keg-only) includes libass and the subtitles filter.
+const FFMPEG_CANDIDATES = [
+  '/opt/homebrew/opt/ffmpeg-full/bin/ffmpeg',
+  'ffmpeg',
+];
+const FFPROBE_CANDIDATES = [
+  '/opt/homebrew/opt/ffmpeg-full/bin/ffprobe',
+  'ffprobe',
+];
+
 interface FFprobeStream {
   duration?: string;
 }
@@ -15,26 +26,38 @@ interface FFprobeOutput {
 }
 
 export class FFmpegService {
+  private ffmpegBin = 'ffmpeg';
+  private ffprobeBin = 'ffprobe';
+
   /**
    * Verify that ffmpeg and ffprobe are available on PATH.
+   * Prefers a build that includes the subtitles filter (requires libass).
    */
   async checkDependencies(): Promise<void> {
-    for (const bin of ['ffmpeg', 'ffprobe']) {
+    // Resolve the best available ffmpeg binary.
+    this.ffmpegBin = await this.resolveBin(FFMPEG_CANDIDATES, 'ffmpeg');
+    this.ffprobeBin = await this.resolveBin(FFPROBE_CANDIDATES, 'ffprobe');
+  }
+
+  private async resolveBin(candidates: string[], name: string): Promise<string> {
+    for (const bin of candidates) {
       try {
         await execFileAsync(bin, ['-version']);
+        return bin;
       } catch {
-        throw new Error(
-          `"${bin}" not found. Install FFmpeg: https://ffmpeg.org/download.html (macOS: brew install ffmpeg)`,
-        );
+        // not found, try next
       }
     }
+    throw new Error(
+      `"${name}" not found. Install FFmpeg: https://ffmpeg.org/download.html (macOS: brew install ffmpeg-full)`,
+    );
   }
 
   /**
    * Return the duration of an audio/video file in seconds using ffprobe.
    */
   async getAudioDuration(filePath: string): Promise<number> {
-    const { stdout } = await execFileAsync('ffprobe', [
+    const { stdout } = await execFileAsync(this.ffprobeBin, [
       '-v', 'quiet',
       '-print_format', 'json',
       '-show_streams',
@@ -56,7 +79,7 @@ export class FFmpegService {
    * Generate a silent WAV file of the given duration.
    */
   async generateSilence(outputPath: string, durationSeconds: number): Promise<void> {
-    await execFileAsync('ffmpeg', [
+    await execFileAsync(this.ffmpegBin, [
       '-f', 'lavfi',
       '-i', 'anullsrc=r=44100:cl=mono',
       '-t', String(durationSeconds),
@@ -97,7 +120,7 @@ export class FFmpegService {
     }
     await fs.writeFile(concatListPath, lines.join('\n'), 'utf-8');
 
-    await execFileAsync('ffmpeg', [
+    await execFileAsync(this.ffmpegBin, [
       '-f', 'concat',
       '-safe', '0',
       '-i', concatListPath,
@@ -127,24 +150,29 @@ export class FFmpegService {
   ): Promise<void> {
     logger.info('Running FFmpeg video encode (this may take several minutes)...');
 
-    // In FFmpeg filter strings the colon is the option separator, so any colon
-    // that appears in the subtitle path (Windows drive letters) must be escaped.
-    // On macOS/Linux paths never contain colons, so this is a no-op — but keeps
-    // the code cross-platform safe.
-    const safeSubs = subtitlesPath.replace(/\\/g, '/').replace(/:/g, '\\:');
+    // Escape characters special to FFmpeg filter option parsing.
+    // Colons are option separators; backslashes need doubling.
+    const safeSubs = subtitlesPath.replace(/\\/g, '\\\\').replace(/:/g, '\\:');
 
-    const subtitleFilter =
-      `subtitles='${safeSubs}':` +
-      `force_style='Fontsize=40,` +
-      `PrimaryColour=&H00FFFFFF,` +
-      `OutlineColour=&H00000000,` +
-      `BorderStyle=1,Outline=3,Shadow=2,` +
-      `Alignment=2,MarginV=50'`;
+    // Commas in force_style must be escaped as \, so they are not treated as
+    // filtergraph-level filter separators (FFmpeg 8.x is strict about this).
+    const forceStyle = [
+      'Fontsize=40',
+      'PrimaryColour=&H00FFFFFF',
+      'OutlineColour=&H00000000',
+      'BorderStyle=1',
+      'Outline=3',
+      'Shadow=2',
+      'Alignment=2',
+      'MarginV=50',
+    ].join('\\,');
+
+    const subtitleFilter = `subtitles=filename=${safeSubs}:force_style=${forceStyle}`;
 
     const vfFilter = `scale=1920:1080,${subtitleFilter}`;
 
     await execFileAsync(
-      'ffmpeg',
+      this.ffmpegBin,
       [
         '-loop', '1',
         '-i', backgroundPath,
