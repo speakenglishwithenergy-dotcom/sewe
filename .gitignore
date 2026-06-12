@@ -8,11 +8,7 @@ dist/
 .env
 
 # Generated output (keep structure, ignore generated files)
-output/audio/
-output/podcast.mp3
-output/subtitles.srt
-output/video.mp4
-output/script.json
+output
 
 # macOS
 .DS_Store

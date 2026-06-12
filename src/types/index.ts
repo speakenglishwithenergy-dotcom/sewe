@@ -40,9 +40,9 @@ export interface GenerateOptions {
   topic: string;
 }
 
-export const VOICE_MAP: Record<Speaker, 'onyx' | 'nova'> = {
-  Victor: 'onyx',
-  Lisa: 'nova',
+export const VOICE_MAP: Record<Speaker, string> = {
+  Victor: 'M1',  // Supertonic male preset voice
+  Lisa: 'F1',    // Supertonic female preset voice
 };
 
 /** Silence duration in seconds inserted between each audio segment */

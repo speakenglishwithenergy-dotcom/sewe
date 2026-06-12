@@ -5,6 +5,7 @@ import fs from 'fs/promises';
 import { OpenAIService } from './ai/openai.service';
 import { ScriptService } from './ai/script.service';
 import { TTSService } from './audio/tts.service';
+import { SupertonicService } from './audio/supertonic.service';
 import { SubtitleService } from './subtitles/subtitle.service';
 import { FFmpegService } from './ffmpeg/ffmpeg.service';
 import { VideoService } from './video/video.service';
@@ -17,6 +18,9 @@ import { logger } from './utils/logger';
 const ROOT_DIR = process.cwd();
 const ASSETS_DIR = path.join(ROOT_DIR, 'assets');
 const BACKGROUND_PATH = path.join(ASSETS_DIR, 'background.png');
+const SUPERTONIC_DIR = path.join(ASSETS_DIR, 'supertonic-3');
+const SUPERTONIC_ONNX_DIR = process.env.SUPERTONIC_ONNX_DIR ?? path.join(SUPERTONIC_DIR, 'onnx');
+const SUPERTONIC_VOICES_DIR = process.env.SUPERTONIC_VOICES_DIR ?? path.join(SUPERTONIC_DIR, 'voice_styles');
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -136,7 +140,8 @@ async function main(): Promise<void> {
   const openaiService = new OpenAIService();
   const ffmpegService = new FFmpegService();
   const scriptService = new ScriptService(openaiService);
-  const ttsService = new TTSService(openaiService, ffmpegService);
+  const supertonicService = new SupertonicService(SUPERTONIC_ONNX_DIR, SUPERTONIC_VOICES_DIR);
+  const ttsService = new TTSService(supertonicService, ffmpegService);
   const subtitleService = new SubtitleService();
   const videoService = new VideoService(ffmpegService);
 

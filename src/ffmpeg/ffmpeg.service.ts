@@ -53,22 +53,20 @@ export class FFmpegService {
   }
 
   /**
-   * Generate a silent MP3 file of the given duration.
+   * Generate a silent WAV file of the given duration.
    */
   async generateSilence(outputPath: string, durationSeconds: number): Promise<void> {
     await execFileAsync('ffmpeg', [
       '-f', 'lavfi',
       '-i', 'anullsrc=r=44100:cl=mono',
       '-t', String(durationSeconds),
-      '-q:a', '9',
-      '-acodec', 'libmp3lame',
       '-y',
       outputPath,
     ]);
   }
 
   /**
-   * Merge an ordered list of MP3 files into a single podcast.mp3.
+   * Merge an ordered list of WAV files into a single podcast.mp3.
    * A silent gap of `pauseSeconds` is inserted between each segment.
    */
   async mergeAudioFiles(
@@ -81,7 +79,7 @@ export class FFmpegService {
     }
 
     const tmpDir = path.dirname(outputPath);
-    const silencePath = path.join(tmpDir, '_silence.mp3');
+    const silencePath = path.join(tmpDir, '_silence.wav');
     const concatListPath = path.join(tmpDir, '_concat.txt');
 
     logger.info(`Merging ${inputFiles.length} audio segments with ${pauseSeconds}s pause...`);
@@ -103,7 +101,9 @@ export class FFmpegService {
       '-f', 'concat',
       '-safe', '0',
       '-i', concatListPath,
-      '-c', 'copy',
+      '-acodec', 'libmp3lame',
+      '-ab', '192k',
+      '-ar', '44100',
       '-y',
       outputPath,
     ]);
