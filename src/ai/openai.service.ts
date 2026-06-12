@@ -59,12 +59,14 @@ export class OpenAIService {
     text: string,
     voice: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer',
     outputPath: string,
+    speed = 0.85,
   ): Promise<void> {
     const response = await this.client.audio.speech.create({
       model: this.ttsModel,
       voice,
       input: text,
       response_format: 'mp3',
+      speed,
     });
 
     const arrayBuffer = await response.arrayBuffer();
