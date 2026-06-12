@@ -14,7 +14,7 @@ export class SubtitleService {
     const entries = segments.map((segment, i) => {
       const start = formatSRTTime(segment.startTime);
       const end = formatSRTTime(segment.startTime + segment.duration);
-      const text = wrapText(`${segment.speaker}: ${segment.text}`, 80);
+      const text = wrapText(segment.text, 80);
       return `${i + 1}\n${start} --> ${end}\n${text}`;
     });
 
