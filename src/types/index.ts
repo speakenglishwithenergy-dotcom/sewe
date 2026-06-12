@@ -47,3 +47,15 @@ export const VOICE_MAP: Record<Speaker, 'onyx' | 'nova'> = {
 
 /** Silence duration in seconds inserted between each audio segment */
 export const PAUSE_BETWEEN_SEGMENTS = 0.5;
+
+// ─── Project ──────────────────────────────────────────────────────────────────
+
+export interface Project {
+  id: string;
+  topic: string;
+  title?: string;
+  description?: string;
+  thumbnailText?: string;
+  createdAt: string;
+  updatedAt: string;
+}
