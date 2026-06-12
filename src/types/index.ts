@@ -40,9 +40,9 @@ export interface GenerateOptions {
   topic: string;
 }
 
-export const VOICE_MAP: Record<Speaker, 'onyx' | 'nova'> = {
-  Victor: 'onyx',
-  Lisa: 'nova',
+export const VOICE_MAP: Record<Speaker, 'cedar' | 'sage'> = {
+  Victor: 'cedar',
+  Lisa: 'sage',
 };
 
 /** Silence duration in seconds inserted between each audio segment */
