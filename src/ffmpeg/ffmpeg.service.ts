@@ -173,14 +173,14 @@ export class FFmpegService {
     // Commas in force_style must be escaped as \, so they are not treated as
     // filtergraph-level filter separators (FFmpeg 8.x is strict about this).
     const forceStyle = [
-      'Fontsize=16',
+      'Fontsize=14',
       'PrimaryColour=&H00FFFFFF',
       'OutlineColour=&H00000000',
       'BorderStyle=1',
       'Outline=1',
       'Shadow=1',
       'Alignment=2',
-      'MarginV=120',
+      'MarginV=70',
     ].join('\\,');
 
     const subtitleFilter = `subtitles=filename=${safeSubs}:force_style=${forceStyle}`;
@@ -190,7 +190,7 @@ export class FFmpegService {
       `[0:v]scale=1920:1080[bg]`,
       `[1:a]volume=${PODCAST_VOLUME},asplit=2[aout][awave]`,
       `[awave]showwaves=size=500x200:mode=point:colors=0x2ba6e1@0.9:rate=30,format=yuva420p[waves]`,
-      `[bg][waves]overlay=700:200,format=yuv420p,${subtitleFilter}[vout]`,
+      `[bg][waves]overlay=700:800,format=yuv420p,${subtitleFilter}[vout]`,
     ].join(';');
 
     await execFileAsync(
