@@ -6,6 +6,9 @@ import { logger } from '../utils/logger';
 
 const execFileAsync = promisify(execFile);
 
+/** Linear gain applied to podcast speech before mixing (+6 dB at 2.0). */
+const PODCAST_VOLUME = 2.0;
+
 // Candidate FFmpeg installations, ordered by preference.
 // ffmpeg-full (Homebrew keg-only) includes libass and the subtitles filter.
 const FFMPEG_CANDIDATES = [
@@ -169,10 +172,11 @@ export class FFmpegService {
 
     const subtitleFilter = `subtitles=filename=${safeSubs}:force_style=${forceStyle}`;
 
-    // Wave strip: 1920×200, centered-line mode, brand purple, y=800 (above subtitle zone)
+    // Wave strip: 500×200 dot waveform, brand purple, overlaid above subtitle zone
     const filterComplex = [
       `[0:v]scale=1920:1080[bg]`,
-      `[1:a]showwaves=size=500x200:mode=cline:colors=0x2ba6e1@0.9:rate=30,format=yuva420p[waves]`,
+      `[1:a]volume=${PODCAST_VOLUME},asplit=2[aout][awave]`,
+      `[awave]showwaves=size=500x200:mode=point:colors=0x2ba6e1@0.9:rate=30,format=yuva420p[waves]`,
       `[bg][waves]overlay=700:200,format=yuv420p,${subtitleFilter}[vout]`,
     ].join(';');
 
@@ -184,7 +188,7 @@ export class FFmpegService {
         '-i', audioPath,
         '-filter_complex', filterComplex,
         '-map', '[vout]',
-        '-map', '1:a',
+        '-map', '[aout]',
         '-c:v', 'libx264',
         '-preset', 'slow',
         '-crf', '20',
