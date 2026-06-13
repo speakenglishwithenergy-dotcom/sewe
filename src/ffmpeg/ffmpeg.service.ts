@@ -164,12 +164,17 @@ export class FFmpegService {
       'Outline=1',
       'Shadow=1',
       'Alignment=2',
-      'MarginV=60',
+      'MarginV=80',
     ].join('\\,');
 
     const subtitleFilter = `subtitles=filename=${safeSubs}:force_style=${forceStyle}`;
 
-    const vfFilter = `scale=1920:1080,${subtitleFilter}`;
+    // Wave strip: 1920×200, centered-line mode, brand purple, y=800 (above subtitle zone)
+    const filterComplex = [
+      `[0:v]scale=1920:1080[bg]`,
+      `[1:a]showwaves=size=500x200:mode=cline:colors=0x2ba6e1@0.9:rate=30,format=yuva420p[waves]`,
+      `[bg][waves]overlay=700:550,format=yuv420p,${subtitleFilter}[vout]`,
+    ].join(';');
 
     await execFileAsync(
       this.ffmpegBin,
@@ -177,7 +182,9 @@ export class FFmpegService {
         '-loop', '1',
         '-i', backgroundPath,
         '-i', audioPath,
-        '-vf', vfFilter,
+        '-filter_complex', filterComplex,
+        '-map', '[vout]',
+        '-map', '1:a',
         '-c:v', 'libx264',
         '-preset', 'slow',
         '-crf', '20',

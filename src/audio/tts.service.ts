@@ -47,7 +47,7 @@ export class TTSService {
         logger.info(`  [${index}/${script.length}] ⏭  ${line.speaker}: (cached) "${line.text.slice(0, 60)}${line.text.length > 60 ? '…' : ''}"`);
       } else {
         logger.info(`  [${index}/${script.length}] ${line.speaker}: "${line.text.slice(0, 60)}${line.text.length > 60 ? '…' : ''}"`);
-        await this.supertonic.generateSpeech(line.text, 'en', voiceName, filePath);
+        await this.supertonic.generateSpeech(line.text, 'en', voiceName, filePath, 0.85);
       }
 
       const duration = await this.ffmpeg.getAudioDuration(filePath);
