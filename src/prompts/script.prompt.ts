@@ -10,6 +10,7 @@ Requirements:
 - Exactly 12 dialogue lines total
 - English level: A2-B1
 - Natural conversation, short sentences
+- Include an "ipa" field for every line: General American English IPA in slashes
 
 Return ONLY a valid JSON object:
 {
@@ -17,8 +18,8 @@ Return ONLY a valid JSON object:
   "description": "Short description.",
   "thumbnailText": "THUMBNAIL TEXT",
   "script": [
-    { "speaker": "Victor", "text": "..." },
-    { "speaker": "Lisa", "text": "..." }
+    { "speaker": "Victor", "text": "...", "ipa": "/.../" },
+    { "speaker": "Lisa", "text": "...", "ipa": "/.../" }
   ]
 }`;
   }
@@ -43,6 +44,7 @@ REQUIREMENTS:
 - Keep turns short: 2–4 sentences per speaker turn (allows natural back-and-forth)
 - Minimum 90 dialogue lines in the script array — do NOT stop early, write ALL lines
 - IMPORTANT: You MUST write at least 90 complete dialogue lines before the script ends
+- Include an "ipa" field for every dialogue line: General American English IPA wrapped in slashes (e.g. "/həˈloʊ ˈɛvriwʌn/"), matching natural spoken pronunciation
 
 Return ONLY a valid JSON object with this exact structure (no markdown, no code blocks):
 {
@@ -50,8 +52,8 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no code 
   "description": "YouTube video description with SEO keywords, 3 paragraphs, encourage subscribe",
   "thumbnailText": "Thumbnail text — 5–6 bold words, impactful, uppercase friendly",
   "script": [
-    { "speaker": "Victor", "text": "..." },
-    { "speaker": "Lisa", "text": "..." }
+    { "speaker": "Victor", "text": "...", "ipa": "/.../" },
+    { "speaker": "Lisa", "text": "...", "ipa": "/.../" }
   ]
 }`;
 }

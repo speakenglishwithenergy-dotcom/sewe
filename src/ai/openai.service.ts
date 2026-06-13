@@ -24,6 +24,7 @@ export class OpenAIService {
     userPrompt: string,
     systemPrompt: string,
     validator: (data: unknown) => T,
+    options?: { temperature?: number },
   ): Promise<T> {
     logger.info(`Calling ${this.model} for JSON generation...`);
 
@@ -34,7 +35,7 @@ export class OpenAIService {
         { role: 'user', content: userPrompt },
       ],
       response_format: { type: 'json_object' },
-      temperature: 0.85,
+      temperature: options?.temperature ?? 0.85,
     });
 
     const content = response.choices[0]?.message?.content;

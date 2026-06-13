@@ -5,7 +5,7 @@ import { logger } from '../utils/logger';
 export class SubtitleService {
   /**
    * Generate an SRT subtitle file from the timed audio segments.
-   * Each segment becomes one subtitle entry.
+   * Each segment becomes one subtitle entry with English text and IPA below.
    * Long lines are wrapped more aggressively to stay readable on screen,
    * with orphan/widow lines rebalanced so a single word is not left alone.
    */
@@ -18,7 +18,10 @@ export class SubtitleService {
     const entries = segments.map((segment, i) => {
       const start = formatSRTTime(segment.startTime);
       const end = formatSRTTime(segment.startTime + segment.duration + LINGER_SECONDS);
-      const text = wrapSubtitleText(segment.text, SUBTITLE_LINE_WIDTH);
+      const english = wrapSubtitleText(segment.text, SUBTITLE_LINE_WIDTH);
+      const text = segment.ipa
+        ? `${english}\n${wrapSubtitleText(segment.ipa, SUBTITLE_LINE_WIDTH)}`
+        : english;
       return `${i + 1}\n${start} --> ${end}\n${text}`;
     });
 

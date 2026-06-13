@@ -1,0 +1,77 @@
+import { z } from 'zod';
+import { OpenAIService } from './openai.service';
+import { DialogueLine } from '../types';
+import { buildIpaPrompt } from '../prompts/ipa.prompt';
+import { logger } from '../utils/logger';
+
+const IpaBatchSchema = z.object({
+  lines: z.array(
+    z.object({
+      index: z.number().int().nonnegative(),
+      ipa: z.string().min(1),
+    }),
+  ),
+});
+
+const BATCH_SIZE = 25;
+
+export class IpaService {
+  constructor(private readonly openai: OpenAIService) {}
+
+  /** Fill missing IPA transcriptions on dialogue lines (mutates and returns the array). */
+  async enrichScript(script: DialogueLine[]): Promise<DialogueLine[]> {
+    const missing = script
+      .map((line, index) => ({ index, text: line.text, line }))
+      .filter(({ line }) => !line.ipa);
+
+    if (missing.length === 0) {
+      return script;
+    }
+
+    logger.info(`Generating IPA for ${missing.length} dialogue line(s)...`);
+
+    for (let offset = 0; offset < missing.length; offset += BATCH_SIZE) {
+      const batch = missing.slice(offset, offset + BATCH_SIZE);
+      const ipaByIndex = await this.generateBatch(
+        batch.map(({ index, text }) => ({ index, text })),
+      );
+
+      for (const { index, line } of batch) {
+        const ipa = ipaByIndex.get(index);
+        if (!ipa) {
+          throw new Error(`IPA generation missing result for line index ${index}`);
+        }
+        line.ipa = ipa;
+      }
+    }
+
+    logger.success('IPA transcriptions ready');
+    return script;
+  }
+
+  private async generateBatch(
+    lines: { index: number; text: string }[],
+  ): Promise<Map<number, string>> {
+    const result = await this.openai.generateJSON(
+      buildIpaPrompt(lines),
+      'You are a linguist specializing in English phonetics. Respond only with valid JSON matching the requested structure exactly.',
+      (data) => IpaBatchSchema.parse(data),
+      { temperature: 0.2 },
+    );
+
+    const map = new Map<number, string>();
+    for (const entry of result.lines) {
+      map.set(entry.index, normalizeIpa(entry.ipa));
+    }
+    return map;
+  }
+}
+
+/** Ensure IPA is wrapped in slashes for consistent subtitle display. */
+function normalizeIpa(ipa: string): string {
+  const trimmed = ipa.trim();
+  if (trimmed.startsWith('/') && trimmed.endsWith('/')) {
+    return trimmed;
+  }
+  return `/${trimmed.replace(/^\/+|\/+$/g, '')}/`;
+}

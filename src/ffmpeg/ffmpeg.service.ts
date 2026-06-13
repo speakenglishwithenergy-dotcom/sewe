@@ -173,7 +173,7 @@ export class FFmpegService {
     const filterComplex = [
       `[0:v]scale=1920:1080[bg]`,
       `[1:a]showwaves=size=500x200:mode=cline:colors=0x2ba6e1@0.9:rate=30,format=yuva420p[waves]`,
-      `[bg][waves]overlay=700:300,format=yuv420p,${subtitleFilter}[vout]`,
+      `[bg][waves]overlay=700:200,format=yuv420p,${subtitleFilter}[vout]`,
     ].join(';');
 
     await execFileAsync(

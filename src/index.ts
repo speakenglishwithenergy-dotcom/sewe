@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs/promises';
 
 import { OpenAIService } from './ai/openai.service';
+import { IpaService } from './ai/ipa.service';
 import { ScriptService } from './ai/script.service';
 import { TTSService } from './audio/tts.service';
 import { SupertonicService } from './audio/supertonic.service';
@@ -193,11 +194,19 @@ async function main(): Promise<void> {
   // ── Wire up TTS / video services ─────────────────────────────────────────
   const supertonicService = new SupertonicService(SUPERTONIC_ONNX_DIR, SUPERTONIC_VOICES_DIR);
   const ttsService = new TTSService(supertonicService, ffmpegService);
+  const ipaService = new IpaService(openaiService);
   const subtitleService = new SubtitleService();
   const videoService = new VideoService(ffmpegService);
 
   // ── Step 2: Voices ───────────────────────────────────────────────────────────
   logger.step(2, totalSteps, 'Generating voice audio...');
+
+  if (!podcastScript.script.every((line) => line.ipa)) {
+    podcastScript.script = await ipaService.enrichScript(podcastScript.script);
+    await fs.writeFile(SCRIPT_PATH, JSON.stringify(podcastScript, null, 2), 'utf-8');
+    logger.info(`IPA saved → ${SCRIPT_PATH}`);
+  }
+
   const segments = await ttsService.generateSegments(podcastScript.script, AUDIO_DIR);
 
   // ── Step 3: Subtitles ─────────────────────────────────────────────────────

@@ -56,6 +56,7 @@ export class TTSService {
         index,
         speaker: line.speaker as Speaker,
         text: line.text,
+        ipa: line.ipa,
         filePath,
         duration,
         startTime: currentTime,

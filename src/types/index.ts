@@ -10,6 +10,8 @@ export type Speaker = z.infer<typeof SpeakerSchema>;
 export const DialogueLineSchema = z.object({
   speaker: SpeakerSchema,
   text: z.string().min(1),
+  /** General American English IPA transcription of the spoken line */
+  ipa: z.string().min(1).optional(),
 });
 export type DialogueLine = z.infer<typeof DialogueLineSchema>;
 
@@ -27,6 +29,7 @@ export interface AudioSegment {
   index: number;
   speaker: Speaker;
   text: string;
+  ipa?: string;
   filePath: string;
   /** Duration in seconds */
   duration: number;
