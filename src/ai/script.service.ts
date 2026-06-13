@@ -1,6 +1,7 @@
 import { OpenAIService } from './openai.service';
 import { PodcastScript, PodcastScriptSchema } from '../types';
 import {
+  appendChannelClosing,
   buildScriptPrompt,
   countScriptWords,
   SCRIPT_TARGET_MIN_LINES,
@@ -20,6 +21,10 @@ export class ScriptService {
     if (!test) {
       script = await this.ensureMinimumLength(topic, script);
     }
+    script = {
+      ...script,
+      script: appendChannelClosing(script.script),
+    };
 
     const words = countScriptWords(script.script);
     logger.success(

@@ -4,6 +4,27 @@ import { DialogueLine } from '../types';
 export const SCRIPT_TARGET_MIN_WORDS = 1_300;
 export const SCRIPT_TARGET_MIN_LINES = 75;
 
+export const CHANNEL_NAME = 'Speak English With Energy';
+
+export const CHANNEL_CLOSING_TEXT = `Thanks for listening — see you next time on ${CHANNEL_NAME}!`;
+
+export function scriptHasChannelClosing(script: DialogueLine[]): boolean {
+  return script
+    .slice(-3)
+    .some((line) => line.text.toLowerCase().includes(CHANNEL_NAME.toLowerCase()));
+}
+
+export function appendChannelClosing(script: DialogueLine[]): DialogueLine[] {
+  if (scriptHasChannelClosing(script)) {
+    return script;
+  }
+
+  const lastSpeaker = script.at(-1)?.speaker ?? 'Victor';
+  const speaker = lastSpeaker === 'Victor' ? 'Lisa' : 'Victor';
+
+  return [...script, { speaker, text: CHANNEL_CLOSING_TEXT }];
+}
+
 export function countScriptWords(script: DialogueLine[]): number {
   return script.reduce(
     (sum, line) => sum + line.text.trim().split(/\s+/).filter(Boolean).length,
@@ -64,6 +85,7 @@ REQUIREMENTS:
 - Only Victor and Lisa speak — no other characters, no narrator
 - Open with one host greeting the audience and introducing the topic
 - Close with a recap, an actionable tip, and a call to subscribe
+- End with a warm sign-off that explicitly says the channel name "${CHANNEL_NAME}" (e.g. "See you next time on ${CHANNEL_NAME}!") — this MUST appear in the final 1–2 dialogue lines
 - Use natural filler words: "well", "you know", "actually", "I mean", "right"
 - Include short personal anecdotes and relatable everyday examples
 - Keep turns short: 2–4 sentences per speaker turn (allows natural back-and-forth)
@@ -76,7 +98,7 @@ EPISODE STRUCTURE — write every section in full (do not skip or merge sections
 2. Main idea 1 (18–20 lines): core concept, Victor example, Lisa questions and pushback
 3. Main idea 2 (18–20 lines): deeper insight, relatable everyday story, practical angle
 4. Main idea 3 (18–20 lines): strategies, common mistakes, what to try this week
-5. Closing (10–12 lines): recap, one clear actionable tip, warm subscribe CTA
+5. Closing (10–12 lines): recap, one clear actionable tip, warm subscribe CTA, final line naming "${CHANNEL_NAME}"
 
 Return ONLY a valid JSON object with this exact structure (no markdown, no code blocks):
 {
