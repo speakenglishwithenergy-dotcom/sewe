@@ -20,6 +20,8 @@ import { logger } from './utils/logger';
 const ROOT_DIR = process.cwd();
 const ASSETS_DIR = path.join(ROOT_DIR, 'assets');
 const BACKGROUND_PATH = path.join(ASSETS_DIR, 'background.png');
+const INTRO_PATH = path.join(ASSETS_DIR, 'intro.mp4');
+const OUTRO_PATH = path.join(ASSETS_DIR, 'outro.mp4');
 const SUPERTONIC_DIR = path.join(ASSETS_DIR, 'supertonic-3');
 const SUPERTONIC_ONNX_DIR = process.env.SUPERTONIC_ONNX_DIR ?? path.join(SUPERTONIC_DIR, 'onnx');
 const SUPERTONIC_VOICES_DIR = process.env.SUPERTONIC_VOICES_DIR ?? path.join(SUPERTONIC_DIR, 'voice_styles');
@@ -141,7 +143,9 @@ async function main(): Promise<void> {
   const PODCAST_AUDIO_PATH = path.join(PROJECT_DIR, 'podcast.mp3');
   const SUBTITLES_PATH = path.join(PROJECT_DIR, 'subtitles.srt');
   const THUMBNAIL_PATH = path.join(PROJECT_DIR, 'thumbnail.png');
-  const VIDEO_PATH = path.join(PROJECT_DIR, 'video.mp4');
+  const PODCAST_VIDEO_PATH = path.join(PROJECT_DIR, 'podcast-video.mp4');
+  const THUMBNAIL_VIDEO_PATH = path.join(PROJECT_DIR, 'thumbnail-video.mp4');
+  const FINAL_VIDEO_PATH = path.join(PROJECT_DIR, 'final.mp4');
 
   await fs.mkdir(AUDIO_DIR, { recursive: true });
 
@@ -195,7 +199,7 @@ async function main(): Promise<void> {
   }
 
   // ── Step 2: Thumbnail ─────────────────────────────────────────────────────
-  const totalSteps = 6;
+  const totalSteps = 7;
   logger.step(2, totalSteps, 'Generating YouTube thumbnail...');
   if (await fileExists(THUMBNAIL_PATH)) {
     logger.info(`⏭  Thumbnail already exists — skipping`);
@@ -239,16 +243,38 @@ async function main(): Promise<void> {
     logger.success(`Podcast audio saved → ${PODCAST_AUDIO_PATH}`);
   }
 
-  // ── Step 6: Video ─────────────────────────────────────────────────────────
-  logger.step(6, totalSteps, 'Rendering video...');
-  if (await fileExists(VIDEO_PATH)) {
-    // logger.info(`⏭  Video already exists — skipping`);
-    // remove existing video to force regeneration, since we may have updated the script or audio
-    logger.info(`Existing video found — removing to force regeneration`);
-    await fs.unlink(VIDEO_PATH);
-  } else {
+  // ── Step 6: Podcast video ─────────────────────────────────────────────────
+  logger.step(6, totalSteps, 'Rendering podcast video...');
+  if (await fileExists(PODCAST_VIDEO_PATH)) {
+    logger.info(`Existing podcast video found — removing to force regeneration`);
+    await fs.unlink(PODCAST_VIDEO_PATH);
   }
-  await videoService.generate(PODCAST_AUDIO_PATH, SUBTITLES_PATH, BACKGROUND_PATH, VIDEO_PATH);
+  await videoService.generatePodcastVideo(
+    PODCAST_AUDIO_PATH,
+    SUBTITLES_PATH,
+    BACKGROUND_PATH,
+    PODCAST_VIDEO_PATH,
+  );
+
+  // ── Step 7: Final video (intro + thumbnail + podcast + outro) ─────────────
+  logger.step(7, totalSteps, 'Composing final video...');
+  if (await fileExists(THUMBNAIL_VIDEO_PATH)) {
+    logger.info(`⏭  Thumbnail video already exists — skipping`);
+  } else {
+    await videoService.generateThumbnailVideo(THUMBNAIL_PATH, THUMBNAIL_VIDEO_PATH);
+  }
+
+  if (await fileExists(FINAL_VIDEO_PATH)) {
+    logger.info(`Existing final video found — removing to force regeneration`);
+    await fs.unlink(FINAL_VIDEO_PATH);
+  }
+  await videoService.composeFinalVideo(
+    INTRO_PATH,
+    THUMBNAIL_VIDEO_PATH,
+    PODCAST_VIDEO_PATH,
+    OUTRO_PATH,
+    FINAL_VIDEO_PATH,
+  );
 
   // ── Done ──────────────────────────────────────────────────────────────────
   logger.info('');
@@ -264,7 +290,9 @@ async function main(): Promise<void> {
   Thumbnail   : ${THUMBNAIL_PATH}
   Audio       : ${PODCAST_AUDIO_PATH}
   Subtitles   : ${SUBTITLES_PATH}
-  Video       : ${VIDEO_PATH}
+  Podcast     : ${PODCAST_VIDEO_PATH}
+  Thumb Video : ${THUMBNAIL_VIDEO_PATH}
+  Final Video : ${FINAL_VIDEO_PATH}
   `);
   logger.info('YouTube Description:\n');
   console.log(podcastScript.description);

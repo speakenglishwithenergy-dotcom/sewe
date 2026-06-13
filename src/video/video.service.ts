@@ -6,11 +6,12 @@ import { logger } from '../utils/logger';
 
 const VIDEO_WIDTH = 1920;
 const VIDEO_HEIGHT = 1080;
+const THUMBNAIL_VIDEO_DURATION = 5;
 
 export class VideoService {
   constructor(private readonly ffmpeg: FFmpegService) {}
 
-  async generate(
+  async generatePodcastVideo(
     audioPath: string,
     subtitlesPath: string,
     backgroundPath: string,
@@ -25,7 +26,26 @@ export class VideoService {
       outputPath,
     );
 
-    logger.success(`Video saved → ${outputPath}`);
+    logger.success(`Podcast video saved → ${outputPath}`);
+  }
+
+  async generateThumbnailVideo(thumbnailPath: string, outputPath: string): Promise<void> {
+    await this.ffmpeg.generateImageVideo(thumbnailPath, outputPath, THUMBNAIL_VIDEO_DURATION);
+    logger.success(`Thumbnail video saved → ${outputPath}`);
+  }
+
+  async composeFinalVideo(
+    introPath: string,
+    thumbnailVideoPath: string,
+    podcastVideoPath: string,
+    outroPath: string,
+    outputPath: string,
+  ): Promise<void> {
+    await this.ffmpeg.composeFinalVideo(
+      [introPath, thumbnailVideoPath, podcastVideoPath, outroPath],
+      outputPath,
+    );
+    logger.success(`Final video saved → ${outputPath}`);
   }
 
   // ─── Private ─────────────────────────────────────────────────────────────
