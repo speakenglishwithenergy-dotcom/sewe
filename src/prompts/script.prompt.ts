@@ -16,7 +16,8 @@ Return ONLY a valid JSON object:
 {
   "title": "Episode title",
   "description": "Short description.",
-  "thumbnailText": "THUMBNAIL TEXT",
+  "thumbnailText": "WHY\\nSMART\\nPEOPLE STAY\\nSTUCK?",
+  "thumbnailScene": "Victor confused with tangled scribble in thought bubble. Lisa points at him explaining. Book spines: MINDSET, FOCUS, GROWTH.",
   "script": [
     { "speaker": "Victor", "text": "...", "ipa": "/.../" },
     { "speaker": "Lisa", "text": "...", "ipa": "/.../" }
@@ -50,7 +51,8 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no code 
 {
   "title": "Episode title — catchy, YouTube-friendly, max 70 characters",
   "description": "YouTube video description with SEO keywords, 3 paragraphs, encourage subscribe",
-  "thumbnailText": "Thumbnail text — 5–6 bold words, impactful, uppercase friendly",
+  "thumbnailText": "Stacked headline for left side — 4 lines max, ALL CAPS, 5–8 words total, use \\n between lines. Match demo style: navy lines + one power word in largest orange + one line on navy brush stroke (e.g. WHY\\nSMART\\nPEOPLE STAY\\nSTUCK?)",
+  "thumbnailScene": "Topic-specific changes only — Victor expression/thought bubble metaphor, Lisa gesture, 3 book spine titles (uppercase, topic-related). Do NOT describe desk layout, characters, or branding.",
   "script": [
     { "speaker": "Victor", "text": "...", "ipa": "/.../" },
     { "speaker": "Lisa", "text": "...", "ipa": "/.../" }

@@ -5,6 +5,7 @@ import fs from 'fs/promises';
 import { OpenAIService } from './ai/openai.service';
 import { IpaService } from './ai/ipa.service';
 import { ScriptService } from './ai/script.service';
+import { ThumbnailService } from './ai/thumbnail.service';
 import { TTSService } from './audio/tts.service';
 import { SupertonicService } from './audio/supertonic.service';
 import { SubtitleService } from './subtitles/subtitle.service';
@@ -139,6 +140,7 @@ async function main(): Promise<void> {
   const SCRIPT_PATH = path.join(PROJECT_DIR, 'script.json');
   const PODCAST_AUDIO_PATH = path.join(PROJECT_DIR, 'podcast.mp3');
   const SUBTITLES_PATH = path.join(PROJECT_DIR, 'subtitles.srt');
+  const THUMBNAIL_PATH = path.join(PROJECT_DIR, 'thumbnail.png');
   const VIDEO_PATH = path.join(PROJECT_DIR, 'video.mp4');
 
   await fs.mkdir(AUDIO_DIR, { recursive: true });
@@ -147,14 +149,14 @@ async function main(): Promise<void> {
   const openaiService = new OpenAIService();
   const ffmpegService = new FFmpegService();
   const scriptService = new ScriptService(openaiService);
+  const thumbnailService = new ThumbnailService(openaiService, ASSETS_DIR);
 
   // ── Step 0: Preflight ─────────────────────────────────────────────────────
   await ffmpegService.checkDependencies();
   logger.success('FFmpeg dependencies verified');
 
   // ── Step 1: Script ────────────────────────────────────────────────────────
-  const totalSteps = args.test ? 1 : 5;
-  logger.step(1, totalSteps, 'Generating podcast script...');
+  logger.step(1, args.test ? 1 : 6, 'Generating podcast script...');
   let podcastScript: PodcastScript;
   if (await fileExists(SCRIPT_PATH)) {
     logger.info(`⏭  Script already exists — loading from cache`);
@@ -183,12 +185,22 @@ async function main(): Promise<void> {
     console.log(`
   Project ID : ${project.id}
   Title      : ${podcastScript.title}
+  Thumbnail  : ${podcastScript.thumbnailText}
   Lines      : ${podcastScript.script.length} dialogue lines
   Script     : ${SCRIPT_PATH}
   `);
     console.log('First 3 lines:');
     podcastScript.script.slice(0, 3).forEach((l) => console.log(`  ${l.speaker}: ${l.text}`));
     return;
+  }
+
+  // ── Step 2: Thumbnail ─────────────────────────────────────────────────────
+  const totalSteps = 6;
+  logger.step(2, totalSteps, 'Generating YouTube thumbnail...');
+  if (await fileExists(THUMBNAIL_PATH)) {
+    logger.info(`⏭  Thumbnail already exists — skipping`);
+  } else {
+    await thumbnailService.generate(podcastScript, project.topic, THUMBNAIL_PATH);
   }
 
   // ── Wire up TTS / video services ─────────────────────────────────────────
@@ -199,7 +211,7 @@ async function main(): Promise<void> {
   const videoService = new VideoService(ffmpegService);
 
   // ── Step 2: Voices ───────────────────────────────────────────────────────────
-  logger.step(2, totalSteps, 'Generating voice audio...');
+  logger.step(3, totalSteps, 'Generating voice audio...');
 
   if (!podcastScript.script.every((line) => line.ipa)) {
     podcastScript.script = await ipaService.enrichScript(podcastScript.script);
@@ -209,16 +221,16 @@ async function main(): Promise<void> {
 
   const segments = await ttsService.generateSegments(podcastScript.script, AUDIO_DIR);
 
-  // ── Step 3: Subtitles ─────────────────────────────────────────────────────
-  logger.step(3, totalSteps, 'Generating subtitle file...');
+  // ── Step 4: Subtitles ─────────────────────────────────────────────────────
+  logger.step(4, totalSteps, 'Generating subtitle file...');
   if (await fileExists(SUBTITLES_PATH)) {
     logger.info(`⏭  Subtitles already exist — skipping`);
   } else {
     await subtitleService.generate(segments, SUBTITLES_PATH);
   }
 
-  // ── Step 4: Merge audio ───────────────────────────────────────────────────
-  logger.step(4, totalSteps, 'Merging audio segments...');
+  // ── Step 5: Merge audio ───────────────────────────────────────────────────
+  logger.step(5, totalSteps, 'Merging audio segments...');
   if (await fileExists(PODCAST_AUDIO_PATH)) {
     logger.info(`⏭  Merged audio already exists — skipping`);
   } else {
@@ -227,8 +239,8 @@ async function main(): Promise<void> {
     logger.success(`Podcast audio saved → ${PODCAST_AUDIO_PATH}`);
   }
 
-  // ── Step 5: Video ─────────────────────────────────────────────────────────
-  logger.step(5, totalSteps, 'Rendering video...');
+  // ── Step 6: Video ─────────────────────────────────────────────────────────
+  logger.step(6, totalSteps, 'Rendering video...');
   if (await fileExists(VIDEO_PATH)) {
     // logger.info(`⏭  Video already exists — skipping`);
     // remove existing video to force regeneration, since we may have updated the script or audio
@@ -249,6 +261,7 @@ async function main(): Promise<void> {
   Thumbnail   : ${podcastScript.thumbnailText}
   Segments    : ${segments.length} dialogue lines
   Script      : ${SCRIPT_PATH}
+  Thumbnail   : ${THUMBNAIL_PATH}
   Audio       : ${PODCAST_AUDIO_PATH}
   Subtitles   : ${SUBTITLES_PATH}
   Video       : ${VIDEO_PATH}
