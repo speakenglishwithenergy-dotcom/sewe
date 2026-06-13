@@ -1,4 +1,21 @@
-export function buildScriptPrompt(topic: string, test = false): string {
+import { DialogueLine } from '../types';
+
+/** Target spoken length for the main podcast (excludes intro/outro/thumbnail clips). */
+export const SCRIPT_TARGET_MIN_WORDS = 1_300;
+export const SCRIPT_TARGET_MIN_LINES = 75;
+
+export function countScriptWords(script: DialogueLine[]): number {
+  return script.reduce(
+    (sum, line) => sum + line.text.trim().split(/\s+/).filter(Boolean).length,
+    0,
+  );
+}
+
+export function buildScriptPrompt(
+  topic: string,
+  test = false,
+  retry?: { lines: number; words: number },
+): string {
   if (test) {
     return `You are a professional podcast script writer.
 
@@ -25,6 +42,13 @@ Return ONLY a valid JSON object:
 }`;
   }
 
+  const retryNote = retry
+    ? `
+CRITICAL — PREVIOUS ATTEMPT REJECTED (too short: ${retry.lines} lines, ${retry.words} words):
+You MUST deliver the FULL 8–10 minute episode. At least ${SCRIPT_TARGET_MIN_LINES} dialogue lines and ${SCRIPT_TARGET_MIN_WORDS.toLocaleString()} words total. Do NOT summarize, compress, or stop early.
+`
+    : '';
+
   return `You are a professional podcast script writer for the YouTube channel "Speak English With Energy".
 
 The podcast features two hosts:
@@ -32,10 +56,10 @@ The podcast features two hosts:
 - Lisa: female, thoughtful, asks insightful questions, relatable, practical
 
 Write a complete podcast script on this topic: "${topic}"
-
+${retryNote}
 REQUIREMENTS:
 - English level: A2-B1 (clear vocabulary, common expressions, short sentences)
-- Length: 20–25 minutes of spoken content (approximately 4,500–5,500 words total across ALL lines in the script array)
+- Length: 8–10 minutes of spoken podcast audio (approximately 1,300–1,700 words total across ALL lines in the script array)
 - Style: natural conversation, self-improvement focus, sounds human not AI-generated
 - Only Victor and Lisa speak — no other characters, no narrator
 - Open with one host greeting the audience and introducing the topic
@@ -43,9 +67,16 @@ REQUIREMENTS:
 - Use natural filler words: "well", "you know", "actually", "I mean", "right"
 - Include short personal anecdotes and relatable everyday examples
 - Keep turns short: 2–4 sentences per speaker turn (allows natural back-and-forth)
-- Minimum 90 dialogue lines in the script array — do NOT stop early, write ALL lines
-- IMPORTANT: You MUST write at least 90 complete dialogue lines before the script ends
+- Minimum ${SCRIPT_TARGET_MIN_LINES} dialogue lines in the script array — do NOT stop early, write ALL lines
+- IMPORTANT: Count your words as you write. The script array MUST contain at least ${SCRIPT_TARGET_MIN_LINES} complete dialogue lines and ${SCRIPT_TARGET_MIN_WORDS.toLocaleString()}+ words before the episode ends
 - Include an "ipa" field for every dialogue line: General American English IPA wrapped in slashes (e.g. "/həˈloʊ ˈɛvriwʌn/"), matching natural spoken pronunciation
+
+EPISODE STRUCTURE — write every section in full (do not skip or merge sections):
+1. Intro & hook (8–10 lines): greeting, topic intro, why it matters today
+2. Main idea 1 (18–20 lines): core concept, Victor example, Lisa questions and pushback
+3. Main idea 2 (18–20 lines): deeper insight, relatable everyday story, practical angle
+4. Main idea 3 (18–20 lines): strategies, common mistakes, what to try this week
+5. Closing (10–12 lines): recap, one clear actionable tip, warm subscribe CTA
 
 Return ONLY a valid JSON object with this exact structure (no markdown, no code blocks):
 {

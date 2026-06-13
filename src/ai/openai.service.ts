@@ -39,6 +39,7 @@ export class OpenAIService {
       ],
       response_format: { type: 'json_object' },
       temperature: options?.temperature ?? 0.85,
+      max_tokens: 16_384,
     });
 
     const content = response.choices[0]?.message?.content;
