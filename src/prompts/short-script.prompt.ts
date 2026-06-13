@@ -26,7 +26,6 @@ REQUIREMENTS:
 - Select the 2–3 most important insights from the podcast — drop long anecdotes, repetition, and filler
 - Close with one actionable tip and a short CTA ("Follow for more English tips")
 - English level: A2–B1 (clear vocabulary, short sentences)
-- Include an "ipa" field for every line: General American English IPA in slashes
 - "hook" field: the exact opening line or phrase that grabs attention (can match first dialogue line)
 - "thumbnailText": 2–3 stacked lines, ALL CAPS, 3–6 words total, use \\n between lines — must be readable on a vertical phone screen
 - "thumbnailScene": topic-specific visual changes only (Victor expression, thought bubble metaphor, Lisa gesture, 3 book spine titles)
@@ -39,8 +38,8 @@ Return ONLY a valid JSON object (no markdown, no code blocks):
   "thumbnailText": "SMART\\nBUT STUCK?",
   "thumbnailScene": "Victor confused with puzzle pieces in thought bubble. Lisa points encouragingly. Book spines: MINDSET, FOCUS, GROWTH.",
   "script": [
-    { "speaker": "Victor", "text": "...", "ipa": "/.../" },
-    { "speaker": "Lisa", "text": "...", "ipa": "/.../" }
+    { "speaker": "Victor", "text": "..." },
+    { "speaker": "Lisa", "text": "..." }
   ]
 }`;
 }

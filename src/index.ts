@@ -210,7 +210,6 @@ async function main(): Promise<void> {
   if (args.short) {
     const supertonicService = new SupertonicService(SUPERTONIC_ONNX_DIR, SUPERTONIC_VOICES_DIR);
     const ttsService = new TTSService(supertonicService, ffmpegService);
-    const ipaService = new IpaService(openaiService);
     const subtitleService = new SubtitleService();
     const videoService = new VideoService(ffmpegService);
     const shortPaths = buildShortPaths(PROJECT_DIR);
@@ -218,7 +217,6 @@ async function main(): Promise<void> {
     const shortScript = await runShortPipeline(project, podcastScript, {
       shortScriptService,
       thumbnailService,
-      ipaService,
       ttsService,
       subtitleService,
       ffmpegService,
@@ -331,7 +329,6 @@ async function main(): Promise<void> {
   const shortScript = await runShortPipeline(project, podcastScript, {
     shortScriptService,
     thumbnailService,
-    ipaService,
     ttsService,
     subtitleService,
     ffmpegService,

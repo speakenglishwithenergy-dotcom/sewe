@@ -5,11 +5,17 @@ import { logger } from '../utils/logger';
 export class SubtitleService {
   /**
    * Generate an SRT subtitle file from the timed audio segments.
-   * Each segment becomes one subtitle entry with English text and IPA below.
+   * Each segment becomes one subtitle entry. Podcast mode includes IPA below English;
+   * short-form mode shows English only.
    * Long lines are wrapped more aggressively to stay readable on screen,
    * with orphan/widow lines rebalanced so a single word is not left alone.
    */
-  async generate(segments: AudioSegment[], outputPath: string, lineWidth = 42): Promise<void> {
+  async generate(
+    segments: AudioSegment[],
+    outputPath: string,
+    lineWidth = 42,
+    includeIpa = true,
+  ): Promise<void> {
     logger.info('Generating SRT subtitle file...');
 
     const LINGER_SECONDS = 0.5;
@@ -19,7 +25,7 @@ export class SubtitleService {
       const start = formatSRTTime(segment.startTime);
       const end = formatSRTTime(segment.startTime + segment.duration + LINGER_SECONDS);
       const english = wrapSubtitleText(segment.text, SUBTITLE_LINE_WIDTH);
-      const text = segment.ipa
+      const text = includeIpa && segment.ipa
         ? `${english}\n${wrapSubtitleText(segment.ipa, SUBTITLE_LINE_WIDTH)}`
         : english;
       return `${i + 1}\n${start} --> ${end}\n${text}`;

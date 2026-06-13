@@ -2,7 +2,6 @@ import path from 'path';
 import fs from 'fs/promises';
 import { ShortScriptService } from '../ai/short-script.service';
 import { ThumbnailService } from '../ai/thumbnail.service';
-import { IpaService } from '../ai/ipa.service';
 import { TTSService } from '../audio/tts.service';
 import { SubtitleService } from '../subtitles/subtitle.service';
 import { FFmpegService } from '../ffmpeg/ffmpeg.service';
@@ -29,7 +28,6 @@ export interface ShortPipelinePaths {
 export interface ShortPipelineServices {
   shortScriptService: ShortScriptService;
   thumbnailService: ThumbnailService;
-  ipaService: IpaService;
   ttsService: TTSService;
   subtitleService: SubtitleService;
   ffmpegService: FFmpegService;
@@ -66,7 +64,7 @@ export async function runShortPipeline(
   services: ShortPipelineServices,
   paths: ShortPipelinePaths,
 ): Promise<ShortScript> {
-  const totalSteps = 7;
+  const totalSteps = 6;
 
   // ── Step 1: Short script ─────────────────────────────────────────────────
   logger.step(1, totalSteps, 'Generating short script from podcast...');
@@ -93,16 +91,8 @@ export async function runShortPipeline(
     );
   }
 
-  // ── Step 3: IPA enrich ───────────────────────────────────────────────────
-  logger.step(3, totalSteps, 'Enriching short script IPA...');
-  if (!shortScript.script.every((line) => line.ipa)) {
-    shortScript.script = await services.ipaService.enrichScript(shortScript.script);
-    await fs.writeFile(paths.shortScriptPath, JSON.stringify(shortScript, null, 2), 'utf-8');
-    logger.info(`IPA saved → ${paths.shortScriptPath}`);
-  }
-
-  // ── Step 4: TTS ──────────────────────────────────────────────────────────
-  logger.step(4, totalSteps, 'Generating short voice audio...');
+  // ── Step 3: TTS ──────────────────────────────────────────────────────────
+  logger.step(3, totalSteps, 'Generating short voice audio...');
   await fs.mkdir(paths.shortAudioDir, { recursive: true });
   const segments = await services.ttsService.generateSegments(
     shortScript.script,
@@ -121,16 +111,16 @@ export async function runShortPipeline(
     );
   }
 
-  // ── Step 5: Subtitles ────────────────────────────────────────────────────
-  logger.step(5, totalSteps, 'Generating short subtitle file...');
+  // ── Step 4: Subtitles ────────────────────────────────────────────────────
+  logger.step(4, totalSteps, 'Generating short subtitle file...');
   if (await fileExists(paths.shortSubtitlesPath)) {
     logger.info('⏭  Short subtitles already exist — skipping');
   } else {
-    await services.subtitleService.generate(segments, paths.shortSubtitlesPath, 28);
+    await services.subtitleService.generate(segments, paths.shortSubtitlesPath, 28, false);
   }
 
-  // ── Step 6: Merge audio ──────────────────────────────────────────────────
-  logger.step(6, totalSteps, 'Merging short audio segments...');
+  // ── Step 5: Merge audio ──────────────────────────────────────────────────
+  logger.step(5, totalSteps, 'Merging short audio segments...');
   if (await fileExists(paths.shortAudioPath)) {
     logger.info('⏭  Short merged audio already exists — skipping');
   } else {
@@ -143,8 +133,8 @@ export async function runShortPipeline(
     logger.success(`Short audio saved → ${paths.shortAudioPath}`);
   }
 
-  // ── Step 7: Short video ──────────────────────────────────────────────────
-  logger.step(7, totalSteps, 'Rendering short video (9:16)...');
+  // ── Step 6: Short video ──────────────────────────────────────────────────
+  logger.step(6, totalSteps, 'Rendering short video (9:16)...');
   if (await fileExists(paths.shortVideoPath)) {
     logger.info('Existing short video found — removing to force regeneration');
     await fs.unlink(paths.shortVideoPath);
