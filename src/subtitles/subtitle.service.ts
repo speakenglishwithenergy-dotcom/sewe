@@ -6,7 +6,8 @@ export class SubtitleService {
   /**
    * Generate an SRT subtitle file from the timed audio segments.
    * Each segment becomes one subtitle entry.
-   * Long lines are wrapped more aggressively to stay readable on screen.
+   * Long lines are wrapped more aggressively to stay readable on screen,
+   * with orphan/widow lines rebalanced so a single word is not left alone.
    */
   async generate(segments: AudioSegment[], outputPath: string): Promise<void> {
     logger.info('Generating SRT subtitle file...');
@@ -30,6 +31,29 @@ export class SubtitleService {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+/** Phrases that must never be split across subtitle lines (channel branding). */
+const NON_BREAKING_PHRASES = ['Speak English With Energy'];
+
+/**
+ * Replace spaces inside protected phrases with non-breaking spaces so line
+ * wrapping treats each phrase as a single word.
+ */
+function protectNonBreakingPhrases(text: string): string {
+  let result = text;
+
+  for (const phrase of NON_BREAKING_PHRASES) {
+    const pattern = phrase
+      .split(' ')
+      .map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('\\s+');
+    const regex = new RegExp(pattern, 'gi');
+
+    result = result.replace(regex, (match) => match.replace(/ /g, '\u00A0'));
+  }
+
+  return result;
+}
+
 /**
  * Convert a time value (seconds, with ms precision) to SRT timestamp format.
  * Example: 3661.123  →  "01:01:01,123"
@@ -50,9 +74,14 @@ function formatSRTTime(totalSeconds: number): string {
 
 /**
  * Wrap subtitle text to a narrower line width for better on-screen readability.
+ * Rebalances lines afterward to avoid orphan/widow text (a single word alone on a line).
  */
 function wrapSubtitleText(text: string, maxWidth: number): string {
-  const words = text.split(' ');
+  const words = protectNonBreakingPhrases(text).split(' ');
+  if (words.length <= 1) {
+    return text;
+  }
+
   const lines: string[] = [];
   let current = '';
 
@@ -71,5 +100,46 @@ function wrapSubtitleText(text: string, maxWidth: number): string {
     lines.push(current);
   }
 
-  return lines.join('\n');
+  return avoidOrphanLines(lines).join('\n');
+}
+
+const MIN_WORDS_PER_LINE = 2;
+
+/**
+ * Pull words from the previous line onto an orphan last line until it has
+ * at least MIN_WORDS_PER_LINE words. Also fixes a lone word on the first line.
+ */
+function avoidOrphanLines(lines: string[]): string[] {
+  if (lines.length < 2) {
+    return lines;
+  }
+
+  const result = [...lines];
+
+  while (result.length >= 2) {
+    const lastWords = result[result.length - 1].split(' ');
+    if (lastWords.length >= MIN_WORDS_PER_LINE) {
+      break;
+    }
+
+    const prevWords = result[result.length - 2].split(' ');
+    if (prevWords.length <= 1) {
+      break;
+    }
+
+    const moved = prevWords.pop()!;
+    result[result.length - 2] = prevWords.join(' ');
+    result[result.length - 1] = `${moved} ${result[result.length - 1]}`;
+  }
+
+  if (result.length === 2 && result[0].split(' ').length === 1) {
+    const secondWords = result[1].split(' ');
+    if (secondWords.length > 1) {
+      const moved = secondWords.shift()!;
+      result[0] = `${result[0]} ${moved}`;
+      result[1] = secondWords.join(' ');
+    }
+  }
+
+  return result;
 }
