@@ -5,6 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "generate": "tsx src/index.ts",
+    "generate:conversations-audio": "tsx src/conversations-audio.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },

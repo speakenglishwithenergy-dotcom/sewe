@@ -112,26 +112,36 @@ export class FFmpegService {
     inputFiles: string[],
     outputPath: string,
     pauseSeconds: number,
+    firstPauseSeconds = pauseSeconds,
   ): Promise<void> {
     if (inputFiles.length === 0) {
       throw new Error('No audio files provided for merge');
     }
 
     const tmpDir = path.dirname(outputPath);
-    const silencePath = path.join(tmpDir, '_silence.wav');
+    const pauseValues = [...new Set([firstPauseSeconds, pauseSeconds])];
+    const silenceByDuration = new Map<number, string>();
     const concatListPath = path.join(tmpDir, '_concat.txt');
 
-    logger.info(`Merging ${inputFiles.length} audio segments with ${pauseSeconds}s pause...`);
+    logger.info(
+      `Merging ${inputFiles.length} audio segments with ${pauseSeconds}s pause` +
+        (firstPauseSeconds !== pauseSeconds ? ` (${firstPauseSeconds}s after first)` : '') +
+        '...',
+    );
 
-    // Generate a short silence clip
-    await this.generateSilence(silencePath, pauseSeconds);
+    for (const duration of pauseValues) {
+      const silencePath = path.join(tmpDir, `_silence_${duration}s.wav`);
+      await this.generateSilence(silencePath, duration);
+      silenceByDuration.set(duration, silencePath);
+    }
 
     // Build ffmpeg concat file — silence between every pair, not after the last
     const lines: string[] = [];
     for (let i = 0; i < inputFiles.length; i++) {
       lines.push(`file '${inputFiles[i]}'`);
       if (i < inputFiles.length - 1) {
-        lines.push(`file '${silencePath}'`);
+        const gap = i === 0 ? firstPauseSeconds : pauseSeconds;
+        lines.push(`file '${silenceByDuration.get(gap)!}'`);
       }
     }
     await fs.writeFile(concatListPath, lines.join('\n'), 'utf-8');
@@ -149,7 +159,7 @@ export class FFmpegService {
 
     // Cleanup temporary files
     await Promise.allSettled([
-      fs.unlink(silencePath),
+      ...pauseValues.map((duration) => fs.unlink(silenceByDuration.get(duration)!)),
       fs.unlink(concatListPath),
     ]);
   }

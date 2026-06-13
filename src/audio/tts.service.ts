@@ -70,4 +70,31 @@ export class TTSService {
     logger.success(`${segments.length} audio segments generated`);
     return segments;
   }
+
+  /** Generate a single narration clip (e.g. episode title intro). */
+  async generateNarration(
+    text: string,
+    filePath: string,
+    voiceName: string,
+    speed = 0.85,
+  ): Promise<number> {
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+
+    let cached = false;
+    try {
+      await fs.access(filePath);
+      cached = true;
+    } catch {
+      // file does not exist — generate it
+    }
+
+    if (cached) {
+      logger.info(`  ⏭  Narration (cached): "${text.slice(0, 60)}${text.length > 60 ? '…' : ''}"`);
+    } else {
+      logger.info(`  Narration: "${text.slice(0, 60)}${text.length > 60 ? '…' : ''}"`);
+      await this.supertonic.generateSpeech(text, 'en', voiceName, filePath, speed);
+    }
+
+    return this.ffmpeg.getAudioDuration(filePath);
+  }
 }
