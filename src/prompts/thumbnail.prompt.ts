@@ -1,34 +1,60 @@
 export interface ThumbnailPromptInput {
   topic: string;
+  episodeTitle: string;
   thumbnailText: string;
   thumbnailScene: string;
 }
 
 export function buildThumbnailImagePrompt(input: ThumbnailPromptInput): string {
-  const { topic, thumbnailText, thumbnailScene } = input;
+  const { topic, episodeTitle, thumbnailText, thumbnailScene } = input;
 
   return `Edit the provided reference thumbnail template for the "Speak English With Energy" English-learning podcast.
 
-This is a TEMPLATE EDIT — keep the reference image layout and branding identical. Only change the headline text and topic-specific context.
+This is a STRICT TEMPLATE EDIT. Copy the reference image's fixed branding blocks exactly. Only replace (1) the left headline text and (2) Victor + Lisa topic context.
 
-KEEP UNCHANGED (match reference exactly):
-- Landscape 16:9 composition with safe margins — nothing touches the frame edges
-- LEFT ~40%: stacked headline area (same typography style, spacing, and colors as reference)
-- RIGHT ~60%: Victor and Lisa at the podcast desk — same character designs, positions, and core props
-- TOP RIGHT: "Speak ENGLISH WITH ENERGY" logo with microphone and book icons
-- BOTTOM LEFT: green rounded badge with microphone icon — "ENGLISH PODCAST" and "FOR LEARNING ENGLISH"
-- Victor: male, brown hair, beard, forest green sweater, black headphones, navy mug labeled "Victor"
-- Lisa: female, long wavy brown hair, orange sweater, black headphones, orange mug labeled "Lisa"
-- Desk: wooden table, two black condenser mics on stands, small white succulent, open notebook with pen
+═══ DO NOT MODIFY — copy pixel-perfect from reference ═══
+
+TOP RIGHT — logo block (untouched):
+- Microphone icon above the wordmark
+- "Speak" and "ENGLISH" in dark navy #0D1B3D bold sans-serif
+- Orange #FF7A00 "WITH ENERGY" banner treatment
+- Open book icon below
+- Same size, position, spacing, colors, and fonts as reference — zero changes
+
+BOTTOM LEFT — badge block (untouched):
+- Circular teal/green icon with white microphone
+- Green rounded pill with white "ENGLISH PODCAST" in bold caps
+- "FOR LEARNING ENGLISH" subtitle below in dark navy
+- Same size, position, spacing, colors, and fonts as reference — zero changes
+
+ALSO UNCHANGED:
+- Landscape 16:9 composition with safe margins — nothing touches frame edges
+- Victor: male, brown hair, beard, forest green sweater, black headphones, navy mug "Victor"
+- Lisa: female, long wavy brown hair, orange sweater, black headphones, orange mug "Lisa"
+- Desk layout: wooden table, two black condenser mics on stands, succulent, open notebook with pen
 - Art style: modern clean digital illustration, warm beige studio, soft shading, not photorealistic
 - Brand colors: Dark Navy #0D1B3D, Royal Blue #1E3A8A, Bright Orange #FF7A00, Off-white #F2F4F7
 
-CHANGE ONLY — headline text on the left:
-Replace the reference title with this new stacked headline (spell exactly):
-"${thumbnailText}"
-Use the same treatment as the reference: navy sans-serif lines, one keyword in large bright orange, one line in white on a thick navy horizontal brush-stroke banner.
+═══ CHANGE ONLY — left headline (keep demo typography styles) ═══
 
-CHANGE ONLY — topic context on the right:
+The reference image currently shows this demo title on the left (find and replace this text only):
+"WHY\\nSMART\\nPEOPLE STAY\\nSTUCK?"
+Demo color treatment: "WHY" white, "SMART" orange, "PEOPLE STAY" white, "STUCK?" white on navy brush-stroke banner.
+
+Episode title: "${episodeTitle}"
+
+Replace the demo title above with this new stacked ALL-CAPS text (spell exactly, preserve \\n line breaks):
+"${thumbnailText}"
+
+Typography MUST match the reference demo exactly:
+- LEFT ~40%: stacked, left-aligned, bold heavy sans-serif
+- One keyword line in large bright orange #FF7A00 (same size/weight as "SMART" in the demo)
+- Other lines in white
+- Final line (or emphasis line) in white on a thick dark-navy horizontal brush-stroke banner with distressed/torn edges — same shape and placement as demo "STUCK?" treatment
+- Same line spacing, font weight, and relative sizes as the reference demo
+
+═══ CHANGE ONLY — Victor + Lisa scene context (right ~60%) ═══
+
 ${thumbnailScene}
 
 Episode topic: "${topic}"
@@ -36,22 +62,27 @@ Episode topic: "${topic}"
 High contrast, readable at small size, no watermarks, no extra text beyond what is specified.`;
 }
 
-export function buildThumbnailScenePrompt(topic: string, thumbnailText: string): string {
+export function buildThumbnailScenePrompt(
+  topic: string,
+  episodeTitle: string,
+  thumbnailText: string,
+): string {
   return `You are an art director for the YouTube channel "Speak English With Energy".
 
+Episode title: "${episodeTitle}"
 Topic: "${topic}"
 Thumbnail headline: "${thumbnailText}"
 
-The thumbnail uses a fixed template (Victor and Lisa at a podcast desk). Write ONLY the topic-specific changes — not the full scene.
+The thumbnail uses a fixed template. Logo (top right) and badge (bottom left) are locked. Write ONLY the Victor + Lisa scene changes for this episode.
 
 Describe what to change from the default template:
-- Victor's expression and pose (listener's problem: confused, stuck, worried, etc.)
-- Thought bubble content — one visual metaphor tied to the topic (scribble, chart, clock, etc.)
-- Lisa's expression and gesture (teaching, pointing, encouraging)
-- Three book spine titles on the desk stack — short uppercase words related to the topic (replace MINDSET / FOCUS / GROWTH)
-- Optional subtle background accents on the shelf/wall that reflect the topic
+- Victor's expression and pose — reflect the listener's problem from the episode title
+- Thought bubble — one visual metaphor tied to the episode topic (scribble, chart, clock, question mark, etc.)
+- Lisa's expression and gesture — teaching, pointing, encouraging
+- Three book spine titles on the desk stack — short uppercase phrases related to the episode (replace MINDSET / FOCUS / GROWTH)
+- Background/shelf accents on the wall that subtly reflect the episode topic
 
-Do NOT describe Victor/Lisa appearance, mugs, mics, logo, badge, or desk layout — those stay fixed.
+Do NOT describe Victor/Lisa core appearance, mugs, mics, logo, badge, headline, or desk layout — those stay fixed.
 
 Return ONLY valid JSON:
 {

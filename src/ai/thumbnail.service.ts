@@ -33,10 +33,12 @@ export class ThumbnailService {
     const demoPath = path.join(this.assetsDir, 'demo-thumbnail.png');
 
     const thumbnailScene =
-      script.thumbnailScene ?? (await this.generateScene(topic, script.thumbnailText));
+      script.thumbnailScene ??
+      (await this.generateScene(topic, script.title, script.thumbnailText));
 
     const prompt = buildThumbnailImagePrompt({
       topic,
+      episodeTitle: script.title,
       thumbnailText: script.thumbnailText,
       thumbnailScene,
     });
@@ -98,11 +100,15 @@ export class ThumbnailService {
     );
   }
 
-  private async generateScene(topic: string, thumbnailText: string): Promise<string> {
+  private async generateScene(
+    topic: string,
+    episodeTitle: string,
+    thumbnailText: string,
+  ): Promise<string> {
     logger.info('Generating thumbnail scene description...');
 
     const result = await this.openai.generateJSON(
-      buildThumbnailScenePrompt(topic, thumbnailText),
+      buildThumbnailScenePrompt(topic, episodeTitle, thumbnailText),
       'You are a creative art director. Respond only with valid JSON.',
       (data: unknown) => {
         if (
