@@ -13,6 +13,13 @@ import { SubtitleService } from './subtitles/subtitle.service';
 import { FFmpegService } from './ffmpeg/ffmpeg.service';
 import { VideoService } from './video/video.service';
 import { ProjectService } from './project/project.service';
+import { SocialMetadataService } from './social/social-metadata.service';
+import {
+  SOCIAL_METADATA_JSON,
+  YOUTUBE_DESCRIPTION_TXT,
+  YOUTUBE_SHORT_CAPTION_TXT,
+  YOUTUBE_TAGS_TXT,
+} from './social/social-metadata.export';
 import { buildShortPaths, runShortPipeline } from './short/short.pipeline';
 import { PodcastScript, Project } from './types';
 import { logger } from './utils/logger';
@@ -82,6 +89,16 @@ function parseArgs(): CliArgs {
     process.exit(1);
   }
   return { mode: 'new', topic, test, short };
+}
+
+function printSocialMetadataSummary(projectDir: string, hasShort: boolean): void {
+  console.log(`
+  Social Meta   : ${path.join(projectDir, SOCIAL_METADATA_JSON)}
+  YT Desc       : ${path.join(projectDir, YOUTUBE_DESCRIPTION_TXT)}
+  YT Tags       : ${path.join(projectDir, YOUTUBE_TAGS_TXT)}`);
+  if (hasShort) {
+    console.log(`  YT Short Cap  : ${path.join(projectDir, YOUTUBE_SHORT_CAPTION_TXT)}`);
+  }
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
@@ -162,6 +179,7 @@ async function main(): Promise<void> {
   const scriptService = new ScriptService(openaiService);
   const shortScriptService = new ShortScriptService(openaiService);
   const thumbnailService = new ThumbnailService(openaiService, ASSETS_DIR);
+  const socialMetadataService = new SocialMetadataService(openaiService);
 
   // ── Step 0: Preflight ─────────────────────────────────────────────────────
   await ffmpegService.checkDependencies();
@@ -190,6 +208,12 @@ async function main(): Promise<void> {
 
   // ── Test mode: stop after script ─────────────────────────────────────────
   if (args.test) {
+    const socialMeta = await socialMetadataService.loadOrGenerate(
+      PROJECT_DIR,
+      podcastScript,
+      project.topic,
+    );
+
     logger.info('');
     logger.divider('═');
     logger.success('[TEST] Script generated successfully.');
@@ -199,10 +223,16 @@ async function main(): Promise<void> {
   Title      : ${podcastScript.title}
   Thumbnail  : ${podcastScript.thumbnailText}
   Lines      : ${podcastScript.script.length} dialogue lines
-  Script     : ${SCRIPT_PATH}
+  Script     : ${SCRIPT_PATH}`);
+    printSocialMetadataSummary(PROJECT_DIR, false);
+    console.log(`
   `);
     console.log('First 3 lines:');
     podcastScript.script.slice(0, 3).forEach((l) => console.log(`  ${l.speaker}: ${l.text}`));
+    logger.info('\nYouTube Description (copy-paste ready):\n');
+    console.log(socialMeta.youtube.description);
+    logger.info('\nPinned comment:\n');
+    console.log(socialMeta.youtube.pinnedComment);
     return;
   }
 
@@ -223,6 +253,13 @@ async function main(): Promise<void> {
       videoService,
     }, shortPaths);
 
+    const socialMeta = await socialMetadataService.loadOrGenerate(
+      PROJECT_DIR,
+      podcastScript,
+      project.topic,
+      { shortScript },
+    );
+
     logger.info('');
     logger.divider('═');
     logger.success('Short video ready!');
@@ -237,10 +274,18 @@ async function main(): Promise<void> {
   Short Thumbnail : ${shortPaths.shortThumbnailPath}
   Short Audio     : ${shortPaths.shortAudioPath}
   Short Subtitles : ${shortPaths.shortSubtitlesPath}
-  Short Video     : ${shortPaths.shortVideoPath}
+  Short Video     : ${shortPaths.shortVideoPath}`);
+    printSocialMetadataSummary(PROJECT_DIR, true);
+    console.log(`
   `);
-    logger.info('Short Caption:\n');
-    console.log(shortScript.description);
+    logger.info('YouTube Description:\n');
+    console.log(socialMeta.youtube.description);
+    if (socialMeta.youtubeShort) {
+      logger.info('\nYouTube Short Caption:\n');
+      console.log(`${socialMeta.youtubeShort.caption}\n\n${socialMeta.youtubeShort.hashtags.join(' ')}`);
+      logger.info('\nShort pinned comment:\n');
+      console.log(socialMeta.youtubeShort.pinnedComment);
+    }
     console.timeEnd('Total execution time');
     return;
   }
@@ -335,6 +380,13 @@ async function main(): Promise<void> {
     videoService,
   }, shortPaths);
 
+  const socialMeta = await socialMetadataService.loadOrGenerate(
+    PROJECT_DIR,
+    podcastScript,
+    project.topic,
+    { shortScript, segments },
+  );
+
   // ── Done ──────────────────────────────────────────────────────────────────
   logger.info('');
   logger.divider('═');
@@ -355,12 +407,22 @@ async function main(): Promise<void> {
 
   Short Title     : ${shortScript.title}
   Short Thumbnail : ${shortPaths.shortThumbnailPath}
-  Short Video     : ${shortPaths.shortVideoPath}
+  Short Video     : ${shortPaths.shortVideoPath}`);
+  printSocialMetadataSummary(PROJECT_DIR, true);
+  console.log(`
   `);
-  logger.info('YouTube Description:\n');
-  console.log(podcastScript.description);
-  logger.info('\nShort Caption:\n');
-  console.log(shortScript.description);
+  logger.info('YouTube Description (copy-paste ready):\n');
+  console.log(socialMeta.youtube.description);
+  logger.info('\nYouTube Tags:\n');
+  console.log(socialMeta.youtube.tags.join(', '));
+  logger.info('\nPinned comment:\n');
+  console.log(socialMeta.youtube.pinnedComment);
+  if (socialMeta.youtubeShort) {
+    logger.info('\nYouTube Short Caption:\n');
+    console.log(`${socialMeta.youtubeShort.caption}\n\n${socialMeta.youtubeShort.hashtags.join(' ')}`);
+    logger.info('\nShort pinned comment:\n');
+    console.log(socialMeta.youtubeShort.pinnedComment);
+  }
   console.timeEnd('Total execution time');
 }
 

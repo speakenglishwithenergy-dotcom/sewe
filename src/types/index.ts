@@ -44,6 +44,39 @@ export const ShortScriptSchema = z.object({
 });
 export type ShortScript = z.infer<typeof ShortScriptSchema>;
 
+// ─── Social Metadata (YouTube + Shorts) ──────────────────────────────────────
+
+export const YouTubeChapterSchema = z.object({
+  time: z.string().min(1),
+  label: z.string().min(1),
+});
+export type YouTubeChapter = z.infer<typeof YouTubeChapterSchema>;
+
+export const YouTubeMetadataSchema = z.object({
+  title: z.string().min(1),
+  titleVariants: z.array(z.string().min(1)).min(1).max(3),
+  description: z.string().min(1),
+  tags: z.array(z.string().min(1)).min(5).max(15),
+  chapters: z.array(YouTubeChapterSchema).min(3),
+  pinnedComment: z.string().min(1),
+  hashtags: z.array(z.string().min(1)).min(3).max(5),
+});
+export type YouTubeMetadata = z.infer<typeof YouTubeMetadataSchema>;
+
+export const YouTubeShortMetadataSchema = z.object({
+  title: z.string().min(1),
+  caption: z.string().min(1),
+  hashtags: z.array(z.string().min(1)).min(3).max(5),
+  pinnedComment: z.string().min(1),
+});
+export type YouTubeShortMetadata = z.infer<typeof YouTubeShortMetadataSchema>;
+
+export const SocialMetadataSchema = z.object({
+  youtube: YouTubeMetadataSchema,
+  youtubeShort: YouTubeShortMetadataSchema.optional(),
+});
+export type SocialMetadata = z.infer<typeof SocialMetadataSchema>;
+
 /** Silence duration in seconds between short-form audio segments */
 export const SHORT_PAUSE_BETWEEN_SEGMENTS = 0.3;
 
