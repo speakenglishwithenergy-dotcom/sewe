@@ -11,7 +11,7 @@ export class ShortScriptService {
 
     const script = await this.openai.generateJSON(
       buildShortScriptPrompt(podcastScript, topic),
-      'You are a professional short-form video script writer. Respond only with valid JSON matching the requested structure exactly.',
+      'You are a professional short-form video script writer who creates punchy, logical mini-conversations — never podcast summaries. Respond only with valid JSON matching the requested structure exactly.',
       (data) => ShortScriptSchema.parse(data),
     );
 
