@@ -157,14 +157,14 @@ export class FFmpegService {
     // Commas in force_style must be escaped as \, so they are not treated as
     // filtergraph-level filter separators (FFmpeg 8.x is strict about this).
     const forceStyle = [
-      'Fontsize=40',
+      'Fontsize=16',
       'PrimaryColour=&H00FFFFFF',
       'OutlineColour=&H00000000',
       'BorderStyle=1',
-      'Outline=3',
-      'Shadow=2',
+      'Outline=1',
+      'Shadow=1',
       'Alignment=2',
-      'MarginV=50',
+      'MarginV=60',
     ].join('\\,');
 
     const subtitleFilter = `subtitles=filename=${safeSubs}:force_style=${forceStyle}`;

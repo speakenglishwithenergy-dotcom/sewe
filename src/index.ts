@@ -219,10 +219,13 @@ async function main(): Promise<void> {
   // ── Step 5: Video ─────────────────────────────────────────────────────────
   logger.step(5, totalSteps, 'Rendering video...');
   if (await fileExists(VIDEO_PATH)) {
-    logger.info(`⏭  Video already exists — skipping`);
+    // logger.info(`⏭  Video already exists — skipping`);
+    // remove existing video to force regeneration, since we may have updated the script or audio
+    logger.info(`Existing video found — removing to force regeneration`);
+    await fs.unlink(VIDEO_PATH);
   } else {
-    await videoService.generate(PODCAST_AUDIO_PATH, SUBTITLES_PATH, BACKGROUND_PATH, VIDEO_PATH);
   }
+  await videoService.generate(PODCAST_AUDIO_PATH, SUBTITLES_PATH, BACKGROUND_PATH, VIDEO_PATH);
 
   // ── Done ──────────────────────────────────────────────────────────────────
   logger.info('');
