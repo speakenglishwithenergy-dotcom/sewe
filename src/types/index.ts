@@ -15,11 +15,19 @@ export const DialogueLineSchema = z.object({
 });
 export type DialogueLine = z.infer<typeof DialogueLineSchema>;
 
-export const PodcastScriptSchema = z.object({
+export const PodcastMetadataSchema = z.object({
   title: z.string().min(1),
   description: z.string().min(1),
   thumbnailText: z.string().min(1),
   thumbnailScene: z.string().min(1).optional(),
+});
+export type PodcastMetadata = z.infer<typeof PodcastMetadataSchema>;
+
+export const ScriptSectionResultSchema = z.object({
+  script: z.array(DialogueLineSchema).min(1),
+});
+
+export const PodcastScriptSchema = PodcastMetadataSchema.extend({
   script: z.array(DialogueLineSchema).min(10),
 });
 export type PodcastScript = z.infer<typeof PodcastScriptSchema>;
