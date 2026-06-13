@@ -6,17 +6,18 @@ export class SubtitleService {
   /**
    * Generate an SRT subtitle file from the timed audio segments.
    * Each segment becomes one subtitle entry.
-   * Long lines are word-wrapped at 80 characters for readability.
+   * Long lines are wrapped more aggressively to stay readable on screen.
    */
   async generate(segments: AudioSegment[], outputPath: string): Promise<void> {
     logger.info('Generating SRT subtitle file...');
 
     const LINGER_SECONDS = 0.5;
+    const SUBTITLE_LINE_WIDTH = 42;
 
     const entries = segments.map((segment, i) => {
       const start = formatSRTTime(segment.startTime);
       const end = formatSRTTime(segment.startTime + segment.duration + LINGER_SECONDS);
-      const text = wrapText(segment.text, 80);
+      const text = wrapSubtitleText(segment.text, SUBTITLE_LINE_WIDTH);
       return `${i + 1}\n${start} --> ${end}\n${text}`;
     });
 
@@ -48,9 +49,9 @@ function formatSRTTime(totalSeconds: number): string {
 }
 
 /**
- * Word-wrap text to a maximum character width per line.
+ * Wrap subtitle text to a narrower line width for better on-screen readability.
  */
-function wrapText(text: string, maxWidth: number): string {
+function wrapSubtitleText(text: string, maxWidth: number): string {
   const words = text.split(' ');
   const lines: string[] = [];
   let current = '';

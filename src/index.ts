@@ -78,6 +78,8 @@ function parseArgs(): CliArgs {
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
+  // track time
+  console.time('Total execution time');
   const args = parseArgs();
   const projectService = new ProjectService();
 
@@ -244,6 +246,7 @@ async function main(): Promise<void> {
   `);
   logger.info('YouTube Description:\n');
   console.log(podcastScript.description);
+  console.timeEnd('Total execution time');
 }
 
 main().catch((err: unknown) => {

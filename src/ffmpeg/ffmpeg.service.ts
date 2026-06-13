@@ -164,7 +164,7 @@ export class FFmpegService {
       'Outline=1',
       'Shadow=1',
       'Alignment=2',
-      'MarginV=80',
+      'MarginV=120',
     ].join('\\,');
 
     const subtitleFilter = `subtitles=filename=${safeSubs}:force_style=${forceStyle}`;
@@ -173,7 +173,7 @@ export class FFmpegService {
     const filterComplex = [
       `[0:v]scale=1920:1080[bg]`,
       `[1:a]showwaves=size=500x200:mode=cline:colors=0x2ba6e1@0.9:rate=30,format=yuva420p[waves]`,
-      `[bg][waves]overlay=700:550,format=yuv420p,${subtitleFilter}[vout]`,
+      `[bg][waves]overlay=700:300,format=yuv420p,${subtitleFilter}[vout]`,
     ].join(';');
 
     await execFileAsync(
