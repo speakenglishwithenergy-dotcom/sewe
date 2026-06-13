@@ -18,6 +18,7 @@ export class TTSService {
   async generateSegments(
     script: DialogueLine[],
     audioDir: string,
+    pauseBetweenSegments = PAUSE_BETWEEN_SEGMENTS,
   ): Promise<AudioSegment[]> {
     await fs.mkdir(audioDir, { recursive: true });
 
@@ -63,7 +64,7 @@ export class TTSService {
       });
 
       // Advance time: current segment duration + silence gap before next segment
-      currentTime += duration + PAUSE_BETWEEN_SEGMENTS;
+      currentTime += duration + pauseBetweenSegments;
     }
 
     logger.success(`${segments.length} audio segments generated`);

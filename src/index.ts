@@ -5,6 +5,7 @@ import fs from 'fs/promises';
 import { OpenAIService } from './ai/openai.service';
 import { IpaService } from './ai/ipa.service';
 import { ScriptService } from './ai/script.service';
+import { ShortScriptService } from './ai/short-script.service';
 import { ThumbnailService } from './ai/thumbnail.service';
 import { TTSService } from './audio/tts.service';
 import { SupertonicService } from './audio/supertonic.service';
@@ -12,6 +13,7 @@ import { SubtitleService } from './subtitles/subtitle.service';
 import { FFmpegService } from './ffmpeg/ffmpeg.service';
 import { VideoService } from './video/video.service';
 import { ProjectService } from './project/project.service';
+import { buildShortPaths, runShortPipeline } from './short/short.pipeline';
 import { PodcastScript, Project } from './types';
 import { logger } from './utils/logger';
 
@@ -40,13 +42,14 @@ async function fileExists(filePath: string): Promise<boolean> {
 // ─── CLI arg parsing ──────────────────────────────────────────────────────────
 
 type CliArgs =
-  | { mode: 'new'; topic: string; test: boolean }
-  | { mode: 'resume'; projectId: string; test: boolean }
+  | { mode: 'new'; topic: string; test: boolean; short: boolean }
+  | { mode: 'resume'; projectId: string; test: boolean; short: boolean }
   | { mode: 'list' };
 
 function parseArgs(): CliArgs {
   const args = process.argv.slice(2);
   const test = args.includes('--test');
+  const short = args.includes('--short');
 
   if (args.includes('--list')) return { mode: 'list' };
 
@@ -57,16 +60,18 @@ function parseArgs(): CliArgs {
       logger.error('--project value cannot be empty');
       process.exit(1);
     }
-    return { mode: 'resume', projectId, test };
+    return { mode: 'resume', projectId, test, short };
   }
 
   const topicArg = args.find((a) => a.startsWith('--topic='));
   if (!topicArg) {
     logger.error('Missing required argument: --topic, --project, or --list');
     logger.info('Usage:');
-    logger.info('  npm run generate -- --topic="Why Smart People Stay Stuck"  # new project');
+    logger.info('  npm run generate -- --topic="Why Smart People Stay Stuck"  # new project (podcast + short)');
     logger.info('  npm run generate -- --topic="..." --test                    # quick test (script only)');
-    logger.info('  npm run generate -- --project=20260612-143022               # resume project');
+    logger.info('  npm run generate -- --topic="..." --short                   # script + short only');
+    logger.info('  npm run generate -- --project=20260612-143022               # resume project (podcast + short)');
+    logger.info('  npm run generate -- --project=20260612-143022 --short       # short only');
     logger.info('  npm run generate -- --list                                  # list all projects');
     process.exit(1);
   }
@@ -76,7 +81,7 @@ function parseArgs(): CliArgs {
     logger.error('--topic value cannot be empty');
     process.exit(1);
   }
-  return { mode: 'new', topic, test };
+  return { mode: 'new', topic, test, short };
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
@@ -124,6 +129,7 @@ async function main(): Promise<void> {
     logger.info(`Resuming project : ${project.id}`);
     logger.info(`Topic            : "${project.topic}"`);
     if (args.test) logger.info('Mode             : TEST (script only)');
+    if (args.short) logger.info('Mode             : SHORT only');
   } else {
     project = await projectService.create(args.topic);
     logger.divider('═');
@@ -132,6 +138,7 @@ async function main(): Promise<void> {
     logger.info(`New project      : ${project.id}`);
     logger.info(`Topic            : "${project.topic}"`);
     if (args.test) logger.info('Mode             : TEST (script only)');
+    if (args.short) logger.info('Mode             : SHORT only');
   }
 
   logger.info('');
@@ -153,6 +160,7 @@ async function main(): Promise<void> {
   const openaiService = new OpenAIService();
   const ffmpegService = new FFmpegService();
   const scriptService = new ScriptService(openaiService);
+  const shortScriptService = new ShortScriptService(openaiService);
   const thumbnailService = new ThumbnailService(openaiService, ASSETS_DIR);
 
   // ── Step 0: Preflight ─────────────────────────────────────────────────────
@@ -198,8 +206,49 @@ async function main(): Promise<void> {
     return;
   }
 
+  // ── Short-only mode: script + short pipeline, skip podcast ───────────────
+  if (args.short) {
+    const supertonicService = new SupertonicService(SUPERTONIC_ONNX_DIR, SUPERTONIC_VOICES_DIR);
+    const ttsService = new TTSService(supertonicService, ffmpegService);
+    const ipaService = new IpaService(openaiService);
+    const subtitleService = new SubtitleService();
+    const videoService = new VideoService(ffmpegService);
+    const shortPaths = buildShortPaths(PROJECT_DIR);
+
+    const shortScript = await runShortPipeline(project, podcastScript, {
+      shortScriptService,
+      thumbnailService,
+      ipaService,
+      ttsService,
+      subtitleService,
+      ffmpegService,
+      videoService,
+    }, shortPaths);
+
+    logger.info('');
+    logger.divider('═');
+    logger.success('Short video ready!');
+    logger.divider('═');
+    console.log(`
+  Project ID      : ${project.id}
+  Short Title     : ${shortScript.title}
+  Hook            : ${shortScript.hook}
+  Thumbnail Text  : ${shortScript.thumbnailText}
+  Lines           : ${shortScript.script.length} dialogue lines
+  Short Script    : ${shortPaths.shortScriptPath}
+  Short Thumbnail : ${shortPaths.shortThumbnailPath}
+  Short Audio     : ${shortPaths.shortAudioPath}
+  Short Subtitles : ${shortPaths.shortSubtitlesPath}
+  Short Video     : ${shortPaths.shortVideoPath}
+  `);
+    logger.info('Short Caption:\n');
+    console.log(shortScript.description);
+    console.timeEnd('Total execution time');
+    return;
+  }
+
   // ── Step 2: Thumbnail ─────────────────────────────────────────────────────
-  const totalSteps = 7;
+  const totalSteps = 8;
   logger.step(2, totalSteps, 'Generating YouTube thumbnail...');
   if (await fileExists(THUMBNAIL_PATH)) {
     logger.info(`⏭  Thumbnail already exists — skipping`);
@@ -276,10 +325,23 @@ async function main(): Promise<void> {
     FINAL_VIDEO_PATH,
   );
 
+  // ── Step 8: Short video (auto) ────────────────────────────────────────────
+  logger.step(8, 8, 'Generating YouTube Short / TikTok video...');
+  const shortPaths = buildShortPaths(PROJECT_DIR);
+  const shortScript = await runShortPipeline(project, podcastScript, {
+    shortScriptService,
+    thumbnailService,
+    ipaService,
+    ttsService,
+    subtitleService,
+    ffmpegService,
+    videoService,
+  }, shortPaths);
+
   // ── Done ──────────────────────────────────────────────────────────────────
   logger.info('');
   logger.divider('═');
-  logger.success('All done! Your podcast is ready.');
+  logger.success('All done! Your podcast and short are ready.');
   logger.divider('═');
   console.log(`
   Project ID  : ${project.id}
@@ -293,9 +355,15 @@ async function main(): Promise<void> {
   Podcast     : ${PODCAST_VIDEO_PATH}
   Thumb Video : ${THUMBNAIL_VIDEO_PATH}
   Final Video : ${FINAL_VIDEO_PATH}
+
+  Short Title     : ${shortScript.title}
+  Short Thumbnail : ${shortPaths.shortThumbnailPath}
+  Short Video     : ${shortPaths.shortVideoPath}
   `);
   logger.info('YouTube Description:\n');
   console.log(podcastScript.description);
+  logger.info('\nShort Caption:\n');
+  console.log(shortScript.description);
   console.timeEnd('Total execution time');
 }
 

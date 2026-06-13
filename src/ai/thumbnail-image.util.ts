@@ -11,6 +11,15 @@ export const CONTENT_WIDTH = API_CANVAS_WIDTH;
 export const CONTENT_HEIGHT = Math.round(CONTENT_WIDTH / (16 / 9)); // 864
 export const CONTENT_TOP = Math.round((API_CANVAS_HEIGHT - CONTENT_HEIGHT) / 2); // 80
 
+/** Short-form vertical thumbnail size (9:16) */
+export const SHORT_THUMB_WIDTH = 1080;
+export const SHORT_THUMB_HEIGHT = 1920;
+
+/** 9:16 content area inside gpt-image-1's fixed 1536x1024 (3:2) canvas */
+export const SHORT_CONTENT_HEIGHT = API_CANVAS_HEIGHT;
+export const SHORT_CONTENT_WIDTH = Math.round(SHORT_CONTENT_HEIGHT * (9 / 16)); // 576
+export const SHORT_CONTENT_LEFT = Math.round((API_CANVAS_WIDTH - SHORT_CONTENT_WIDTH) / 2); // 480
+
 const LETTERBOX_BG = { r: 242, g: 244, b: 247 };
 
 /**
@@ -41,6 +50,38 @@ export async function finalizeThumbnailImage(apiBuffer: Buffer): Promise<Buffer>
       height: CONTENT_HEIGHT,
     })
     .resize(YOUTUBE_THUMB_WIDTH, YOUTUBE_THUMB_HEIGHT)
+    .png()
+    .toBuffer();
+}
+
+/**
+ * Fit the 9:16 demo reference into gpt-image-1's 3:2 canvas so the model
+ * does not stretch or crop the template during edit.
+ */
+export async function prepareShortReferenceImage(inputPath: string): Promise<Buffer> {
+  return sharp(inputPath)
+    .resize(SHORT_CONTENT_WIDTH, SHORT_CONTENT_HEIGHT, { fit: 'fill' })
+    .extend({
+      left: SHORT_CONTENT_LEFT,
+      right: API_CANVAS_WIDTH - SHORT_CONTENT_WIDTH - SHORT_CONTENT_LEFT,
+      background: LETTERBOX_BG,
+    })
+    .png()
+    .toBuffer();
+}
+
+/**
+ * Crop the 9:16 content band from the API canvas and resize to short-form size.
+ */
+export async function finalizeShortThumbnailImage(apiBuffer: Buffer): Promise<Buffer> {
+  return sharp(apiBuffer)
+    .extract({
+      left: SHORT_CONTENT_LEFT,
+      top: 0,
+      width: SHORT_CONTENT_WIDTH,
+      height: SHORT_CONTENT_HEIGHT,
+    })
+    .resize(SHORT_THUMB_WIDTH, SHORT_THUMB_HEIGHT)
     .png()
     .toBuffer();
 }

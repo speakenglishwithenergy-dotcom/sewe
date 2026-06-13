@@ -6,6 +6,8 @@ import { logger } from '../utils/logger';
 
 const VIDEO_WIDTH = 1920;
 const VIDEO_HEIGHT = 1080;
+const SHORT_VIDEO_WIDTH = 1080;
+const SHORT_VIDEO_HEIGHT = 1920;
 const THUMBNAIL_VIDEO_DURATION = 5;
 
 export class VideoService {
@@ -48,7 +50,39 @@ export class VideoService {
     logger.success(`Final video saved → ${outputPath}`);
   }
 
+  async generateShortVideo(
+    audioPath: string,
+    subtitlesPath: string,
+    thumbnailPath: string,
+    outputPath: string,
+  ): Promise<void> {
+    const resolvedThumbnail = await this.ensureShortThumbnailBackground(thumbnailPath);
+
+    if (await this.fileExists(outputPath)) {
+      logger.info('Existing short video found — removing to force regeneration');
+      await fs.unlink(outputPath);
+    }
+
+    await this.ffmpeg.generateShortVideo(
+      resolvedThumbnail,
+      audioPath,
+      subtitlesPath,
+      outputPath,
+    );
+
+    logger.success(`Short video saved → ${outputPath}`);
+  }
+
   // ─── Private ─────────────────────────────────────────────────────────────
+
+  private async fileExists(filePath: string): Promise<boolean> {
+    try {
+      await fs.access(filePath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   private async ensureBackground(backgroundPath: string): Promise<void> {
     try {
@@ -123,5 +157,35 @@ export class VideoService {
       .toFile(outputPath);
 
     logger.success(`Default background generated → ${outputPath}`);
+  }
+
+  /**
+   * Normalize the short thumbnail to 1080×1920 for use as video background.
+   */
+  private async ensureShortThumbnailBackground(thumbnailPath: string): Promise<string> {
+    await fs.access(thumbnailPath);
+    logger.info(`Using short thumbnail as background: ${thumbnailPath}`);
+
+    const meta = await sharp(thumbnailPath).metadata();
+    const width = meta.width ?? 0;
+    const height = meta.height ?? 0;
+
+    if (width === SHORT_VIDEO_WIDTH && height === SHORT_VIDEO_HEIGHT) {
+      return thumbnailPath;
+    }
+
+    const normalizedPath = path.join(
+      path.dirname(thumbnailPath),
+      '_short-thumbnail-background.png',
+    );
+    await sharp(thumbnailPath)
+      .resize(SHORT_VIDEO_WIDTH, SHORT_VIDEO_HEIGHT, { fit: 'cover' })
+      .png()
+      .toFile(normalizedPath);
+
+    logger.info(
+      `Short thumbnail resized ${width}x${height} → ${SHORT_VIDEO_WIDTH}x${SHORT_VIDEO_HEIGHT}`,
+    );
+    return normalizedPath;
   }
 }

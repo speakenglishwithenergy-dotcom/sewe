@@ -9,11 +9,11 @@ export class SubtitleService {
    * Long lines are wrapped more aggressively to stay readable on screen,
    * with orphan/widow lines rebalanced so a single word is not left alone.
    */
-  async generate(segments: AudioSegment[], outputPath: string): Promise<void> {
+  async generate(segments: AudioSegment[], outputPath: string, lineWidth = 42): Promise<void> {
     logger.info('Generating SRT subtitle file...');
 
     const LINGER_SECONDS = 0.5;
-    const SUBTITLE_LINE_WIDTH = 42;
+    const SUBTITLE_LINE_WIDTH = lineWidth;
 
     const entries = segments.map((segment, i) => {
       const start = formatSRTTime(segment.startTime);

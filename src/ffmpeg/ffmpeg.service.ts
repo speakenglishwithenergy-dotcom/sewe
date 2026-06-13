@@ -14,6 +14,8 @@ const FADE_DURATION = 0.5;
 
 const VIDEO_WIDTH = 1920;
 const VIDEO_HEIGHT = 1080;
+const SHORT_VIDEO_WIDTH = 1080;
+const SHORT_VIDEO_HEIGHT = 1920;
 const VIDEO_FPS = 30;
 
 // Candidate FFmpeg installations, ordered by preference.
@@ -217,14 +219,73 @@ export class FFmpegService {
   }
 
   /**
+   * Compose a 1080×1920 vertical H.264 video from a static background,
+   * merged short audio, and burned-in SRT subtitles (no waveform overlay).
+   */
+  async generateShortVideo(
+    backgroundPath: string,
+    audioPath: string,
+    subtitlesPath: string,
+    outputPath: string,
+  ): Promise<void> {
+    logger.info('Running FFmpeg short video encode...');
+
+    const safeSubs = subtitlesPath.replace(/\\/g, '\\\\').replace(/:/g, '\\:');
+
+    const forceStyle = [
+      'Fontsize=10',
+      'PrimaryColour=&H00FFFFFF',
+      'OutlineColour=&H00000000',
+      'BorderStyle=1',
+      'Outline=1',
+      'Shadow=1',
+      'Alignment=2',
+      'MarginV=48',
+    ].join('\\,');
+
+    const subtitleFilter = `subtitles=filename=${safeSubs}:force_style=${forceStyle}`;
+
+    const filterComplex = [
+      `[0:v]scale=${SHORT_VIDEO_WIDTH}:${SHORT_VIDEO_HEIGHT}[bg]`,
+      `[1:a]volume=${PODCAST_VOLUME}[aout]`,
+      `[bg]format=yuv420p,${subtitleFilter}[vout]`,
+    ].join(';');
+
+    await execFileAsync(
+      this.ffmpegBin,
+      [
+        '-loop', '1',
+        '-i', backgroundPath,
+        '-i', audioPath,
+        '-filter_complex', filterComplex,
+        '-map', '[vout]',
+        '-map', '[aout]',
+        '-c:v', 'libx264',
+        '-preset', 'slow',
+        '-crf', '20',
+        '-c:a', 'aac',
+        '-b:a', '192k',
+        '-pix_fmt', 'yuv420p',
+        '-shortest',
+        '-movflags', '+faststart',
+        '-y',
+        outputPath,
+      ],
+      { maxBuffer: 256 * 1024 * 1024 },
+    );
+  }
+
+  /**
    * Create a short H.264 clip from a static image (e.g. YouTube thumbnail).
    */
   async generateImageVideo(
     imagePath: string,
     outputPath: string,
     durationSeconds: number,
+    width = VIDEO_WIDTH,
+    height = VIDEO_HEIGHT,
   ): Promise<void> {
-    logger.info(`Creating ${durationSeconds}s thumbnail video...`);
+    logger.info(`Creating ${durationSeconds}s thumbnail video (${width}x${height})...`);
 
     await execFileAsync(
       this.ffmpegBin,
@@ -234,7 +295,7 @@ export class FFmpegService {
         '-f', 'lavfi',
         '-i', 'anullsrc=r=44100:cl=stereo',
         '-t', String(durationSeconds),
-        '-vf', `scale=${VIDEO_WIDTH}:${VIDEO_HEIGHT}:force_original_aspect_ratio=decrease,pad=${VIDEO_WIDTH}:${VIDEO_HEIGHT}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=${VIDEO_FPS},format=yuv420p`,
+        '-vf', `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=${VIDEO_FPS},format=yuv420p`,
         '-c:v', 'libx264',
         '-preset', 'slow',
         '-crf', '20',
@@ -251,9 +312,14 @@ export class FFmpegService {
 
   /**
    * Stitch ordered video clips with crossfade transitions (video + audio).
-   * Each clip is normalized to 1920×1080 / 30 fps / stereo AAC before blending.
+   * Each clip is normalized to the target resolution / 30 fps / stereo AAC before blending.
    */
-  async composeFinalVideo(inputPaths: string[], outputPath: string): Promise<void> {
+  async composeFinalVideo(
+    inputPaths: string[],
+    outputPath: string,
+    width = VIDEO_WIDTH,
+    height = VIDEO_HEIGHT,
+  ): Promise<void> {
     if (inputPaths.length < 2) {
       throw new Error('At least 2 video clips required for composition');
     }
@@ -274,8 +340,8 @@ export class FFmpegService {
     );
 
     const normalizeVideo = (index: number): string =>
-      `[${index}:v]scale=${VIDEO_WIDTH}:${VIDEO_HEIGHT}:force_original_aspect_ratio=decrease,` +
-      `pad=${VIDEO_WIDTH}:${VIDEO_HEIGHT}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=${VIDEO_FPS},format=yuv420p[v${index}]`;
+      `[${index}:v]scale=${width}:${height}:force_original_aspect_ratio=decrease,` +
+      `pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=${VIDEO_FPS},format=yuv420p[v${index}]`;
 
     const normalizeAudio = (index: number): string =>
       `[${index}:a]aformat=sample_rates=44100:channel_layouts=stereo[a${index}]`;

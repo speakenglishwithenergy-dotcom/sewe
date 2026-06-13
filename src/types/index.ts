@@ -24,6 +24,21 @@ export const PodcastScriptSchema = z.object({
 });
 export type PodcastScript = z.infer<typeof PodcastScriptSchema>;
 
+// ─── Short Script ────────────────────────────────────────────────────────────
+
+export const ShortScriptSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().min(1),
+  hook: z.string().min(1),
+  thumbnailText: z.string().min(1),
+  thumbnailScene: z.string().min(1).optional(),
+  script: z.array(DialogueLineSchema).min(6).max(20),
+});
+export type ShortScript = z.infer<typeof ShortScriptSchema>;
+
+/** Silence duration in seconds between short-form audio segments */
+export const SHORT_PAUSE_BETWEEN_SEGMENTS = 0.3;
+
 // ─── Audio ───────────────────────────────────────────────────────────────────
 
 export interface AudioSegment {
