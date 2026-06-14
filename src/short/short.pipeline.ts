@@ -84,7 +84,7 @@ export async function runShortPipeline(
     logger.info(`Short script saved → ${paths.shortScriptPath}`);
   }
 
-  paths.shortVideoPath = buildShortVideoPath(paths.projectDir, shortScript.title);
+  paths.shortVideoPath = buildShortVideoPath(paths.projectDir, podcastScript.title);
 
   if (
     KEYWORD_HIGHLIGHTS_ENABLED &&

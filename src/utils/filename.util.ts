@@ -29,9 +29,9 @@ export function buildPodcastVideoPath(projectDir: string, title: string): string
   return path.join(getVideoOutputDir(projectDir), `${sanitizeTitleForFilename(title)}.mp4`);
 }
 
-export function buildShortVideoPath(projectDir: string, shortTitle: string): string {
+export function buildShortVideoPath(projectDir: string, title: string): string {
   return path.join(
     getVideoOutputDir(projectDir),
-    `${sanitizeTitleForFilename(shortTitle)}-short.mp4`,
+    `short-${sanitizeTitleForFilename(title)}.mp4`,
   );
 }

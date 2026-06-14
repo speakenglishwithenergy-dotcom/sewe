@@ -87,12 +87,7 @@ async function resolveVideoOutputPaths(projectDir: string): Promise<{
   if (await fileExists(scriptPath)) {
     const script = JSON.parse(await fs.readFile(scriptPath, 'utf-8')) as PodcastScript;
     podcast.push(buildPodcastVideoPath(projectDir, script.title));
-  }
-
-  const shortScriptPath = path.join(projectDir, 'short-script.json');
-  if (await fileExists(shortScriptPath)) {
-    const shortScript = JSON.parse(await fs.readFile(shortScriptPath, 'utf-8')) as ShortScript;
-    short.push(buildShortVideoPath(projectDir, shortScript.title));
+    short.push(buildShortVideoPath(projectDir, script.title));
   }
 
   return { podcast, short };
