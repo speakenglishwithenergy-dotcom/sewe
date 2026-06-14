@@ -52,9 +52,11 @@ async function fileExists(filePath: string): Promise<boolean> {
 
 // ─── CLI arg parsing ──────────────────────────────────────────────────────────
 
+type CacheScope = 'all' | 'short' | 'podcast';
+
 type CliArgs =
-  | { mode: 'new'; topic: string; test: boolean; short: boolean; force: boolean }
-  | { mode: 'resume'; projectId: string; test: boolean; short: boolean; force: boolean }
+  | { mode: 'new'; topic: string; test: boolean; short: boolean; podcast: boolean; force: boolean }
+  | { mode: 'resume'; projectId: string; test: boolean; short: boolean; podcast: boolean; force: boolean }
   | { mode: 'list' };
 
 async function removeIfExists(filePath: string): Promise<void> {
@@ -99,7 +101,7 @@ async function resolveVideoOutputPaths(projectDir: string): Promise<{
 /** Clear cached outputs so the pipeline re-runs; keeps thumbnail.png and short-thumbnail.png. */
 async function clearProjectCache(
   projectDir: string,
-  opts: { shortOnly: boolean },
+  scope: CacheScope,
 ): Promise<void> {
   const videoPaths = await resolveVideoOutputPaths(projectDir);
 
@@ -121,7 +123,12 @@ async function clearProjectCache(
     ...videoPaths.podcast,
   ];
 
-  const targets = opts.shortOnly ? shortArtifacts : [...podcastArtifacts, ...shortArtifacts];
+  const targets =
+    scope === 'short'
+      ? shortArtifacts
+      : scope === 'podcast'
+        ? podcastArtifacts
+        : [...podcastArtifacts, ...shortArtifacts];
 
   for (const target of targets) {
     const stat = await fs.stat(target).catch(() => null);
@@ -140,7 +147,13 @@ function parseArgs(): CliArgs {
   const args = process.argv.slice(2);
   const test = args.includes('--test');
   const short = args.includes('--short');
+  const podcast = args.includes('--podcast');
   const force = args.includes('--force');
+
+  if (short && podcast) {
+    logger.error('--short and --podcast cannot be used together');
+    process.exit(1);
+  }
 
   if (args.includes('--list')) return { mode: 'list' };
 
@@ -155,7 +168,7 @@ function parseArgs(): CliArgs {
       logger.error('--force cannot be used with --test');
       process.exit(1);
     }
-    return { mode: 'resume', projectId, test, short, force };
+    return { mode: 'resume', projectId, test, short, podcast, force };
   }
 
   const topicArg = args.find((a) => a.startsWith('--topic='));
@@ -165,10 +178,13 @@ function parseArgs(): CliArgs {
     logger.info('  npm run generate -- --topic="Why Smart People Stay Stuck"  # new project (podcast + short)');
     logger.info('  npm run generate -- --topic="..." --test                    # quick test (script only)');
     logger.info('  npm run generate -- --topic="..." --short                   # script + short only');
+    logger.info('  npm run generate -- --topic="..." --podcast                 # script + podcast only');
     logger.info('  npm run generate -- --project=20260612-143022               # resume project (podcast + short)');
     logger.info('  npm run generate -- --project=20260612-143022 --force         # re-run from scratch (keep thumbnails)');
     logger.info('  npm run generate -- --project=20260612-143022 --short       # short only');
     logger.info('  npm run generate -- --project=20260612-143022 --short --force # re-run short only');
+    logger.info('  npm run generate -- --project=20260612-143022 --podcast     # podcast only');
+    logger.info('  npm run generate -- --project=20260612-143022 --podcast --force # re-run podcast only');
     logger.info('  npm run generate -- --list                                  # list all projects');
     process.exit(1);
   }
@@ -182,7 +198,7 @@ function parseArgs(): CliArgs {
     logger.error('--force requires --project (use it to re-run an existing project)');
     process.exit(1);
   }
-  return { mode: 'new', topic, test, short, force };
+  return { mode: 'new', topic, test, short, podcast, force };
 }
 
 function printSocialMetadataSummary(projectDir: string, hasShort: boolean): void {
@@ -241,6 +257,7 @@ async function main(): Promise<void> {
     logger.info(`Topic            : "${project.topic}"`);
     if (args.test) logger.info('Mode             : TEST (script only)');
     if (args.short) logger.info('Mode             : SHORT only');
+    if (args.podcast) logger.info('Mode             : PODCAST only');
     if (args.force) logger.info('Mode             : FORCE (re-run, keep thumbnails)');
   } else {
     project = await projectService.create(args.topic);
@@ -251,6 +268,7 @@ async function main(): Promise<void> {
     logger.info(`Topic            : "${project.topic}"`);
     if (args.test) logger.info('Mode             : TEST (script only)');
     if (args.short) logger.info('Mode             : SHORT only');
+    if (args.podcast) logger.info('Mode             : PODCAST only');
   }
 
   logger.info('');
@@ -270,7 +288,8 @@ async function main(): Promise<void> {
   await fs.mkdir(AUDIO_DIR, { recursive: true });
 
   if (args.mode === 'resume' && args.force) {
-    await clearProjectCache(PROJECT_DIR, { shortOnly: args.short });
+    const scope: CacheScope = args.short ? 'short' : args.podcast ? 'podcast' : 'all';
+    await clearProjectCache(PROJECT_DIR, scope);
   }
 
   // ── Wire up services ──────────────────────────────────────────────────────
@@ -466,8 +485,14 @@ async function main(): Promise<void> {
     logger.success(`Podcast audio saved → ${PODCAST_AUDIO_PATH}`);
   }
 
-  // ── Step 6: Final video + Short (parallel) ────────────────────────────────
-  logger.step(6, totalSteps, 'Rendering final video + short (parallel)...');
+  // ── Step 6: Final video (+ short unless --podcast) ───────────────────────
+  logger.step(
+    6,
+    totalSteps,
+    args.podcast
+      ? 'Rendering final video...'
+      : 'Rendering final video + short (parallel)...',
+  );
 
   const FINAL_VIDEO_PATH = buildPodcastVideoPath(PROJECT_DIR, podcastScript.title);
   await fs.mkdir(path.dirname(FINAL_VIDEO_PATH), { recursive: true });
@@ -477,26 +502,9 @@ async function main(): Promise<void> {
     await fs.unlink(FINAL_VIDEO_PATH);
   }
 
-  const shortPaths = buildShortPaths(PROJECT_DIR);
+  let shortScript: ShortScript | undefined;
 
-  let shortScript: ShortScript;
-
-  if (DISABLE_THUMBNAIL_GENERATION) {
-    // Manual thumbnails need interactive input — run short pipeline before final video.
-    shortScript = await runShortPipeline(
-      project,
-      podcastScript,
-      {
-        shortScriptService,
-        keywordsService,
-        thumbnailService,
-        ttsService,
-        subtitleService,
-        ffmpegService,
-        videoService,
-      },
-      shortPaths,
-    );
+  if (args.podcast) {
     await videoService.generateFinalVideo(
       INTRO_PATH,
       THUMBNAIL_PATH,
@@ -507,17 +515,25 @@ async function main(): Promise<void> {
       FINAL_VIDEO_PATH,
     );
   } else {
-    [shortScript] = await Promise.all([
-      runShortPipeline(project, podcastScript, {
-        shortScriptService,
-        keywordsService,
-        thumbnailService,
-        ttsService,
-        subtitleService,
-        ffmpegService,
-        videoService,
-      }, shortPaths),
-      videoService.generateFinalVideo(
+    const shortPaths = buildShortPaths(PROJECT_DIR);
+
+    if (DISABLE_THUMBNAIL_GENERATION) {
+      // Manual thumbnails need interactive input — run short pipeline before final video.
+      shortScript = await runShortPipeline(
+        project,
+        podcastScript,
+        {
+          shortScriptService,
+          keywordsService,
+          thumbnailService,
+          ttsService,
+          subtitleService,
+          ffmpegService,
+          videoService,
+        },
+        shortPaths,
+      );
+      await videoService.generateFinalVideo(
         INTRO_PATH,
         THUMBNAIL_PATH,
         BACKGROUND_PATH,
@@ -525,21 +541,46 @@ async function main(): Promise<void> {
         SUBTITLES_PATH,
         OUTRO_PATH,
         FINAL_VIDEO_PATH,
-      ),
-    ]);
+      );
+    } else {
+      [shortScript] = await Promise.all([
+        runShortPipeline(project, podcastScript, {
+          shortScriptService,
+          keywordsService,
+          thumbnailService,
+          ttsService,
+          subtitleService,
+          ffmpegService,
+          videoService,
+        }, shortPaths),
+        videoService.generateFinalVideo(
+          INTRO_PATH,
+          THUMBNAIL_PATH,
+          BACKGROUND_PATH,
+          PODCAST_AUDIO_PATH,
+          SUBTITLES_PATH,
+          OUTRO_PATH,
+          FINAL_VIDEO_PATH,
+        ),
+      ]);
+    }
   }
 
   const socialMeta = await socialMetadataService.loadOrGenerate(
     PROJECT_DIR,
     podcastScript,
     project.topic,
-    { shortScript, segments },
+    shortScript ? { shortScript, segments } : { segments },
   );
 
   // ── Done ──────────────────────────────────────────────────────────────────
   logger.info('');
   logger.divider('═');
-  logger.success('All done! Your podcast and short are ready.');
+  logger.success(
+    args.podcast
+      ? 'All done! Your podcast is ready.'
+      : 'All done! Your podcast and short are ready.',
+  );
   logger.divider('═');
   console.log(`
   Project ID  : ${project.id}
@@ -550,12 +591,15 @@ async function main(): Promise<void> {
   Thumbnail   : ${THUMBNAIL_PATH}
   Audio       : ${PODCAST_AUDIO_PATH}
   Subtitles   : ${SUBTITLES_PATH}
-  Final Video : ${FINAL_VIDEO_PATH}
-
+  Final Video : ${FINAL_VIDEO_PATH}`);
+  if (shortScript) {
+    const shortPaths = buildShortPaths(PROJECT_DIR);
+    console.log(`
   Short Title     : ${shortScript.title}
   Short Thumbnail : ${shortPaths.shortThumbnailPath}
   Short Video     : ${shortPaths.shortVideoPath}`);
-  printSocialMetadataSummary(PROJECT_DIR, true);
+  }
+  printSocialMetadataSummary(PROJECT_DIR, !!shortScript);
   console.log(`
   `);
   logger.info('YouTube Description (copy-paste ready):\n');
