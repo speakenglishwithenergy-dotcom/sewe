@@ -48,6 +48,7 @@ export class YouTubePublisherService {
         status: {
           privacyStatus: this.config.privacy,
           selfDeclaredMadeForKids: false,
+          containsSyntheticMedia: false,
         },
       },
       media: {
