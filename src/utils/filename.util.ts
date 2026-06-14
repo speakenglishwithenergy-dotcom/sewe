@@ -1,20 +1,24 @@
 import path from 'path';
 
-const INVALID_FILENAME_CHARS = /[<>:"/\\|?*\u0000-\u001f\u007f]/g;
 const DASHES = /[—–]/g;
 export const VIDEO_OUTPUT_SUBDIR = 'videos';
 
-/** Turn an episode title into a safe filesystem basename (no extension). */
-export function sanitizeTitleForFilename(title: string, maxLength = 120): string {
-  return title
-    .normalize('NFKC')
-    .replace(INVALID_FILENAME_CHARS, '')
+/** Turn an episode title into a cross-platform slug basename (no extension). */
+export function sanitizeTitleForFilename(title: string, maxLength = 80): string {
+  const slug = title
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
     .replace(DASHES, '-')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .replace(/[. ]+$/g, '')
-    .slice(0, maxLength)
-    .trim();
+    .replace(/['']/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  if (slug.length <= maxLength) return slug;
+
+  const trimmed = slug.slice(0, maxLength).replace(/-+$/g, '');
+  return trimmed.length > 0 ? trimmed : 'video';
 }
 
 export function getVideoOutputDir(projectDir: string): string {
@@ -28,6 +32,6 @@ export function buildPodcastVideoPath(projectDir: string, title: string): string
 export function buildShortVideoPath(projectDir: string, shortTitle: string): string {
   return path.join(
     getVideoOutputDir(projectDir),
-    `${sanitizeTitleForFilename(shortTitle)} - Short.mp4`,
+    `${sanitizeTitleForFilename(shortTitle)}-short.mp4`,
   );
 }
