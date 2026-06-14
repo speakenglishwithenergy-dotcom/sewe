@@ -1,5 +1,9 @@
 import fs from 'fs';
 import { google } from 'googleapis';
+import {
+  YOUTUBE_LONG_PLAYLIST_ID,
+  YOUTUBE_SHORT_PLAYLIST_ID,
+} from './publish.config';
 import { PublishEnvConfig } from './publish.env';
 import { PublishResult } from './publish.types';
 import { logger } from '../utils/logger';
@@ -61,6 +65,13 @@ export class YouTubePublisherService {
 
     await this.setCustomThumbnail(youtube, videoId, input.thumbnailPath);
 
+    await this.addToPlaylist(
+      youtube,
+      videoId,
+      input.format === 'long' ? YOUTUBE_LONG_PLAYLIST_ID : YOUTUBE_SHORT_PLAYLIST_ID,
+      label,
+    );
+
     const commentPosted = await this.postPinnedComment(youtube, videoId, input.pinnedComment);
 
     return {
@@ -107,6 +118,37 @@ export class YouTubePublisherService {
         );
         return;
       }
+    }
+  }
+
+  private async addToPlaylist(
+    youtube: ReturnType<typeof google.youtube>,
+    videoId: string,
+    playlistId: string,
+    label: string,
+  ): Promise<void> {
+    logger.info(`Adding ${label} to playlist ${playlistId}...`);
+
+    try {
+      await youtube.playlistItems.insert({
+        part: ['snippet'],
+        requestBody: {
+          snippet: {
+            playlistId,
+            resourceId: {
+              kind: 'youtube#video',
+              videoId,
+            },
+          },
+        },
+      });
+      logger.success(`Added to playlist → https://www.youtube.com/playlist?list=${playlistId}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      logger.error(`Could not add video to playlist: ${message}`);
+      logger.info(
+        'Video uploaded successfully. Re-run `npm run youtube:auth` if your token lacks playlist permissions, or add manually in YouTube Studio.',
+      );
     }
   }
 

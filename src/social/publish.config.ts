@@ -4,6 +4,10 @@ export const PUBLISH_YOUTUBE_CHANNEL_URL = 'https://www.youtube.com/@SpeakEnglis
 export const PUBLISH_FACEBOOK_PAGE_URL = 'https://www.facebook.com/SpeakEnglishWithEnergy';
 export const PUBLISH_TIKTOK_CHANNEL_URL = 'https://www.tiktok.com/@speakenglishwithenergy';
 
+/** YouTube playlists for auto-publish. */
+export const YOUTUBE_LONG_PLAYLIST_ID = 'PL2oWjiR82NaiofKkP5jO6ahmMGYG3';
+export const YOUTUBE_SHORT_PLAYLIST_ID = 'PL2oWjiR82Nai5yg3d5E27T4e9OnnN_MhS';
+
 /** Tags always included on every podcast upload (episode-specific tags are appended). */
 export const PUBLISH_CORE_TAGS = [
   'learn english',
