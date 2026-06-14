@@ -3,7 +3,7 @@ import { promisify } from 'util';
 import path from 'path';
 import fs from 'fs/promises';
 import { logger } from '../utils/logger';
-import { buildSubtitleForceStyle } from '../subtitles/subtitle-style';
+import { buildShortSubtitleForceStyle, buildSubtitleForceStyle } from '../subtitles/subtitle-style';
 
 const execFileAsync = promisify(execFile);
 
@@ -232,7 +232,7 @@ export class FFmpegService {
 
     const safeSubs = subtitlesPath.replace(/\\/g, '\\\\').replace(/:/g, '\\:');
 
-    const subtitleFilter = `subtitles=filename=${safeSubs}:force_style=${buildSubtitleForceStyle(10, 48)}`;
+    const subtitleFilter = `subtitles=filename=${safeSubs}:force_style=${buildShortSubtitleForceStyle(10, 60)}`;
 
     const filterComplex = [
       `[0:v]scale=${SHORT_VIDEO_WIDTH}:${SHORT_VIDEO_HEIGHT}:force_original_aspect_ratio=decrease,pad=${SHORT_VIDEO_WIDTH}:${SHORT_VIDEO_HEIGHT}:(ow-iw)/2:(oh-ih)/2,setsar=1[bg]`,
