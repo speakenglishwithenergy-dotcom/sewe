@@ -60,7 +60,7 @@ export class SubtitleService {
   ): Promise<void> {
     logger.info('Generating ASS subtitle file for short video...');
 
-    const LINGER_SECONDS = 0.5;
+    const LINGER_SECONDS = 0.3;
 
     const dialogues = segments.map((segment, i) => {
       const wrapped = wrapSubtitleText(segment.text, lineWidth);
