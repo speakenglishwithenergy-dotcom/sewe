@@ -8,7 +8,7 @@ export function buildShortScriptPrompt(podcastScript: PodcastScript, topic: stri
   return `You are a professional short-form video script writer for the YouTube/TikTok channel "Speak English With Energy".
 
 The Short uses a two-voice handoff — NOT a back-and-forth dialogue:
-- Victor (warm, energetic male) speaks ONLY the FIRST beat — a punchy opening hook that names the topic and stops the scroll.
+- Victor (warm, energetic male) speaks ONLY the FIRST beat — one short, punchy opening hook that names the topic and stops the scroll.
 - Lisa (thoughtful, practical female) speaks ALL remaining beats — she carries the mini-lesson directly to the viewer ("you").
 
 There is NO conversation between Victor and Lisa. Victor opens; Lisa takes over and finishes. Write one cohesive self-help monologue split into short beats for pacing.
@@ -38,7 +38,11 @@ NARRATIVE ARC — every beat must connect to the next; use bridge phrases ("Here
 SPEAKER & PACING RULES:
 - Target length: 30–60 seconds (~80–150 words total across ALL beats)
 - 5–8 beats — split the monologue into natural sentence groups for pacing
-- Beat 1 ONLY: Victor — MUST clearly name the topic ("${topic}") — not a vague hook, not "In today's episode…"
+- Beat 1 ONLY: Victor — ONE short sentence (6–12 words max). Name the topic ("${topic}") in plain language — not a vague hook, not "In today's episode…", not the full episode title quoted verbatim
+- Victor's opening must be the most scroll-stopping line in the whole Short — concise and bold, not a setup + long reveal
+- BAD (too long): "Think everyone's watching? Here's the truth: 'Nobody Thinks About You As Much As You Think'."
+- GOOD: "Nobody's watching you as much as you think."
+- GOOD: "You replay every mistake — but nobody else remembers it."
 - Beats 2 through the last: Lisa — she continues the lesson seamlessly, as if picking up right after Victor's hook
 - NEVER assign Victor to more than the first beat
 - Speak directly to the viewer: use "you" and "your"
@@ -51,7 +55,7 @@ SPEAKER & PACING RULES:
 - The LAST script beat (Lisa) MUST remind the viewer to subscribe (e.g. "Subscribe for more Shorts like this — I'll see you in the next one.")
 
 FLOW CHECK before returning JSON:
-- Does line 1 name the topic and stop the scroll?
+- Does line 1 name the topic and stop the scroll in one short sentence (≤12 words)?
 - Could someone who never heard the podcast follow ONE clear thread?
 - Does each beat earn the next beat (no random jumps)?
 - Is there ONE "aha" moment, not three half-explained ideas?
@@ -68,7 +72,7 @@ Read your draft aloud in your head. Revise until ALL of these pass:
 5. HANDOFF — Victor's hook and Lisa's first beat must feel like one continuous monologue, not two unrelated openings.
 
 METADATA:
-- "hook": the exact opening line (must name the topic and match the first script beat)
+- "hook": Victor's exact opening line — one short sentence (6–12 words), must name the topic and match beat 1
 - "thumbnailText": reuse the episode thumbnail headline exactly — same ALL-CAPS stacked lines with \\n: "${podcastScript.thumbnailText.replace(/\n/g, '\\n')}"
 - "thumbnailScene": reuse the episode thumbnail scene exactly: "${podcastScript.thumbnailScene ?? 'Victor jaw-drop surprised with comic prop tied to the topic. Lisa claps excitedly with a big coaching grin. Book spines related to the topic.'}"
 - English level: A2–B1 (clear vocabulary, short sentences)
@@ -77,11 +81,11 @@ Return ONLY a valid JSON object (no markdown, no code blocks):
 {
   "title": "Short catchy title — max 50 characters",
   "description": "TikTok/Short caption with 2–3 hashtags",
-  "hook": "Opening line that names the topic and hooks the viewer",
+  "hook": "One short punchy opening line — 6–12 words, names the topic",
   "thumbnailText": "${podcastScript.thumbnailText.replace(/\n/g, '\\n')}",
   "thumbnailScene": "Victor embarrassed laugh, hand on back of neck — puzzle pieces flying off desk. Lisa leans toward camera with whisper gesture, playful knowing smirk. Book spines: MINDSET, FOCUS, GROWTH.",
   "script": [
-    { "speaker": "Victor", "text": "Opening hook — names the topic" },
+    { "speaker": "Victor", "text": "One short punchy hook — 6–12 words, names the topic" },
     { "speaker": "Lisa", "text": "..." },
     { "speaker": "Lisa", "text": "..." }
   ]
@@ -105,7 +109,8 @@ REVISION CHECKLIST — fix every issue you find:
 2. NOT STIFF — replace robotic or textbook phrasing. Use contractions, spoken rhythm, and bridge phrases ("Here's the thing…", "That's why…", "So instead of…", "Try this today…").
 3. CONNECTED — every beat must logically lead to the next. Add a connective phrase where a beat feels like a random jump.
 4. GRADUAL CLOSE — the ending must NOT feel rushed. Before the subscribe CTA, Lisa needs at least one beat that lands the lesson (proof or action). The subscribe line should feel warm, not abrupt.
-5. PRESERVE STRUCTURE — beat 1 ONLY: Victor (names "${topic}"). Beats 2 through last: Lisa only. No podcast recap, no back-and-forth dialogue.
+5. PRESERVE STRUCTURE — beat 1 ONLY: Victor (one short hook, 6–12 words, names "${topic}"). Beats 2 through last: Lisa only. No podcast recap, no back-and-forth dialogue.
+6. SHORT OPENING — Victor's first line must stay ≤12 words. Trim setup phrases ("Here's the truth…", "Let me tell you…") and never quote the full episode title.
 
 Keep metadata unchanged unless Victor's opening line changes — then update "hook" too.
 
@@ -113,11 +118,11 @@ Return ONLY a valid JSON object (no markdown, no code blocks) with the EXACT sam
 {
   "title": "Short catchy title — max 50 characters",
   "description": "TikTok/Short caption with 2–3 hashtags",
-  "hook": "Opening line that names the topic and hooks the viewer",
+  "hook": "One short punchy opening line — 6–12 words, names the topic",
   "thumbnailText": "ALL-CAPS stacked lines with \\n",
   "thumbnailScene": "Victor embarrassed laugh, hand on back of neck — puzzle pieces flying off desk. Lisa leans toward camera with whisper gesture, playful knowing smirk. Book spines: MINDSET, FOCUS, GROWTH.",
   "script": [
-    { "speaker": "Victor", "text": "Opening hook — names the topic" },
+    { "speaker": "Victor", "text": "One short punchy hook — 6–12 words, names the topic" },
     { "speaker": "Lisa", "text": "..." },
     { "speaker": "Lisa", "text": "..." }
   ]
