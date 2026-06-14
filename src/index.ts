@@ -19,10 +19,13 @@ import { ProjectService } from './project/project.service';
 import { SocialMetadataService } from './social/social-metadata.service';
 import {
   getPublishOutputDir,
-  SOCIAL_METADATA_JSON,
   YOUTUBE_DESCRIPTION_TXT,
+  YOUTUBE_PINNED_COMMENT_TXT,
   YOUTUBE_SHORT_CAPTION_TXT,
+  YOUTUBE_SHORT_PINNED_COMMENT_TXT,
+  YOUTUBE_SHORT_TITLE_TXT,
   YOUTUBE_TAGS_TXT,
+  YOUTUBE_TITLE_TXT,
 } from './social/social-metadata.export';
 import { buildShortPaths, runShortPipeline } from './short/short.pipeline';
 import { PodcastScript, Project, ShortScript } from './types';
@@ -201,11 +204,14 @@ function printSocialMetadataSummary(projectDir: string, hasShort: boolean): void
   const publishDir = getPublishOutputDir(projectDir);
   console.log(`
   Publish Meta  : ${publishDir}
-  Social Meta   : ${path.join(publishDir, SOCIAL_METADATA_JSON)}
+  YT Title      : ${path.join(publishDir, YOUTUBE_TITLE_TXT)}
   YT Desc       : ${path.join(publishDir, YOUTUBE_DESCRIPTION_TXT)}
-  YT Tags       : ${path.join(publishDir, YOUTUBE_TAGS_TXT)}`);
+  YT Tags       : ${path.join(publishDir, YOUTUBE_TAGS_TXT)}
+  YT Pin Comment: ${path.join(publishDir, YOUTUBE_PINNED_COMMENT_TXT)}`);
   if (hasShort) {
-    console.log(`  YT Short Cap  : ${path.join(publishDir, YOUTUBE_SHORT_CAPTION_TXT)}`);
+    console.log(`  YT Short Title: ${path.join(publishDir, YOUTUBE_SHORT_TITLE_TXT)}
+  YT Short Cap  : ${path.join(publishDir, YOUTUBE_SHORT_CAPTION_TXT)}
+  YT Short Pin  : ${path.join(publishDir, YOUTUBE_SHORT_PINNED_COMMENT_TXT)}`);
   }
 }
 

@@ -15,6 +15,7 @@ import {
   buildYouTubeShortMetadataPrompt,
 } from '../prompts/social-metadata.prompt';
 import { refineChapterTimes } from './chapters.util';
+import { normalizeSocialMetadata } from './social-metadata.normalize';
 import { resolveSocialMetadataPath, writeSocialMetadataExports } from './social-metadata.export';
 import { logger } from '../utils/logger';
 
@@ -40,7 +41,8 @@ export class SocialMetadataService {
         options?.shortScript && !cached.youtubeShort;
       if (!needsShort) {
         logger.info('⏭  Social metadata already exists — loading from cache');
-        return cached;
+        await writeSocialMetadataExports(projectDir, cached);
+        return normalizeSocialMetadata(cached);
       }
 
       logger.info('Social metadata exists but missing Short — generating Short section...');
@@ -51,7 +53,7 @@ export class SocialMetadataService {
       );
       const merged: SocialMetadata = { ...cached, youtubeShort };
       await writeSocialMetadataExports(projectDir, merged);
-      return merged;
+      return normalizeSocialMetadata(merged);
     }
 
     logger.info('Generating YouTube social metadata...');
@@ -74,7 +76,7 @@ export class SocialMetadataService {
     const meta: SocialMetadata = { youtube, youtubeShort };
     await writeSocialMetadataExports(projectDir, meta);
     logger.success(`Social metadata saved → ${path.join(projectDir, 'publish')}`);
-    return meta;
+    return normalizeSocialMetadata(meta);
   }
 
   private async generateYouTubeMetadata(
