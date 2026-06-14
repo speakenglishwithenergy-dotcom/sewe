@@ -76,34 +76,43 @@ export class YouTubePublisherService {
   ): Promise<boolean> {
     logger.info('Posting pinned comment on YouTube...');
 
-    const thread = await youtube.commentThreads.insert({
-      part: ['snippet'],
-      requestBody: {
-        snippet: {
-          videoId,
-          topLevelComment: {
-            snippet: {
-              textOriginal: text,
+    try {
+      const thread = await youtube.commentThreads.insert({
+        part: ['snippet'],
+        requestBody: {
+          snippet: {
+            videoId,
+            topLevelComment: {
+              snippet: {
+                textOriginal: text,
+              },
             },
           },
         },
-      },
-    });
+      });
 
-    const commentId = thread.data.snippet?.topLevelComment?.id;
-    if (!commentId) {
-      logger.error('YouTube comment posted but comment ID was missing — could not pin');
+      const commentId = thread.data.snippet?.topLevelComment?.id;
+      if (!commentId) {
+        logger.error('YouTube comment posted but comment ID was missing — could not pin');
+        return false;
+      }
+
+      await youtube.comments.setModerationStatus({
+        id: [commentId],
+        moderationStatus: 'published',
+        banAuthor: false,
+        ...({ isPinned: true } as Record<string, boolean>),
+      });
+
+      logger.success('Pinned comment on YouTube');
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      logger.error(`Could not post pinned comment: ${message}`);
+      logger.info(
+        'Video uploaded successfully. Re-run `npm run youtube:auth` if your token lacks the youtube.force-ssl scope, then paste the comment manually.',
+      );
       return false;
     }
-
-    await youtube.comments.setModerationStatus({
-      id: [commentId],
-      moderationStatus: 'published',
-      banAuthor: false,
-      ...({ isPinned: true } as Record<string, boolean>),
-    });
-
-    logger.success('Pinned comment on YouTube');
-    return true;
   }
 }
