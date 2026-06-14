@@ -7,11 +7,15 @@ export function buildShortScriptPrompt(podcastScript: PodcastScript, topic: stri
 
   return `You are a professional short-form video script writer for the YouTube/TikTok channel "Speak English With Energy".
 
-The Short is narrated entirely by Victor — one warm, energetic male host speaking directly to the viewer ("you"). There is NO dialogue, NO Lisa, NO back-and-forth. Write a single cohesive self-help monologue split into short beats for pacing.
+The Short uses a two-voice handoff — NOT a back-and-forth dialogue:
+- Victor (warm, energetic male) speaks ONLY the FIRST beat — a punchy opening hook that names the topic and stops the scroll.
+- Lisa (thoughtful, practical female) speaks ALL remaining beats — she carries the mini-lesson directly to the viewer ("you").
+
+There is NO conversation between Victor and Lisa. Victor opens; Lisa takes over and finishes. Write one cohesive self-help monologue split into short beats for pacing.
 
 Your job is NOT to summarize the podcast or recap what Victor and Lisa discussed. Do NOT stitch together disconnected episode points.
 
-Instead: read the full episode, extract the 2–3 strongest self-help ideas, and rewrite them as ONE flowing mini-lesson — as if Victor scripted this Short first and the podcast came later. Use the episode only as source material.
+Instead: read the full episode, extract the 2–3 strongest self-help ideas, and rewrite them as ONE flowing mini-lesson. Use the episode only as source material.
 
 Episode topic: "${topic}"
 Episode title: "${podcastScript.title}"
@@ -25,15 +29,18 @@ CURATION (do this before writing):
 2. Choose ONE counterintuitive insight or reframe (the "aha" moment)
 3. Add ONE quick proof — a short example, analogy, or "I see this all the time…" moment
 4. End with ONE concrete action the viewer can try today
-5. Drop everything else — no extra tips, no episode recap, no "we also talked about…"
+5. Close with a warm subscribe reminder — invite viewers to subscribe for more English + self-help Shorts like this
+6. Drop everything else — no extra tips, no episode recap, no "we also talked about…"
 
 NARRATIVE ARC — every beat must connect to the next; use bridge phrases ("Here's the thing…", "That's why…", "So instead of…", "Try this today…"):
-  OPEN (name the topic + hook the pain) → REFRAME (the key insight) → WHY IT MATTERS → PROOF (quick example) → ACTION (one tip) → CLOSE (short CTA)
+  OPEN — Victor names the topic + hooks the pain → Lisa: REFRAME (the key insight) → WHY IT MATTERS → PROOF (quick example) → ACTION (one tip) → CLOSE (subscribe CTA — Lisa's LAST beat reminds viewers to subscribe)
 
-MONOLOGUE RULES:
+SPEAKER & PACING RULES:
 - Target length: 30–60 seconds (~80–150 words total across ALL beats)
-- 5–8 beats — every line is Victor; split the monologue into natural sentence groups for pacing
-- The FIRST line MUST clearly name the topic ("${topic}") — not a vague hook, not "In today's episode…"
+- 5–8 beats — split the monologue into natural sentence groups for pacing
+- Beat 1 ONLY: Victor — MUST clearly name the topic ("${topic}") — not a vague hook, not "In today's episode…"
+- Beats 2 through the last: Lisa — she continues the lesson seamlessly, as if picking up right after Victor's hook
+- NEVER assign Victor to more than the first beat
 - Speak directly to the viewer: use "you" and "your"
 - NO podcast intros ("Hey everyone", "Welcome back", "Today we're talking about…")
 - NO episode recap ("In our podcast…", "Lisa said…", "We discussed…", "The main takeaway is…")
@@ -41,13 +48,16 @@ MONOLOGUE RULES:
 - NO disconnected fact drops — each beat must answer "so what?" and lead into the next
 - Self-help tone: empathetic, practical, energizing — help the viewer feel understood, then give them a clear next step
 - Each beat: 1–2 short sentences max; A2–B1 vocabulary; contractions and natural spoken rhythm
+- The LAST script beat (Lisa) MUST remind the viewer to subscribe (e.g. "Subscribe for more Shorts like this — I'll see you in the next one.")
 
 FLOW CHECK before returning JSON:
 - Does line 1 name the topic and stop the scroll?
 - Could someone who never heard the podcast follow ONE clear thread?
 - Does each beat earn the next beat (no random jumps)?
 - Is there ONE "aha" moment, not three half-explained ideas?
-- Does it sound like Victor coaching you, not reading episode notes?
+- Does Victor's hook hand off cleanly to Lisa's teaching voice?
+- Does Lisa sound like she's coaching the viewer, not reading episode notes?
+- Does the final beat naturally remind the viewer to subscribe?
 
 METADATA:
 - "hook": the exact opening line (must name the topic and match the first script beat)
@@ -63,8 +73,9 @@ Return ONLY a valid JSON object (no markdown, no code blocks):
   "thumbnailText": "${podcastScript.thumbnailText.replace(/\n/g, '\\n')}",
   "thumbnailScene": "Victor confused with puzzle pieces in thought bubble. Lisa points encouragingly. Book spines: MINDSET, FOCUS, GROWTH.",
   "script": [
-    { "speaker": "Victor", "text": "..." },
-    { "speaker": "Victor", "text": "..." }
+    { "speaker": "Victor", "text": "Opening hook — names the topic" },
+    { "speaker": "Lisa", "text": "..." },
+    { "speaker": "Lisa", "text": "..." }
   ]
 }`;
 }

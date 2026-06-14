@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import { AudioSegment } from '../types';
 import { logger } from '../utils/logger';
+import { buildShortAssDocument } from './subtitle-ass.util';
 import { formatIpaSubtitleText } from './subtitle-style';
 
 export class SubtitleService {
@@ -36,6 +37,33 @@ export class SubtitleService {
     await fs.writeFile(outputPath, srtContent, 'utf-8');
 
     logger.success(`Subtitles saved → ${outputPath}`);
+  }
+
+  /**
+   * Generate an ASS subtitle file for short-form video with a dedicated Hook style
+   * on the first segment. ASS is required because FFmpeg ignores inline SRT overrides
+   * when force_style is applied.
+   */
+  async generateShort(
+    segments: AudioSegment[],
+    outputPath: string,
+    lineWidth = 28,
+  ): Promise<void> {
+    logger.info('Generating ASS subtitle file for short video...');
+
+    const LINGER_SECONDS = 0.5;
+
+    const dialogues = segments.map((segment, i) => ({
+      startSeconds: segment.startTime,
+      endSeconds: segment.startTime + segment.duration + LINGER_SECONDS,
+      style: i === 0 ? 'Hook' as const : 'Default' as const,
+      text: wrapSubtitleText(segment.text, lineWidth),
+    }));
+
+    const assContent = buildShortAssDocument(dialogues);
+    await fs.writeFile(outputPath, assContent, 'utf-8');
+
+    logger.success(`Short subtitles saved → ${outputPath}`);
   }
 }
 

@@ -53,7 +53,7 @@ export function buildShortPaths(projectDir: string): ShortPipelinePaths {
     shortThumbnailPath: path.join(projectDir, 'short-thumbnail.png'),
     shortAudioDir: path.join(projectDir, 'short', 'audio'),
     shortAudioPath: path.join(projectDir, 'short.mp3'),
-    shortSubtitlesPath: path.join(projectDir, 'short-subtitles.srt'),
+    shortSubtitlesPath: path.join(projectDir, 'short-subtitles.ass'),
     shortVideoPath: path.join(projectDir, 'short.mp4'),
   };
 }
@@ -114,11 +114,7 @@ export async function runShortPipeline(
 
   // ── Step 4: Subtitles ────────────────────────────────────────────────────
   logger.step(4, totalSteps, 'Generating short subtitle file...');
-  if (await fileExists(paths.shortSubtitlesPath)) {
-    logger.info('⏭  Short subtitles already exist — skipping');
-  } else {
-    await services.subtitleService.generate(segments, paths.shortSubtitlesPath, 28, false);
-  }
+  await services.subtitleService.generateShort(segments, paths.shortSubtitlesPath, 28);
 
   // ── Step 5: Merge audio ──────────────────────────────────────────────────
   logger.step(5, totalSteps, 'Merging short audio segments...');
