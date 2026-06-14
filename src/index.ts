@@ -34,6 +34,8 @@ import {
 } from './social/social-metadata.export';
 import { formatChannelShortCaption, formatFacebookShortCaption } from './social/social-metadata.normalize';
 import { buildShortPaths, runShortPipeline } from './short/short.pipeline';
+import { SocialPublisherService } from './social/social-publisher.service';
+import { PublishFormat } from './social/publish.types';
 import { PodcastScript, Project, ShortScript } from './types';
 import { buildPodcastVideoPath, buildShortVideoPath } from './utils/filename.util';
 import { logger } from './utils/logger';
@@ -76,6 +78,8 @@ type CliArgs =
       podcast: boolean;
       force: boolean;
       metadataRegen?: MetadataRegenMode;
+      publish?: boolean;
+      forcePublish?: boolean;
     }
   | {
       mode: 'resume';
@@ -85,6 +89,8 @@ type CliArgs =
       podcast: boolean;
       force: boolean;
       metadataRegen?: MetadataRegenMode;
+      publish?: boolean;
+      forcePublish?: boolean;
     }
   | { mode: 'list' };
 
@@ -185,6 +191,8 @@ function parseArgs(): CliArgs {
   const short = args.includes('--short');
   const podcast = args.includes('--podcast');
   const force = args.includes('--force');
+  const publish = args.includes('--publish');
+  const forcePublish = args.includes('--force-publish');
   const metadataRegen = parseMetadataRegenArg(args);
 
   if (short && podcast) {
@@ -194,6 +202,11 @@ function parseArgs(): CliArgs {
 
   if (metadataRegen && (test || short || podcast || force)) {
     logger.error('--regenerate-metadata cannot be combined with --test, --short, --podcast, or --force');
+    process.exit(1);
+  }
+
+  if (publish && test) {
+    logger.error('--publish cannot be used with --test (no video is generated in test mode)');
     process.exit(1);
   }
 
@@ -211,9 +224,9 @@ function parseArgs(): CliArgs {
       process.exit(1);
     }
     if (metadataRegen) {
-      return { mode: 'resume', projectId, test: false, short: false, podcast: false, force: false, metadataRegen };
+      return { mode: 'resume', projectId, test: false, short: false, podcast: false, force: false, metadataRegen, publish, forcePublish };
     }
-    return { mode: 'resume', projectId, test, short, podcast, force };
+    return { mode: 'resume', projectId, test, short, podcast, force, publish, forcePublish };
   }
 
   const topicArg = args.find((a) => a.startsWith('--topic='));
@@ -232,6 +245,8 @@ function parseArgs(): CliArgs {
     logger.info('  npm run generate -- --project=20260612-143022 --podcast --force # re-run podcast only');
     logger.info('  npm run generate -- --project=20260612-143022 --regenerate-metadata           # re-export metadata (cache + normalize)');
     logger.info('  npm run generate -- --project=20260612-143022 --regenerate-metadata=generate  # regenerate metadata via LLM');
+    logger.info('  npm run generate -- --project=20260612-143022 --publish              # generate then auto-publish');
+    logger.info('  npm run publish -- --project=20260612-143022                         # publish existing project');
     logger.info('  npm run generate -- --list                                  # list all projects');
     process.exit(1);
   }
@@ -249,7 +264,7 @@ function parseArgs(): CliArgs {
     logger.error('--regenerate-metadata requires --project');
     process.exit(1);
   }
-  return { mode: 'new', topic, test, short, podcast, force };
+  return { mode: 'new', topic, test, short, podcast, force, publish, forcePublish };
 }
 
 async function resolveMetadataRegenerate(
@@ -277,6 +292,37 @@ function printSocialMetadataSummary(projectDir: string, hasShort: boolean): void
   YT Short Pin  : ${path.join(publishDir, YOUTUBE_SHORT_PINNED_COMMENT)}
   FB Short Cap  : ${path.join(publishDir, FACEBOOK_SHORT_CAPTION)}
   FB Short Pin  : ${path.join(publishDir, FACEBOOK_SHORT_FIRST_COMMENT)}`);
+  }
+}
+
+async function maybePublishProject(
+  projectDir: string,
+  socialMeta: Awaited<ReturnType<SocialMetadataService['loadOrGenerate']>>,
+  podcastScript: PodcastScript,
+  shortScript: ShortScript | undefined,
+  options: { publish?: boolean; forcePublish?: boolean; formats?: PublishFormat[] },
+): Promise<void> {
+  if (!options.publish) return;
+
+  logger.info('');
+  logger.info('Publishing to YouTube + Facebook...');
+  const publisher = new SocialPublisherService();
+  const results = await publisher.publishProject(
+    projectDir,
+    socialMeta,
+    podcastScript,
+    { force: options.forcePublish, formats: options.formats },
+    shortScript,
+  );
+
+  if (results.length === 0) {
+    logger.info('Nothing new published (already uploaded — use --force-publish to re-upload).');
+    return;
+  }
+
+  logger.success(`Published ${results.length} video(s):`);
+  for (const result of results) {
+    console.log(`  ${result.platform} ${result.format}: ${result.url}`);
   }
 }
 
@@ -469,11 +515,13 @@ async function main(): Promise<void> {
     console.log(`
   `);
     printSocialMetadataPreview(socialMeta);
+    await maybePublishProject(PROJECT_DIR, socialMeta, podcastScript, shortScript, {
+      publish: args.publish,
+      forcePublish: args.forcePublish,
+    });
     console.timeEnd('Total execution time');
     return;
   }
-
-  // ── Test mode: stop after script ─────────────────────────────────────────
   if (args.test) {
     const socialMeta = await socialMetadataService.loadOrGenerate(
       PROJECT_DIR,
@@ -545,11 +593,14 @@ async function main(): Promise<void> {
     console.log(`
   `);
     printSocialMetadataPreview(socialMeta);
+    await maybePublishProject(PROJECT_DIR, socialMeta, podcastScript, shortScript, {
+      publish: args.publish,
+      forcePublish: args.forcePublish,
+      formats: ['short'],
+    });
     console.timeEnd('Total execution time');
     return;
   }
-
-  // ── Step 2: Thumbnail ─────────────────────────────────────────────────────
   const totalSteps = 6;
   logger.step(
     2,
@@ -739,6 +790,10 @@ async function main(): Promise<void> {
   console.log(`
   `);
   printSocialMetadataPreview(socialMeta);
+  await maybePublishProject(PROJECT_DIR, socialMeta, podcastScript, shortScript, {
+    publish: args.publish,
+    forcePublish: args.forcePublish,
+  });
   console.timeEnd('Total execution time');
 }
 
