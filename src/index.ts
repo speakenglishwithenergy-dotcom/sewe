@@ -4,7 +4,7 @@ import fs from 'fs/promises';
 
 import { OpenAIService } from './ai/openai.service';
 import { IpaService } from './ai/ipa.service';
-import { KeywordsService } from './ai/keywords.service';
+import { KeywordsService, KEYWORDS_GENERATOR_VERSION } from './ai/keywords.service';
 import { ScriptService } from './ai/script.service';
 import { ShortScriptService } from './ai/short-script.service';
 import { ThumbnailService } from './ai/thumbnail.service';
@@ -319,10 +319,21 @@ async function main(): Promise<void> {
     logger.info(`IPA saved → ${SCRIPT_PATH}`);
   }
 
-  if (!podcastScript.script.every((line) => line.keywords?.length)) {
-    podcastScript.script = await keywordsService.enrichScript(podcastScript.script);
+  if (keywordsService.needsEnrichment(podcastScript.script, podcastScript.keywordsVersion)) {
+    const regenerateAll = podcastScript.keywordsVersion !== KEYWORDS_GENERATOR_VERSION;
+    podcastScript.script = await keywordsService.enrichScript(
+      podcastScript.script,
+      { topic: project.topic, title: podcastScript.title },
+      regenerateAll,
+    );
+    podcastScript.keywordsVersion = KEYWORDS_GENERATOR_VERSION;
     await fs.writeFile(SCRIPT_PATH, JSON.stringify(podcastScript, null, 2), 'utf-8');
     logger.info(`Keywords saved → ${SCRIPT_PATH}`);
+
+    if (await fileExists(SUBTITLES_PATH)) {
+      await fs.unlink(SUBTITLES_PATH);
+      logger.info('Removed cached subtitles — will regenerate with updated keywords');
+    }
   }
 
   const segments = await ttsService.generateSegments(podcastScript.script, AUDIO_DIR);

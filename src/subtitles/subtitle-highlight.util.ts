@@ -3,6 +3,7 @@ import {
   SUBTITLE_KEYWORD_COLOUR,
   formatKeywordHighlight,
 } from './subtitle-style';
+import { buildKeywordRegex } from '../ai/keywords.util';
 
 interface TextRange {
   start: number;
@@ -35,8 +36,7 @@ export function highlightKeywordsInText(
       continue;
     }
 
-    const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`\\b${escaped.replace(/\s+/g, '\\s+')}\\b`, 'gi');
+    const regex = buildKeywordRegex(trimmed);
     let match: RegExpExecArray | null;
 
     while ((match = regex.exec(text)) !== null) {

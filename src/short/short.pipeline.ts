@@ -1,7 +1,7 @@
 import path from 'path';
 import fs from 'fs/promises';
 import { ShortScriptService } from '../ai/short-script.service';
-import { KeywordsService } from '../ai/keywords.service';
+import { KeywordsService, KEYWORDS_GENERATOR_VERSION } from '../ai/keywords.service';
 import { ThumbnailService } from '../ai/thumbnail.service';
 import { TTSService } from '../audio/tts.service';
 import { SubtitleService } from '../subtitles/subtitle.service';
@@ -81,10 +81,21 @@ export async function runShortPipeline(
     logger.info(`Short script saved → ${paths.shortScriptPath}`);
   }
 
-  if (!shortScript.script.every((line) => line.keywords?.length)) {
-    shortScript.script = await services.keywordsService.enrichScript(shortScript.script);
+  if (services.keywordsService.needsEnrichment(shortScript.script, shortScript.keywordsVersion)) {
+    const regenerateAll = shortScript.keywordsVersion !== KEYWORDS_GENERATOR_VERSION;
+    shortScript.script = await services.keywordsService.enrichScript(
+      shortScript.script,
+      { topic: project.topic, title: shortScript.title },
+      regenerateAll,
+    );
+    shortScript.keywordsVersion = KEYWORDS_GENERATOR_VERSION;
     await fs.writeFile(paths.shortScriptPath, JSON.stringify(shortScript, null, 2), 'utf-8');
     logger.info(`Short keywords saved → ${paths.shortScriptPath}`);
+
+    if (await fileExists(paths.shortSubtitlesPath)) {
+      await fs.unlink(paths.shortSubtitlesPath);
+      logger.info('Removed cached short subtitles — will regenerate with updated keywords');
+    }
   }
 
   // ── Step 2: Short thumbnail ──────────────────────────────────────────────

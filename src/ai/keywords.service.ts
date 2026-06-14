@@ -1,71 +1,195 @@
 import { z } from 'zod';
 import { OpenAIService } from './openai.service';
 import { DialogueLine } from '../types';
-import { buildKeywordsPrompt } from '../prompts/keywords.prompt';
+import {
+  buildKeywordsBoostPrompt,
+  buildKeywordsPrompt,
+  KeywordsPromptContext,
+} from '../prompts/keywords.prompt';
+import {
+  boostKeywordsLocally,
+  dedupeKeywords,
+  extractTopicTerms,
+  keywordAppearsInText,
+  MAX_KEYWORDS_PER_LINE,
+  needsKeywordBoost,
+  shouldAttemptGapFill,
+} from './keywords.util';
 import { logger } from '../utils/logger';
+
+/** Bump when selection logic changes — triggers automatic re-generation on resume. */
+export const KEYWORDS_GENERATOR_VERSION = 4;
 
 const KeywordsBatchSchema = z.object({
   lines: z.array(
     z.object({
       index: z.number().int().nonnegative(),
-      keywords: z.array(z.string().min(1)).min(1).max(3),
+      keywords: z.array(z.string().min(1)).max(MAX_KEYWORDS_PER_LINE),
     }),
   ),
 });
 
 const BATCH_SIZE = 25;
 
+export interface KeywordEnrichmentContext {
+  topic: string;
+  title: string;
+}
+
 export class KeywordsService {
   constructor(private readonly openai: OpenAIService) {}
 
-  /** Fill missing keyword highlights on dialogue lines (mutates and returns the array). */
-  async enrichScript(script: DialogueLine[]): Promise<DialogueLine[]> {
-    const missing = script
-      .map((line, index) => ({ index, text: line.text, line }))
-      .filter(({ line }) => !line.keywords?.length);
+  needsEnrichment(script: DialogueLine[], keywordsVersion?: number): boolean {
+    if (keywordsVersion !== KEYWORDS_GENERATOR_VERSION) {
+      return true;
+    }
+    return script.some((line) => line.keywords === undefined);
+  }
 
-    if (missing.length === 0) {
+  /** Fill keyword highlights on dialogue lines (mutates and returns the array). */
+  async enrichScript(
+    script: DialogueLine[],
+    context: KeywordEnrichmentContext,
+    regenerateAll = false,
+  ): Promise<DialogueLine[]> {
+    const topicTerms = extractTopicTerms(context.topic, context.title);
+    const promptContext: KeywordsPromptContext = {
+      ...context,
+      topicTerms,
+    };
+
+    const batch = script
+      .map((line, index) => ({ index, text: line.text, line }))
+      .filter(({ line }) => regenerateAll || line.keywords === undefined);
+
+    if (batch.length === 0) {
       return script;
     }
 
-    logger.info(`Generating keyword highlights for ${missing.length} dialogue line(s)...`);
+    logger.info(
+      `Generating keyword highlights for ${batch.length} dialogue line(s) ` +
+        `(topic: "${context.topic}")...`,
+    );
 
-    for (let offset = 0; offset < missing.length; offset += BATCH_SIZE) {
-      const batch = missing.slice(offset, offset + BATCH_SIZE);
+    for (let offset = 0; offset < batch.length; offset += BATCH_SIZE) {
+      const chunk = batch.slice(offset, offset + BATCH_SIZE);
       const keywordsByIndex = await this.generateBatch(
-        batch.map(({ index, text }) => ({ index, text })),
+        chunk.map(({ index, text }) => ({ index, text })),
+        promptContext,
       );
 
-      for (const { index, text, line } of batch) {
-        const raw = keywordsByIndex.get(index);
-        if (!raw?.length) {
-          throw new Error(`Keyword generation missing result for line index ${index}`);
-        }
-        const filtered = filterKeywordsForText(text, raw);
-        line.keywords = filtered.length > 0 ? filtered : fallbackKeywords(text);
+      for (const { index, text, line } of chunk) {
+        const raw = keywordsByIndex.get(index) ?? [];
+        line.keywords = finalizeKeywords(text, raw, topicTerms);
       }
     }
 
-    logger.success('Keyword highlights ready');
+    await this.runBoostPass(script, promptContext, topicTerms);
+    await this.runGapFillPass(script, promptContext, topicTerms);
+
+    const withHighlights = script.filter((line) => (line.keywords?.length ?? 0) > 0).length;
+    logger.success(
+      `Keyword highlights ready (${withHighlights}/${script.length} lines with highlights)`,
+    );
     return script;
+  }
+
+  private async runBoostPass(
+    script: DialogueLine[],
+    promptContext: KeywordsPromptContext,
+    topicTerms: string[],
+  ): Promise<void> {
+    const sparse = script
+      .map((line, index) => ({ index, text: line.text, line, current: line.keywords ?? [] }))
+      .filter(({ text, current }) => needsKeywordBoost(text, current));
+
+    if (sparse.length === 0) {
+      return;
+    }
+
+    logger.info(`Boost pass for ${sparse.length} line(s) with too few highlights...`);
+
+    for (let offset = 0; offset < sparse.length; offset += BATCH_SIZE) {
+      const batch = sparse.slice(offset, offset + BATCH_SIZE);
+      const boosted = await this.generateBoostBatch(
+        batch.map(({ index, text, current }) => ({ index, text, current })),
+        promptContext,
+      );
+
+      for (const { index, text, line, current } of batch) {
+        const raw = boosted.get(index) ?? current;
+        line.keywords = finalizeKeywords(text, raw, topicTerms);
+      }
+    }
+  }
+
+  private async runGapFillPass(
+    script: DialogueLine[],
+    promptContext: KeywordsPromptContext,
+    topicTerms: string[],
+  ): Promise<void> {
+    const gapLines = script
+      .map((line, index) => ({ index, text: line.text, line }))
+      .filter(({ line, text }) => (line.keywords?.length ?? 0) === 0 && shouldAttemptGapFill(text));
+
+    for (const { text, line } of gapLines) {
+      line.keywords = finalizeKeywords(text, [], topicTerms);
+    }
+
+    if (gapLines.length > 0) {
+      logger.info(`Local gap-fill applied to ${gapLines.length} line(s) still without highlights`);
+    }
   }
 
   private async generateBatch(
     lines: { index: number; text: string }[],
+    context: KeywordsPromptContext,
   ): Promise<Map<number, string[]>> {
     const result = await this.openai.generateJSON(
-      buildKeywordsPrompt(lines),
-      'You are an English teacher selecting subtitle highlights for learners. Respond only with valid JSON matching the requested structure exactly.',
+      buildKeywordsPrompt(lines, context),
+      'You are an English teacher curating subtitle highlights for podcast learners. ' +
+        'Be generous — aim for 2–4 useful highlights per substantive line. ' +
+        'Only skip highlights for pure greetings or empty one-word reactions. ' +
+        'Respond only with valid JSON matching the requested structure exactly.',
       (data) => KeywordsBatchSchema.parse(data),
-      { temperature: 0.2 },
+      { temperature: 0.3 },
     );
 
+    return this.mapBatchResult(result);
+  }
+
+  private async generateBoostBatch(
+    lines: { index: number; text: string; current: string[] }[],
+    context: KeywordsPromptContext,
+  ): Promise<Map<number, string[]>> {
+    const result = await this.openai.generateJSON(
+      buildKeywordsBoostPrompt(lines, context),
+      'You add more subtitle highlights for English learners. ' +
+        'Return the full expanded keyword list (max 4). Be generous with topic words, idioms, and collocations. ' +
+        'Respond only with valid JSON.',
+      (data) => KeywordsBatchSchema.parse(data),
+      { temperature: 0.25 },
+    );
+
+    return this.mapBatchResult(result);
+  }
+
+  private mapBatchResult(result: z.infer<typeof KeywordsBatchSchema>): Map<number, string[]> {
     const map = new Map<number, string[]>();
     for (const entry of result.lines) {
-      map.set(entry.index, entry.keywords.map((keyword) => keyword.trim()).filter(Boolean));
+      map.set(
+        entry.index,
+        entry.keywords.map((keyword) => keyword.trim()).filter(Boolean),
+      );
     }
     return map;
   }
+}
+
+function finalizeKeywords(text: string, raw: string[], topicTerms: string[]): string[] {
+  const filtered = filterKeywordsForText(text, raw);
+  const boosted = boostKeywordsLocally(text, filtered, topicTerms);
+  return dedupeKeywords(boosted).slice(0, MAX_KEYWORDS_PER_LINE);
 }
 
 /** Keep only keywords that actually appear in the sentence. */
@@ -84,32 +208,11 @@ export function filterKeywordsForText(text: string, keywords: string[]): string[
       continue;
     }
 
-    const escaped = normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`\\b${escaped.replace(/\s+/g, '\\s+')}\\b`, 'i');
-    if (regex.test(text)) {
+    if (keywordAppearsInText(text, normalized)) {
       seen.add(key);
       valid.push(normalized);
     }
   }
 
   return valid;
-}
-
-const STOP_WORDS = new Set([
-  'a', 'an', 'the', 'and', 'or', 'but', 'so', 'to', 'of', 'in', 'on', 'at', 'for', 'with',
-  'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
-  'i', 'you', 'we', 'they', 'he', 'she', 'it', 'my', 'your', 'our', 'their', 'his', 'her', 'its',
-  'this', 'that', 'these', 'those', 'here', 'there', 'today', 'really', 'very', 'just', 'about',
-  'well', 'right', 'know', 'mean', 'actually', 'everyone', 'everybody',
-]);
-
-/** Pick the longest non-stop-word tokens when AI keywords fail validation. */
-function fallbackKeywords(text: string): string[] {
-  const candidates = text
-    .match(/[A-Za-z']+/g)
-    ?.map((word) => word.replace(/^'+|'+$/g, ''))
-    .filter((word) => word.length > 3 && !STOP_WORDS.has(word.toLowerCase()))
-    .sort((a, b) => b.length - a.length) ?? [];
-
-  return candidates.slice(0, 2);
 }
