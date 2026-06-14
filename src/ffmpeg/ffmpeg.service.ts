@@ -21,6 +21,20 @@ const SHORT_VIDEO_WIDTH = 1080;
 const SHORT_VIDEO_HEIGHT = 1920;
 const VIDEO_FPS = 30;
 
+const WAVE_WIDTH = 800;
+const WAVE_HEIGHT = 200;
+const WAVE_OVERLAY_X = (VIDEO_WIDTH - WAVE_WIDTH) / 2;
+const WAVE_OVERLAY_Y = VIDEO_HEIGHT - WAVE_HEIGHT;
+const SHORT_WAVE_OVERLAY_X = (SHORT_VIDEO_WIDTH - WAVE_WIDTH) / 2;
+const SHORT_WAVE_OVERLAY_Y = 0;
+
+/** p2p waveform (brand purple), ~2px stroke via vertical duplicate blend. */
+const WAVE_OVERLAY_FILTERS = [
+  `[awave]showwaves=size=${WAVE_WIDTH}x${WAVE_HEIGHT}:mode=p2p:colors=0x2ba6e1@0.9:rate=30,format=yuva420p,split=2[wa][wb]`,
+  `[wb]pad=${WAVE_WIDTH}:${WAVE_HEIGHT + 2}:0:1:color=0x00000000,crop=${WAVE_WIDTH}:${WAVE_HEIGHT}:0:0[wb2]`,
+  '[wa][wb2]blend=all_mode=lighten,format=yuva420p[waves]',
+];
+
 // Candidate FFmpeg installations, ordered by preference.
 // ffmpeg-full (Homebrew keg-only) includes libass and the subtitles filter.
 const FFMPEG_CANDIDATES = [
@@ -215,12 +229,12 @@ export class FFmpegService {
     // Styles are embedded in the ASS file so inline IPA colour overrides work.
     const subtitleFilter = `subtitles=filename=${safeSubs}`;
 
-    // Wave strip: 800×320 dot waveform, brand purple, overlaid above subtitle zone
+    // Wave strip: p2p waveform, brand purple, overlaid above subtitle zone
     const filterComplex = [
       `[0:v]scale=1920:1080[bg]`,
       `[1:a]volume=${PODCAST_VOLUME},asplit=2[aout][awave]`,
-      `[awave]showwaves=size=800x320:mode=point:colors=0x2ba6e1@0.9:rate=30,format=yuva420p[waves]`,
-      `[bg][waves]overlay=560:760,format=yuv420p,${subtitleFilter}[vout]`,
+      ...WAVE_OVERLAY_FILTERS,
+      `[bg][waves]overlay=${WAVE_OVERLAY_X}:${WAVE_OVERLAY_Y},format=yuv420p,${subtitleFilter}[vout]`,
     ].join(';');
 
     await execFileAsync(
@@ -248,7 +262,7 @@ export class FFmpegService {
 
   /**
    * Compose a 1080×1920 vertical H.264 video from a static background,
-   * merged short audio, and burned-in SRT subtitles (no waveform overlay).
+   * merged short audio, burned-in subtitles, and a top-center waveform overlay.
    */
   async generateShortVideo(
     backgroundPath: string,
@@ -264,8 +278,9 @@ export class FFmpegService {
 
     const filterComplex = [
       `[0:v]scale=${SHORT_VIDEO_WIDTH}:${SHORT_VIDEO_HEIGHT}:force_original_aspect_ratio=decrease,pad=${SHORT_VIDEO_WIDTH}:${SHORT_VIDEO_HEIGHT}:(ow-iw)/2:(oh-ih)/2,setsar=1[bg]`,
-      `[1:a]volume=${PODCAST_VOLUME}[aout]`,
-      `[bg]format=yuv420p,${subtitleFilter}[vout]`,
+      `[1:a]volume=${PODCAST_VOLUME},asplit=2[aout][awave]`,
+      ...WAVE_OVERLAY_FILTERS,
+      `[bg][waves]overlay=${SHORT_WAVE_OVERLAY_X}:${SHORT_WAVE_OVERLAY_Y},format=yuv420p,${subtitleFilter}[vout]`,
     ].join(';');
 
     await execFileAsync(
@@ -462,8 +477,8 @@ export class FFmpegService {
       normalizeAudio(2, 'a1'),
       `[3:v]scale=${VIDEO_WIDTH}:${VIDEO_HEIGHT}[bg]`,
       `[4:a]volume=${PODCAST_VOLUME},asplit=2[apod][awave]`,
-      `[awave]showwaves=size=800x320:mode=point:colors=0x2ba6e1@0.9:rate=30,format=yuva420p[waves]`,
-      `[bg][waves]overlay=560:760,format=yuv420p,${subtitleFilter},fps=${VIDEO_FPS}[v2]`,
+      ...WAVE_OVERLAY_FILTERS,
+      `[bg][waves]overlay=${WAVE_OVERLAY_X}:${WAVE_OVERLAY_Y},format=yuv420p,${subtitleFilter},fps=${VIDEO_FPS}[v2]`,
       `[apod]aformat=sample_rates=44100:channel_layouts=stereo[a2]`,
       normalizeVideo(5, 'v3'),
       normalizeAudio(5, 'a3'),
