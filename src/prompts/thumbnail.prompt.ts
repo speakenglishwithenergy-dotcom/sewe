@@ -1,3 +1,9 @@
+import {
+  THUMBNAIL_ART_STYLE,
+  THUMBNAIL_BRAND_COLORS,
+  THUMBNAIL_CHARACTERS_UNCHANGED,
+} from './thumbnail-brand';
+
 export interface ThumbnailPromptInput {
   topic: string;
   episodeTitle: string;
@@ -29,11 +35,10 @@ BOTTOM LEFT — badge block (untouched):
 
 ALSO UNCHANGED:
 - Landscape 16:9 composition with safe margins — nothing touches frame edges
-- Victor: male, brown hair, beard, forest green sweater, black headphones, navy mug "Victor"
-- Lisa: female, long wavy brown hair, orange sweater, black headphones, orange mug "Lisa"
+${THUMBNAIL_CHARACTERS_UNCHANGED}
 - Desk layout: wooden table, two black condenser mics on stands, succulent, open notebook with pen
-- Art style: modern clean digital illustration, warm beige studio, soft shading, not photorealistic
-- Brand colors: Dark Navy #0D1B3D, Royal Blue #1E3A8A, Bright Orange #FF7A00, Off-white #F2F4F7
+- Art style: ${THUMBNAIL_ART_STYLE}
+- Brand colors: ${THUMBNAIL_BRAND_COLORS}
 
 ═══ CHANGE ONLY — left headline (keep demo typography styles) ═══
 

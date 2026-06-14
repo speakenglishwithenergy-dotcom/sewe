@@ -1,30 +1,44 @@
+import {
+  THUMBNAIL_ART_STYLE,
+  THUMBNAIL_BRAND_COLORS,
+  THUMBNAIL_CHARACTER_COLOR_REFERENCE,
+  THUMBNAIL_CHARACTERS_UNCHANGED,
+} from './thumbnail-brand';
+
 export interface ShortThumbnailPromptInput {
   topic: string;
+  episodeTitle: string;
   thumbnailText: string;
   thumbnailScene: string;
 }
 
 export function buildShortThumbnailImagePrompt(input: ShortThumbnailPromptInput): string {
-  const { topic, thumbnailText, thumbnailScene } = input;
+  const { topic, episodeTitle, thumbnailText, thumbnailScene } = input;
 
   return `Edit the provided reference thumbnail template for the "Speak English With Energy" English-learning channel — VERTICAL 9:16 short-form format.
 
-This is a TEMPLATE EDIT — keep the reference image layout and branding identical. Only change the headline text and topic-specific context.
+This is a STRICT TEMPLATE EDIT. Keep the vertical reference layout and branding identical. Only change the headline text and topic-specific context.
 
-KEEP UNCHANGED (match reference exactly):
+A second reference image (landscape podcast thumbnail) is provided ONLY for Victor and Lisa sweater colors — copy those colors exactly, not the vertical template's sweater colors if they differ.
+
+${THUMBNAIL_CHARACTER_COLOR_REFERENCE}
+
+KEEP UNCHANGED (match vertical reference exactly):
 - Vertical 9:16 portrait composition with safe margins — nothing touches the frame edges
 - TOP ~30%: stacked headline area centered (same typography style, spacing, and colors as reference)
 - MIDDLE/BOTTOM ~70%: Victor and Lisa at the podcast desk — same character designs, positions, and core props
 - TOP: "Speak ENGLISH WITH ENERGY" logo with microphone and book icons (compact for vertical)
 - BOTTOM: green rounded badge with microphone icon — "ENGLISH PODCAST" and "FOR LEARNING ENGLISH"
-- Victor: male, brown hair, beard, forest green sweater, black headphones, navy mug labeled "Victor"
-- Lisa: female, long wavy brown hair, orange sweater, black headphones, orange mug labeled "Lisa"
+${THUMBNAIL_CHARACTERS_UNCHANGED}
 - Desk: wooden table, two black condenser mics on stands, small white succulent, open notebook with pen
-- Art style: modern clean digital illustration, warm beige studio, soft shading, not photorealistic
-- Brand colors: Dark Navy #0D1B3D, Royal Blue #1E3A8A, Bright Orange #FF7A00, Off-white #F2F4F7
+- Art style: ${THUMBNAIL_ART_STYLE}
+- Brand colors: ${THUMBNAIL_BRAND_COLORS}
 
 CHANGE ONLY — headline text at the top:
-Replace the reference title with this new stacked headline (spell exactly):
+
+Episode title: "${episodeTitle}"
+
+Replace the reference headline with this new stacked ALL-CAPS text (spell exactly, preserve \\n line breaks):
 "${thumbnailText}"
 Use the same treatment as the reference: navy sans-serif lines, one keyword in large bright orange, one line in white on a thick navy horizontal brush-stroke banner.
 
@@ -36,16 +50,21 @@ Episode topic: "${topic}"
 High contrast, readable on a phone screen, no watermarks, no extra text beyond what is specified.`;
 }
 
-export function buildShortThumbnailScenePrompt(topic: string, thumbnailText: string): string {
+export function buildShortThumbnailScenePrompt(
+  topic: string,
+  episodeTitle: string,
+  thumbnailText: string,
+): string {
   return `You are an art director for the "Speak English With Energy" YouTube Short / TikTok channel.
 
+Episode title: "${episodeTitle}"
 Topic: "${topic}"
 Thumbnail headline: "${thumbnailText}"
 
 The thumbnail uses a fixed VERTICAL 9:16 template (Victor and Lisa at a podcast desk, headline at top). Write ONLY the topic-specific changes — not the full scene.
 
 Describe what to change from the default template:
-- Victor's expression and pose (listener's problem: confused, stuck, worried, etc.)
+- Victor's expression and pose — reflect the listener's problem from the episode title
 - Thought bubble content — one visual metaphor tied to the topic (scribble, chart, clock, etc.)
 - Lisa's expression and gesture (teaching, pointing, encouraging)
 - Three book spine titles on the desk stack — short uppercase words related to the topic

@@ -86,6 +86,7 @@ export async function runShortPipeline(
   } else {
     await services.thumbnailService.generateShort(
       shortScript,
+      { title: podcastScript.title, thumbnailText: podcastScript.thumbnailText, thumbnailScene: podcastScript.thumbnailScene },
       project.topic,
       paths.shortThumbnailPath,
     );

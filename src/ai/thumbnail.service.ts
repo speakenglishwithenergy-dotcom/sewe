@@ -65,29 +65,39 @@ export class ThumbnailService {
     );
   }
 
-  async generateShort(script: ShortScript, topic: string, outputPath: string): Promise<void> {
-    const demoPath = path.join(this.assetsDir, 'demo-short-thumbnail.png');
+  async generateShort(
+    script: ShortScript,
+    episode: Pick<PodcastScript, 'title' | 'thumbnailText' | 'thumbnailScene'>,
+    topic: string,
+    outputPath: string,
+  ): Promise<void> {
+    const demoShortPath = path.join(this.assetsDir, 'demo-short-thumbnail.png');
+    const demoLandscapePath = path.join(this.assetsDir, 'demo-thumbnail.png');
 
     const thumbnailScene =
+      episode.thumbnailScene ??
       script.thumbnailScene ??
-      (await this.generateShortScene(topic, script.thumbnailText));
+      (await this.generateShortScene(topic, episode.title, episode.thumbnailText));
 
     const prompt = buildShortThumbnailImagePrompt({
       topic,
-      thumbnailText: script.thumbnailText,
+      episodeTitle: episode.title,
+      thumbnailText: episode.thumbnailText,
       thumbnailScene,
     });
 
-    logger.info(`Generating short thumbnail for: "${script.thumbnailText}"`);
+    logger.info(`Generating short thumbnail for: "${episode.thumbnailText}"`);
 
-    const referenceBuffer = await prepareShortReferenceImage(demoPath);
-    const refSize = await getImageDimensions(referenceBuffer);
+    const shortReferenceBuffer = await prepareShortReferenceImage(demoShortPath);
+    const landscapeReferenceBuffer = await prepareReferenceImage(demoLandscapePath);
+    const refSize = await getImageDimensions(shortReferenceBuffer);
     logger.info(`Reference prepared → ${refSize.width}x${refSize.height} (9:16 content letterboxed for API)`);
+    logger.info('Including landscape reference for Victor/Lisa sweater color consistency');
 
     const apiBuffer = await this.openai.generateImageEdit(
       prompt,
-      [referenceBuffer],
-      ['demo-short-thumbnail.png'],
+      [shortReferenceBuffer, landscapeReferenceBuffer],
+      ['demo-short-thumbnail.png', 'demo-thumbnail-character-colors.png'],
     );
     const apiSize = await getImageDimensions(apiBuffer);
     logger.info(`API returned → ${apiSize.width}x${apiSize.height}`);
@@ -126,11 +136,15 @@ export class ThumbnailService {
     return result;
   }
 
-  private async generateShortScene(topic: string, thumbnailText: string): Promise<string> {
+  private async generateShortScene(
+    topic: string,
+    episodeTitle: string,
+    thumbnailText: string,
+  ): Promise<string> {
     logger.info('Generating short thumbnail scene description...');
 
     const result = await this.openai.generateJSON(
-      buildShortThumbnailScenePrompt(topic, thumbnailText),
+      buildShortThumbnailScenePrompt(topic, episodeTitle, thumbnailText),
       'You are a creative art director. Respond only with valid JSON.',
       (data: unknown) => {
         if (

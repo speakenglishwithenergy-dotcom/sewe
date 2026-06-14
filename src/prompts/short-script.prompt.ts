@@ -17,6 +17,7 @@ Instead: read the full episode, pick the ONE most compelling angle (the insight 
 
 Episode topic: "${topic}"
 Episode title: "${podcastScript.title}"
+Episode thumbnail headline: "${podcastScript.thumbnailText}"
 
 FULL PODCAST SCRIPT:
 ${scriptText}
@@ -49,8 +50,8 @@ QUALITY CHECK before returning JSON:
 
 METADATA:
 - "hook": the exact opening line that grabs attention (should match or closely match the first dialogue line)
-- "thumbnailText": 2–3 stacked lines, ALL CAPS, 3–6 words total, use \\n between lines — punchy, scroll-stopping, readable on a vertical phone screen
-- "thumbnailScene": topic-specific visual changes only (Victor expression, thought bubble metaphor, Lisa gesture, 3 book spine titles)
+- "thumbnailText": reuse the episode thumbnail headline exactly — same ALL-CAPS stacked lines with \\n: "${podcastScript.thumbnailText.replace(/\n/g, '\\n')}"
+- "thumbnailScene": reuse the episode thumbnail scene exactly: "${podcastScript.thumbnailScene ?? 'Victor confused with topic-related metaphor in thought bubble. Lisa points encouragingly. Book spines related to the topic.'}"
 - English level: A2–B1 (clear vocabulary, short sentences)
 
 Return ONLY a valid JSON object (no markdown, no code blocks):
@@ -58,7 +59,7 @@ Return ONLY a valid JSON object (no markdown, no code blocks):
   "title": "Short catchy title — max 50 characters",
   "description": "TikTok/Short caption with 2–3 hashtags",
   "hook": "Opening hook sentence",
-  "thumbnailText": "SMART\\nBUT STUCK?",
+  "thumbnailText": "${podcastScript.thumbnailText.replace(/\n/g, '\\n')}",
   "thumbnailScene": "Victor confused with puzzle pieces in thought bubble. Lisa points encouragingly. Book spines: MINDSET, FOCUS, GROWTH.",
   "script": [
     { "speaker": "Victor", "text": "..." },
