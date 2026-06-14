@@ -18,7 +18,7 @@ export interface ScriptSectionDef {
   brief: string;
 }
 
-/** Five sections → 52 dialogue lines when all quotas are met (~9 min at ~18 words/line). */
+/** Five sections → 52 dialogue lines when all quotas are met (~9 min at ~15–17 words/line). */
 export const SCRIPT_SECTIONS: ScriptSectionDef[] = [
   {
     id: 'intro',
@@ -32,21 +32,21 @@ export const SCRIPT_SECTIONS: ScriptSectionDef[] = [
     label: 'Main idea 1',
     lineCount: 11,
     brief:
-      'Core concept of the topic. Victor shares a personal anecdote. Lisa asks follow-up questions and pushes for clarity.',
+      'Core concept of the topic. Victor shares a brief personal anecdote. Lisa asks sharp follow-ups — keep it moving.',
   },
   {
     id: 'main2',
     label: 'Main idea 2',
     lineCount: 11,
     brief:
-      'Deeper insight or second angle. Relatable everyday example. Discuss a common misconception and correct it.',
+      'Second angle with a quick everyday example. Name one misconception and correct it without lingering.',
   },
   {
     id: 'main3',
     label: 'Main idea 3',
     lineCount: 11,
     brief:
-      'Practical strategies, common mistakes, and what listeners can try this week. Keep it actionable.',
+      'Practical tips and one common mistake — what listeners can try this week. Stay actionable, not repetitive.',
   },
   {
     id: 'closing',
@@ -64,7 +64,8 @@ const HOSTS_BLOCK = `The podcast features two hosts:
 const DIALOGUE_RULES = `- English level: A2-B1 (clear vocabulary, common expressions)
 - Only Victor and Lisa speak — no narrator
 - Natural spoken English with fillers ("well", "you know", "actually", "I mean", "right")
-- Each line MUST be 2 sentences (~15–22 words per line) — do NOT write one-liners
+- Each line: 1–2 short sentences (~12–18 words per line) — punchy, not one-liners
+- Keep momentum: every line should move the conversation forward, not restate the same point
 - Victor and Lisa alternate; each line must respond to the previous one
 - Do NOT include IPA — text only`;
 
@@ -152,7 +153,7 @@ ${formatRecentContext(previousLines)}
 
 REQUIREMENTS FOR THIS SECTION:
 - Write EXACTLY ${section.lineCount} dialogue lines in the script array — count carefully
-- This section alone should be substantial; do NOT rush or summarize
+- Hit every point in the brief, but stay tight — no filler, no circling back to the same idea
 
 Return ONLY a valid JSON object (no markdown):
 {
@@ -183,7 +184,7 @@ ${DIALOGUE_RULES}
 RECENT DIALOGUE (continue from here):
 ${formatRecentContext(previousLines, 8)}
 
-Write EXACTLY ${linesNeeded} additional dialogue lines — extra examples, a short story, or deeper Q&A.
+Write EXACTLY ${linesNeeded} additional dialogue lines — a fresh example or sharper Q&A, not more recap.
 Do NOT write a recap or closing yet.
 
 Return ONLY a valid JSON object:
