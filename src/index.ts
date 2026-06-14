@@ -18,19 +18,19 @@ import { VideoService } from './video/video.service';
 import { ProjectService } from './project/project.service';
 import { SocialMetadataService } from './social/social-metadata.service';
 import {
+  FACEBOOK_LONG_CAPTION,
+  FACEBOOK_LONG_FIRST_COMMENT,
+  FACEBOOK_SHORT_CAPTION,
+  FACEBOOK_SHORT_FIRST_COMMENT,
   getPublishOutputDir,
-  LONG_FACEBOOK_CAPTION_TXT,
-  LONG_FACEBOOK_FIRST_COMMENT_TXT,
-  LONG_YOUTUBE_DESCRIPTION_TXT,
-  LONG_YOUTUBE_PINNED_COMMENT_TXT,
-  LONG_YOUTUBE_TAGS_TXT,
-  LONG_YOUTUBE_TITLE_TXT,
   resolveSocialMetadataPath,
-  SHORT_FACEBOOK_CAPTION_TXT,
-  SHORT_FACEBOOK_FIRST_COMMENT_TXT,
-  SHORT_YOUTUBE_CAPTION_TXT,
-  SHORT_YOUTUBE_PINNED_COMMENT_TXT,
-  SHORT_YOUTUBE_TITLE_TXT,
+  YOUTUBE_LONG_DESCRIPTION,
+  YOUTUBE_LONG_PINNED_COMMENT,
+  YOUTUBE_LONG_TAGS,
+  YOUTUBE_LONG_TITLE,
+  YOUTUBE_SHORT_CAPTION,
+  YOUTUBE_SHORT_PINNED_COMMENT,
+  YOUTUBE_SHORT_TITLE,
 } from './social/social-metadata.export';
 import { formatChannelShortCaption, formatFacebookShortCaption } from './social/social-metadata.normalize';
 import { buildShortPaths, runShortPipeline } from './short/short.pipeline';
@@ -265,18 +265,18 @@ function printSocialMetadataSummary(projectDir: string, hasShort: boolean): void
   const publishDir = getPublishOutputDir(projectDir);
   console.log(`
   Publish Meta  : ${publishDir}
-  Long YT Title : ${path.join(publishDir, LONG_YOUTUBE_TITLE_TXT)}
-  Long YT Desc  : ${path.join(publishDir, LONG_YOUTUBE_DESCRIPTION_TXT)}
-  Long YT Tags  : ${path.join(publishDir, LONG_YOUTUBE_TAGS_TXT)}
-  Long YT Pin   : ${path.join(publishDir, LONG_YOUTUBE_PINNED_COMMENT_TXT)}
-  Long FB Cap   : ${path.join(publishDir, LONG_FACEBOOK_CAPTION_TXT)}
-  Long FB Pin   : ${path.join(publishDir, LONG_FACEBOOK_FIRST_COMMENT_TXT)}`);
+  YT Long Title : ${path.join(publishDir, YOUTUBE_LONG_TITLE)}
+  YT Long Desc  : ${path.join(publishDir, YOUTUBE_LONG_DESCRIPTION)}
+  YT Long Tags  : ${path.join(publishDir, YOUTUBE_LONG_TAGS)}
+  YT Long Pin   : ${path.join(publishDir, YOUTUBE_LONG_PINNED_COMMENT)}
+  FB Long Cap   : ${path.join(publishDir, FACEBOOK_LONG_CAPTION)}
+  FB Long Pin   : ${path.join(publishDir, FACEBOOK_LONG_FIRST_COMMENT)}`);
   if (hasShort) {
-    console.log(`  Short YT Title: ${path.join(publishDir, SHORT_YOUTUBE_TITLE_TXT)}
-  Short YT Cap  : ${path.join(publishDir, SHORT_YOUTUBE_CAPTION_TXT)}
-  Short YT Pin  : ${path.join(publishDir, SHORT_YOUTUBE_PINNED_COMMENT_TXT)}
-  Short FB Cap  : ${path.join(publishDir, SHORT_FACEBOOK_CAPTION_TXT)}
-  Short FB Pin  : ${path.join(publishDir, SHORT_FACEBOOK_FIRST_COMMENT_TXT)}`);
+    console.log(`  YT Short Title: ${path.join(publishDir, YOUTUBE_SHORT_TITLE)}
+  YT Short Cap  : ${path.join(publishDir, YOUTUBE_SHORT_CAPTION)}
+  YT Short Pin  : ${path.join(publishDir, YOUTUBE_SHORT_PINNED_COMMENT)}
+  FB Short Cap  : ${path.join(publishDir, FACEBOOK_SHORT_CAPTION)}
+  FB Short Pin  : ${path.join(publishDir, FACEBOOK_SHORT_FIRST_COMMENT)}`);
   }
 }
 
