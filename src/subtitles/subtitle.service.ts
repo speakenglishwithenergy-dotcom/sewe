@@ -6,6 +6,7 @@ import {
   SHORT_HOOK_KEYWORD_COLOUR,
   highlightWrappedSubtitleText,
 } from './subtitle-highlight.util';
+import { CHANNEL_NAME } from '../prompts/script.prompt';
 import { formatIpaSubtitleText } from './subtitle-style';
 
 export class SubtitleService {
@@ -88,7 +89,7 @@ export class SubtitleService {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /** Phrases that must never be split across subtitle lines (channel branding). */
-const NON_BREAKING_PHRASES = ['Speak English With Energy'];
+const NON_BREAKING_PHRASES = [CHANNEL_NAME];
 
 /**
  * Replace spaces inside protected phrases with non-breaking spaces so line

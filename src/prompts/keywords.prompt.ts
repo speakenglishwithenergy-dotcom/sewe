@@ -1,3 +1,5 @@
+import { CHANNEL_NAME } from './script.prompt';
+
 export interface KeywordsPromptContext {
   topic: string;
   title: string;
@@ -19,6 +21,9 @@ export function buildKeywordsPrompt(
 
 Episode topic: "${context.topic}"
 Episode title: "${context.title}"
+
+ALWAYS HIGHLIGHT (whenever the exact phrase appears in the line):
+- "${CHANNEL_NAME}"
 
 CORE TOPIC TERMS (highlight whenever they appear):
 ${topicTermsBlock}
@@ -43,7 +48,7 @@ RULES:
 - keywords must appear EXACTLY in the sentence (same words, ignoring case)
 - Prefer phrases over single filler words when both appear
 - Up to 4 highlights per line — use the full budget on rich sentences
-- Skip speaker names ("Victor", "Lisa") and channel branding unless it's the learning focus
+- Skip speaker names ("Victor", "Lisa") — but ALWAYS include "${CHANNEL_NAME}" when it appears
 
 Examples:
 - "Well, today we're diving into why we romanticize the past."

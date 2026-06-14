@@ -7,6 +7,7 @@ import {
   KeywordsPromptContext,
 } from '../prompts/keywords.prompt';
 import {
+  applyAlwaysHighlightPhrases,
   boostKeywordsLocally,
   dedupeKeywords,
   extractTopicTerms,
@@ -18,7 +19,7 @@ import {
 import { logger } from '../utils/logger';
 
 /** Bump when selection logic changes — triggers automatic re-generation on resume. */
-export const KEYWORDS_GENERATOR_VERSION = 4;
+export const KEYWORDS_GENERATOR_VERSION = 5;
 
 const KeywordsBatchSchema = z.object({
   lines: z.array(
@@ -189,7 +190,7 @@ export class KeywordsService {
 function finalizeKeywords(text: string, raw: string[], topicTerms: string[]): string[] {
   const filtered = filterKeywordsForText(text, raw);
   const boosted = boostKeywordsLocally(text, filtered, topicTerms);
-  return dedupeKeywords(boosted).slice(0, MAX_KEYWORDS_PER_LINE);
+  return applyAlwaysHighlightPhrases(text, boosted);
 }
 
 /** Keep only keywords that actually appear in the sentence. */
