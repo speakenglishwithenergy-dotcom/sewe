@@ -3,6 +3,7 @@ import fs from 'fs/promises';
 import { ShortScriptService } from '../ai/short-script.service';
 import { KeywordsService, KEYWORDS_GENERATOR_VERSION } from '../ai/keywords.service';
 import { ThumbnailService } from '../ai/thumbnail.service';
+import { DISABLE_THUMBNAIL_GENERATION } from '../ai/thumbnail.config';
 import { TTSService } from '../audio/tts.service';
 import { SubtitleService } from '../subtitles/subtitle.service';
 import { KEYWORD_HIGHLIGHTS_ENABLED } from '../subtitles/subtitle-highlight.util';
@@ -14,6 +15,7 @@ import {
   SHORT_PAUSE_BETWEEN_SEGMENTS,
   ShortScript,
 } from '../types';
+import { buildShortVideoPath } from '../utils/filename.util';
 import { logger } from '../utils/logger';
 
 export interface ShortPipelinePaths {
@@ -57,7 +59,7 @@ export function buildShortPaths(projectDir: string): ShortPipelinePaths {
     shortAudioDir: path.join(projectDir, 'short', 'audio'),
     shortAudioPath: path.join(projectDir, 'short.mp3'),
     shortSubtitlesPath: path.join(projectDir, 'short-subtitles.ass'),
-    shortVideoPath: path.join(projectDir, 'short.mp4'),
+    shortVideoPath: path.join(projectDir, 'short.mp4'), // replaced once short script title is known
   };
 }
 
@@ -82,6 +84,8 @@ export async function runShortPipeline(
     logger.info(`Short script saved → ${paths.shortScriptPath}`);
   }
 
+  paths.shortVideoPath = buildShortVideoPath(paths.projectDir, shortScript.title);
+
   if (
     KEYWORD_HIGHLIGHTS_ENABLED &&
     services.keywordsService.needsEnrichment(shortScript.script, shortScript.keywordsVersion)
@@ -103,17 +107,19 @@ export async function runShortPipeline(
   }
 
   // ── Step 2: Short thumbnail ──────────────────────────────────────────────
-  logger.step(2, totalSteps, 'Generating short thumbnail (9:16)...');
-  if (await fileExists(paths.shortThumbnailPath)) {
-    logger.info('⏭  Short thumbnail already exists — skipping');
-  } else {
-    await services.thumbnailService.generateShort(
-      shortScript,
-      { title: podcastScript.title, thumbnailText: podcastScript.thumbnailText, thumbnailScene: podcastScript.thumbnailScene },
-      project.topic,
-      paths.shortThumbnailPath,
-    );
-  }
+  logger.step(
+    2,
+    totalSteps,
+    DISABLE_THUMBNAIL_GENERATION
+      ? 'Waiting for manual short thumbnail (ChatGPT)...'
+      : 'Generating short thumbnail (9:16)...',
+  );
+  await services.thumbnailService.generateShort(
+    shortScript,
+    { title: podcastScript.title, thumbnailText: podcastScript.thumbnailText, thumbnailScene: podcastScript.thumbnailScene },
+    project.topic,
+    paths.shortThumbnailPath,
+  );
 
   // ── Step 3: TTS ──────────────────────────────────────────────────────────
   logger.step(3, totalSteps, 'Generating short voice audio...');
@@ -155,6 +161,7 @@ export async function runShortPipeline(
 
   // ── Step 6: Short video ──────────────────────────────────────────────────
   logger.step(6, totalSteps, 'Rendering short video (9:16)...');
+  await fs.mkdir(path.dirname(paths.shortVideoPath), { recursive: true });
   if (await fileExists(paths.shortVideoPath)) {
     logger.info('Existing short video found — removing to force regeneration');
     await fs.unlink(paths.shortVideoPath);

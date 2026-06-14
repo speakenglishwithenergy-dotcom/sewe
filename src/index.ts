@@ -8,6 +8,7 @@ import { KeywordsService, KEYWORDS_GENERATOR_VERSION } from './ai/keywords.servi
 import { ScriptService } from './ai/script.service';
 import { ShortScriptService } from './ai/short-script.service';
 import { ThumbnailService } from './ai/thumbnail.service';
+import { DISABLE_THUMBNAIL_GENERATION } from './ai/thumbnail.config';
 import { TTSService } from './audio/tts.service';
 import { SupertonicService } from './audio/supertonic.service';
 import { SubtitleService } from './subtitles/subtitle.service';
@@ -23,7 +24,8 @@ import {
   YOUTUBE_TAGS_TXT,
 } from './social/social-metadata.export';
 import { buildShortPaths, runShortPipeline } from './short/short.pipeline';
-import { PodcastScript, Project } from './types';
+import { PodcastScript, Project, ShortScript } from './types';
+import { buildPodcastVideoPath, buildShortVideoPath } from './utils/filename.util';
 import { logger } from './utils/logger';
 
 // ─── Paths ───────────────────────────────────────────────────────────────────
@@ -71,17 +73,42 @@ async function removeDirIfExists(dirPath: string): Promise<void> {
   }
 }
 
+/** Resolve podcast/short video paths (title-based + legacy generic names). */
+async function resolveVideoOutputPaths(projectDir: string): Promise<{
+  podcast: string[];
+  short: string[];
+}> {
+  const podcast = [path.join(projectDir, 'final.mp4')];
+  const short = [path.join(projectDir, 'short.mp4')];
+
+  const scriptPath = path.join(projectDir, 'script.json');
+  if (await fileExists(scriptPath)) {
+    const script = JSON.parse(await fs.readFile(scriptPath, 'utf-8')) as PodcastScript;
+    podcast.push(buildPodcastVideoPath(projectDir, script.title));
+  }
+
+  const shortScriptPath = path.join(projectDir, 'short-script.json');
+  if (await fileExists(shortScriptPath)) {
+    const shortScript = JSON.parse(await fs.readFile(shortScriptPath, 'utf-8')) as ShortScript;
+    short.push(buildShortVideoPath(projectDir, shortScript.title));
+  }
+
+  return { podcast, short };
+}
+
 /** Clear cached outputs so the pipeline re-runs; keeps thumbnail.png and short-thumbnail.png. */
 async function clearProjectCache(
   projectDir: string,
   opts: { shortOnly: boolean },
 ): Promise<void> {
+  const videoPaths = await resolveVideoOutputPaths(projectDir);
+
   const shortArtifacts = [
     path.join(projectDir, 'short-script.json'),
     path.join(projectDir, 'short.mp3'),
     path.join(projectDir, 'short-subtitles.ass'),
-    path.join(projectDir, 'short.mp4'),
     path.join(projectDir, 'short'),
+    ...videoPaths.short,
   ];
 
   const podcastArtifacts = [
@@ -91,7 +118,7 @@ async function clearProjectCache(
     path.join(projectDir, 'subtitles.ass'),
     path.join(projectDir, 'podcast-video.mp4'),
     path.join(projectDir, 'thumbnail-video.mp4'),
-    path.join(projectDir, 'final.mp4'),
+    ...videoPaths.podcast,
   ];
 
   const targets = opts.shortOnly ? shortArtifacts : [...podcastArtifacts, ...shortArtifacts];
@@ -228,6 +255,10 @@ async function main(): Promise<void> {
 
   logger.info('');
 
+  if (DISABLE_THUMBNAIL_GENERATION) {
+    logger.info('Thumbnail mode     : MANUAL (DISABLE_THUMBNAIL_GENERATION — use ChatGPT, then save PNG to project folder)');
+  }
+
   // ── Derive paths from project ─────────────────────────────────────────────
   const PROJECT_DIR = projectService.getDir(project.id);
   const AUDIO_DIR = path.join(PROJECT_DIR, 'audio');
@@ -235,7 +266,6 @@ async function main(): Promise<void> {
   const PODCAST_AUDIO_PATH = path.join(PROJECT_DIR, 'podcast.mp3');
   const SUBTITLES_PATH = path.join(PROJECT_DIR, 'subtitles.ass');
   const THUMBNAIL_PATH = path.join(PROJECT_DIR, 'thumbnail.png');
-  const FINAL_VIDEO_PATH = path.join(PROJECT_DIR, 'final.mp4');
 
   await fs.mkdir(AUDIO_DIR, { recursive: true });
 
@@ -366,12 +396,14 @@ async function main(): Promise<void> {
 
   // ── Step 2: Thumbnail ─────────────────────────────────────────────────────
   const totalSteps = 6;
-  logger.step(2, totalSteps, 'Generating YouTube thumbnail...');
-  if (await fileExists(THUMBNAIL_PATH)) {
-    logger.info(`⏭  Thumbnail already exists — skipping`);
-  } else {
-    await thumbnailService.generate(podcastScript, project.topic, THUMBNAIL_PATH);
-  }
+  logger.step(
+    2,
+    totalSteps,
+    DISABLE_THUMBNAIL_GENERATION
+      ? 'Waiting for manual YouTube thumbnail (ChatGPT)...'
+      : 'Generating YouTube thumbnail...',
+  );
+  await thumbnailService.generate(podcastScript, project.topic, THUMBNAIL_PATH);
 
   // ── Wire up TTS / video services ─────────────────────────────────────────
   const supertonicService = new SupertonicService(SUPERTONIC_ONNX_DIR, SUPERTONIC_VOICES_DIR);
@@ -437,6 +469,9 @@ async function main(): Promise<void> {
   // ── Step 6: Final video + Short (parallel) ────────────────────────────────
   logger.step(6, totalSteps, 'Rendering final video + short (parallel)...');
 
+  const FINAL_VIDEO_PATH = buildPodcastVideoPath(PROJECT_DIR, podcastScript.title);
+  await fs.mkdir(path.dirname(FINAL_VIDEO_PATH), { recursive: true });
+
   if (await fileExists(FINAL_VIDEO_PATH)) {
     logger.info('Existing final video found — removing to force regeneration');
     await fs.unlink(FINAL_VIDEO_PATH);
@@ -444,17 +479,25 @@ async function main(): Promise<void> {
 
   const shortPaths = buildShortPaths(PROJECT_DIR);
 
-  const [shortScript] = await Promise.all([
-    runShortPipeline(project, podcastScript, {
-      shortScriptService,
-      keywordsService,
-      thumbnailService,
-      ttsService,
-      subtitleService,
-      ffmpegService,
-      videoService,
-    }, shortPaths),
-    videoService.generateFinalVideo(
+  let shortScript: ShortScript;
+
+  if (DISABLE_THUMBNAIL_GENERATION) {
+    // Manual thumbnails need interactive input — run short pipeline before final video.
+    shortScript = await runShortPipeline(
+      project,
+      podcastScript,
+      {
+        shortScriptService,
+        keywordsService,
+        thumbnailService,
+        ttsService,
+        subtitleService,
+        ffmpegService,
+        videoService,
+      },
+      shortPaths,
+    );
+    await videoService.generateFinalVideo(
       INTRO_PATH,
       THUMBNAIL_PATH,
       BACKGROUND_PATH,
@@ -462,8 +505,29 @@ async function main(): Promise<void> {
       SUBTITLES_PATH,
       OUTRO_PATH,
       FINAL_VIDEO_PATH,
-    ),
-  ]);
+    );
+  } else {
+    [shortScript] = await Promise.all([
+      runShortPipeline(project, podcastScript, {
+        shortScriptService,
+        keywordsService,
+        thumbnailService,
+        ttsService,
+        subtitleService,
+        ffmpegService,
+        videoService,
+      }, shortPaths),
+      videoService.generateFinalVideo(
+        INTRO_PATH,
+        THUMBNAIL_PATH,
+        BACKGROUND_PATH,
+        PODCAST_AUDIO_PATH,
+        SUBTITLES_PATH,
+        OUTRO_PATH,
+        FINAL_VIDEO_PATH,
+      ),
+    ]);
+  }
 
   const socialMeta = await socialMetadataService.loadOrGenerate(
     PROJECT_DIR,

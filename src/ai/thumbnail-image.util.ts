@@ -87,6 +87,17 @@ export async function scaleShortThumbnailToVideoSize(imageBuffer: Buffer): Promi
     .toBuffer();
 }
 
+/** Normalize an arbitrary uploaded image to YouTube thumbnail size (16:9). */
+export async function normalizePodcastThumbnail(imageBuffer: Buffer): Promise<Buffer> {
+  return sharp(imageBuffer)
+    .resize(YOUTUBE_THUMB_WIDTH, YOUTUBE_THUMB_HEIGHT, {
+      fit: 'contain',
+      background: LETTERBOX_BG,
+    })
+    .png()
+    .toBuffer();
+}
+
 /**
  * Crop the 9:16 content band from the API canvas and resize to short-form size.
  * @deprecated Prefer scaleShortThumbnailToVideoSize to preserve the full image.

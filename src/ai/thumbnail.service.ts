@@ -9,6 +9,12 @@ import {
   SHORT_THUMB_HEIGHT,
   SHORT_THUMB_WIDTH,
 } from './thumbnail-image.util';
+import { DISABLE_THUMBNAIL_GENERATION } from './thumbnail.config';
+import {
+  normalizeManualThumbnail,
+  printManualThumbnailInstructions,
+  waitForManualThumbnailFile,
+} from './manual-thumbnail.util';
 import { PodcastScript, ShortScript } from '../types';
 import {
   buildThumbnailImagePrompt,
@@ -29,6 +35,9 @@ export class ThumbnailService {
   async generate(script: PodcastScript, topic: string, outputPath: string): Promise<void> {
     if (await this.fileExists(outputPath)) {
       logger.info(`⏭  Thumbnail already exists — skipping → ${outputPath}`);
+      if (DISABLE_THUMBNAIL_GENERATION) {
+        await normalizeManualThumbnail('podcast', outputPath);
+      }
       return;
     }
 
@@ -44,6 +53,14 @@ export class ThumbnailService {
       thumbnailText: script.thumbnailText,
       thumbnailScene,
     });
+
+    if (DISABLE_THUMBNAIL_GENERATION) {
+      printManualThumbnailInstructions('podcast', outputPath, demoPath, prompt);
+      await waitForManualThumbnailFile(outputPath);
+      await normalizeManualThumbnail('podcast', outputPath);
+      logger.success(`Manual thumbnail ready → ${outputPath}`);
+      return;
+    }
 
     logger.info(`Generating thumbnail image for: "${script.thumbnailText}"`);
 
@@ -72,6 +89,9 @@ export class ThumbnailService {
   ): Promise<void> {
     if (await this.fileExists(outputPath)) {
       logger.info(`⏭  Short thumbnail already exists — skipping → ${outputPath}`);
+      if (DISABLE_THUMBNAIL_GENERATION) {
+        await normalizeManualThumbnail('short', outputPath);
+      }
       return;
     }
 
@@ -88,6 +108,14 @@ export class ThumbnailService {
       thumbnailText: episode.thumbnailText,
       thumbnailScene,
     });
+
+    if (DISABLE_THUMBNAIL_GENERATION) {
+      printManualThumbnailInstructions('short', outputPath, demoShortPath, prompt);
+      await waitForManualThumbnailFile(outputPath);
+      await normalizeManualThumbnail('short', outputPath);
+      logger.success(`Manual short thumbnail ready → ${outputPath}`);
+      return;
+    }
 
     logger.info(`Generating short thumbnail for: "${episode.thumbnailText}"`);
 
