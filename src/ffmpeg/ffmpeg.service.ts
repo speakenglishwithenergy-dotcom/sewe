@@ -235,7 +235,7 @@ export class FFmpegService {
     const subtitleFilter = `subtitles=filename=${safeSubs}:force_style=${buildSubtitleForceStyle(10, 48)}`;
 
     const filterComplex = [
-      `[0:v]scale=${SHORT_VIDEO_WIDTH}:${SHORT_VIDEO_HEIGHT}[bg]`,
+      `[0:v]scale=${SHORT_VIDEO_WIDTH}:${SHORT_VIDEO_HEIGHT}:force_original_aspect_ratio=decrease,pad=${SHORT_VIDEO_WIDTH}:${SHORT_VIDEO_HEIGHT}:(ow-iw)/2:(oh-ih)/2,setsar=1[bg]`,
       `[1:a]volume=${PODCAST_VOLUME}[aout]`,
       `[bg]format=yuv420p,${subtitleFilter}[vout]`,
     ].join(';');

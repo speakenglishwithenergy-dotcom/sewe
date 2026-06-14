@@ -40,7 +40,7 @@ export const ShortScriptSchema = z.object({
   hook: z.string().min(1),
   thumbnailText: z.string().min(1),
   thumbnailScene: z.string().min(1).optional(),
-  script: z.array(DialogueLineSchema).min(6).max(20),
+  script: z.array(DialogueLineSchema).min(5).max(12),
 });
 export type ShortScript = z.infer<typeof ShortScriptSchema>;
 

@@ -2,9 +2,12 @@ import fs from 'fs/promises';
 import path from 'path';
 import { OpenAIService } from './openai.service';
 import {
+  finalizeShortThumbnailImage,
   getImageDimensions,
   prepareReferenceImage,
   prepareShortReferenceImage,
+  SHORT_THUMB_HEIGHT,
+  SHORT_THUMB_WIDTH,
 } from './thumbnail-image.util';
 import { PodcastScript, ShortScript } from '../types';
 import {
@@ -24,6 +27,11 @@ export class ThumbnailService {
   ) {}
 
   async generate(script: PodcastScript, topic: string, outputPath: string): Promise<void> {
+    if (await this.fileExists(outputPath)) {
+      logger.info(`⏭  Thumbnail already exists — skipping → ${outputPath}`);
+      return;
+    }
+
     const demoPath = path.join(this.assetsDir, 'demo-thumbnail.png');
 
     const thumbnailScene =
@@ -62,6 +70,11 @@ export class ThumbnailService {
     topic: string,
     outputPath: string,
   ): Promise<void> {
+    if (await this.fileExists(outputPath)) {
+      logger.info(`⏭  Short thumbnail already exists — skipping → ${outputPath}`);
+      return;
+    }
+
     const demoShortPath = path.join(this.assetsDir, 'demo-short-thumbnail.png');
 
     const thumbnailScene =
@@ -91,9 +104,26 @@ export class ThumbnailService {
     const apiSize = await getImageDimensions(apiBuffer);
     logger.info(`API returned → ${apiSize.width}x${apiSize.height}`);
 
-    await fs.writeFile(outputPath, apiBuffer);
+    const finalBuffer = await finalizeShortThumbnailImage(apiBuffer);
+    const finalSize = await getImageDimensions(finalBuffer);
+    logger.info(
+      `Short thumbnail cropped → ${finalSize.width}x${finalSize.height} (9:16 from portrait API canvas)`,
+    );
 
-    logger.success(`Short thumbnail saved → ${outputPath} (${apiSize.width}x${apiSize.height})`);
+    await fs.writeFile(outputPath, finalBuffer);
+
+    logger.success(
+      `Short thumbnail saved → ${outputPath} (${SHORT_THUMB_WIDTH}x${SHORT_THUMB_HEIGHT})`,
+    );
+  }
+
+  private async fileExists(filePath: string): Promise<boolean> {
+    try {
+      await fs.access(filePath);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   private async generateScene(

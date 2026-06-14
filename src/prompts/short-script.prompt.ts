@@ -7,13 +7,11 @@ export function buildShortScriptPrompt(podcastScript: PodcastScript, topic: stri
 
   return `You are a professional short-form video script writer for the YouTube/TikTok channel "Speak English With Energy".
 
-The channel features two hosts:
-- Victor: male, warm, enthusiastic, reacts with real surprise and energy
-- Lisa: female, thoughtful, practical, asks sharp follow-up questions
+The Short is narrated entirely by Victor — one warm, energetic male host speaking directly to the viewer ("you"). There is NO dialogue, NO Lisa, NO back-and-forth. Write a single cohesive self-help monologue split into short beats for pacing.
 
-Your job is NOT to summarize the podcast below. Do NOT paraphrase or compress the episode line by line.
+Your job is NOT to summarize the podcast or recap what Victor and Lisa discussed. Do NOT stitch together disconnected episode points.
 
-Instead: read the full episode, pick the ONE most compelling angle (the insight that would stop someone scrolling), and write a FRESH mini-conversation as if this Short was scripted first. Use the podcast only as source material — steal the best ideas, examples, and phrases, then rewrite them into tighter, more dramatic dialogue.
+Instead: read the full episode, extract the 2–3 strongest self-help ideas, and rewrite them as ONE flowing mini-lesson — as if Victor scripted this Short first and the podcast came later. Use the episode only as source material.
 
 Episode topic: "${topic}"
 Episode title: "${podcastScript.title}"
@@ -23,33 +21,36 @@ FULL PODCAST SCRIPT:
 ${scriptText}
 
 CURATION (do this before writing):
-1. Find the single strongest hook — a counterintuitive claim, relatable pain, or surprising fact
-2. Pick 1–2 supporting ideas that make that hook land (not every point from the episode)
-3. Choose ONE vivid proof moment — a short example or analogy (rewrite it; do not copy long anecdotes)
-4. End with ONE concrete tip the viewer can try today
+1. Pick ONE relatable problem the viewer has about "${topic}" — this becomes your hook
+2. Choose ONE counterintuitive insight or reframe (the "aha" moment)
+3. Add ONE quick proof — a short example, analogy, or "I see this all the time…" moment
+4. End with ONE concrete action the viewer can try today
+5. Drop everything else — no extra tips, no episode recap, no "we also talked about…"
 
-NARRATIVE ARC — every line must follow this logic; no random topic jumps:
-  HOOK → TENSION (why this matters / common mistake) → TURN (the key insight) → PROOF (quick example) → PAYOFF (actionable tip) → CTA
+NARRATIVE ARC — every beat must connect to the next; use bridge phrases ("Here's the thing…", "That's why…", "So instead of…", "Try this today…"):
+  OPEN (name the topic + hook the pain) → REFRAME (the key insight) → WHY IT MATTERS → PROOF (quick example) → ACTION (one tip) → CLOSE (short CTA)
 
-DIALOGUE RULES:
-- Target length: 30–60 seconds (~80–150 words total across ALL lines)
-- 6–12 dialogue lines — Victor and Lisa alternate; each line must respond to the previous one
+MONOLOGUE RULES:
+- Target length: 30–60 seconds (~80–150 words total across ALL beats)
+- 5–8 beats — every line is Victor; split the monologue into natural sentence groups for pacing
+- The FIRST line MUST clearly name the topic ("${topic}") — not a vague hook, not "In today's episode…"
+- Speak directly to the viewer: use "you" and "your"
 - NO podcast intros ("Hey everyone", "Welcome back", "Today we're talking about…")
-- NO bullet-point listing ("First… Second… Third…") or lecture-style monologues
-- NO summary phrases ("In this episode…", "We discussed…", "The main takeaway is…")
-- Avoid empty agreement loops ("Exactly!", "That's right!", "Yes!" as standalone turns)
-- Use natural spoken English: short sentences, contractions, occasional fillers ("well", "you know", "I mean") — but keep every filler purposeful
-- Lisa asks questions that move the story forward; Victor delivers examples and energy — they build on each other, not repeat the same idea
-- Each speaker turn: 1–2 short sentences max
+- NO episode recap ("In our podcast…", "Lisa said…", "We discussed…", "The main takeaway is…")
+- NO bullet-point listing ("First… Second… Third…") or lecture-style walls of text
+- NO disconnected fact drops — each beat must answer "so what?" and lead into the next
+- Self-help tone: empathetic, practical, energizing — help the viewer feel understood, then give them a clear next step
+- Each beat: 1–2 short sentences max; A2–B1 vocabulary; contractions and natural spoken rhythm
 
-QUALITY CHECK before returning JSON:
-- Could someone who never heard the podcast still follow the logic?
-- Does each line earn the next line?
-- Is there ONE clear "aha" moment, not three half-explained points?
-- Does it sound like two people talking, not one person reading notes?
+FLOW CHECK before returning JSON:
+- Does line 1 name the topic and stop the scroll?
+- Could someone who never heard the podcast follow ONE clear thread?
+- Does each beat earn the next beat (no random jumps)?
+- Is there ONE "aha" moment, not three half-explained ideas?
+- Does it sound like Victor coaching you, not reading episode notes?
 
 METADATA:
-- "hook": the exact opening line that grabs attention (should match or closely match the first dialogue line)
+- "hook": the exact opening line (must name the topic and match the first script beat)
 - "thumbnailText": reuse the episode thumbnail headline exactly — same ALL-CAPS stacked lines with \\n: "${podcastScript.thumbnailText.replace(/\n/g, '\\n')}"
 - "thumbnailScene": reuse the episode thumbnail scene exactly: "${podcastScript.thumbnailScene ?? 'Victor confused with topic-related metaphor in thought bubble. Lisa points encouragingly. Book spines related to the topic.'}"
 - English level: A2–B1 (clear vocabulary, short sentences)
@@ -58,12 +59,12 @@ Return ONLY a valid JSON object (no markdown, no code blocks):
 {
   "title": "Short catchy title — max 50 characters",
   "description": "TikTok/Short caption with 2–3 hashtags",
-  "hook": "Opening hook sentence",
+  "hook": "Opening line that names the topic and hooks the viewer",
   "thumbnailText": "${podcastScript.thumbnailText.replace(/\n/g, '\\n')}",
   "thumbnailScene": "Victor confused with puzzle pieces in thought bubble. Lisa points encouragingly. Book spines: MINDSET, FOCUS, GROWTH.",
   "script": [
     { "speaker": "Victor", "text": "..." },
-    { "speaker": "Lisa", "text": "..." }
+    { "speaker": "Victor", "text": "..." }
   ]
 }`;
 }
