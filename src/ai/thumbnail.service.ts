@@ -2,10 +2,10 @@ import fs from 'fs/promises';
 import path from 'path';
 import { OpenAIService } from './openai.service';
 import {
-  finalizeShortThumbnailImage,
   getImageDimensions,
   prepareReferenceImage,
   prepareShortReferenceImage,
+  scaleShortThumbnailToVideoSize,
   SHORT_THUMB_HEIGHT,
   SHORT_THUMB_WIDTH,
 } from './thumbnail-image.util';
@@ -104,10 +104,10 @@ export class ThumbnailService {
     const apiSize = await getImageDimensions(apiBuffer);
     logger.info(`API returned → ${apiSize.width}x${apiSize.height}`);
 
-    const finalBuffer = await finalizeShortThumbnailImage(apiBuffer);
+    const finalBuffer = await scaleShortThumbnailToVideoSize(apiBuffer);
     const finalSize = await getImageDimensions(finalBuffer);
     logger.info(
-      `Short thumbnail cropped → ${finalSize.width}x${finalSize.height} (9:16 from portrait API canvas)`,
+      `Short thumbnail scaled → ${finalSize.width}x${finalSize.height} (full image, no crop)`,
     );
 
     await fs.writeFile(outputPath, finalBuffer);

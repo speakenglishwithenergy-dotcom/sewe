@@ -78,7 +78,7 @@ export const SocialMetadataSchema = z.object({
 export type SocialMetadata = z.infer<typeof SocialMetadataSchema>;
 
 /** Silence duration in seconds between short-form audio segments */
-export const SHORT_PAUSE_BETWEEN_SEGMENTS = 0.3;
+export const SHORT_PAUSE_BETWEEN_SEGMENTS = 0.5;
 
 // ─── Audio ───────────────────────────────────────────────────────────────────
 

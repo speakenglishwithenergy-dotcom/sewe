@@ -75,7 +75,21 @@ export async function prepareShortReferenceImage(inputPath: string): Promise<Buf
 }
 
 /**
+ * Scale the full API canvas to short-form video size without cropping.
+ */
+export async function scaleShortThumbnailToVideoSize(imageBuffer: Buffer): Promise<Buffer> {
+  return sharp(imageBuffer)
+    .resize(SHORT_THUMB_WIDTH, SHORT_THUMB_HEIGHT, {
+      fit: 'contain',
+      background: LETTERBOX_BG,
+    })
+    .png()
+    .toBuffer();
+}
+
+/**
  * Crop the 9:16 content band from the API canvas and resize to short-form size.
+ * @deprecated Prefer scaleShortThumbnailToVideoSize to preserve the full image.
  */
 export async function finalizeShortThumbnailImage(apiBuffer: Buffer): Promise<Buffer> {
   return sharp(apiBuffer)

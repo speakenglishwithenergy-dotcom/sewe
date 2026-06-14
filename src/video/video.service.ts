@@ -2,9 +2,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import sharp from 'sharp';
 import {
-  API_PORTRAIT_HEIGHT,
-  API_PORTRAIT_WIDTH,
-  finalizeShortThumbnailImage,
+  scaleShortThumbnailToVideoSize,
   SHORT_THUMB_HEIGHT,
   SHORT_THUMB_WIDTH,
 } from '../ai/thumbnail-image.util';
@@ -177,35 +175,17 @@ export class VideoService {
     const width = meta.width ?? 0;
     const height = meta.height ?? 0;
 
-    if (width === SHORT_VIDEO_WIDTH && height === SHORT_VIDEO_HEIGHT) {
-      return thumbnailPath;
-    }
-
     const normalizedPath = path.join(
       path.dirname(thumbnailPath),
       '_short-thumbnail-background.png',
     );
 
-    if (width === API_PORTRAIT_WIDTH && height === API_PORTRAIT_HEIGHT) {
-      const raw = await fs.readFile(thumbnailPath);
-      const cropped = await finalizeShortThumbnailImage(raw);
-      await fs.writeFile(normalizedPath, cropped);
-      logger.info(
-        `Short thumbnail cropped ${width}x${height} → ${SHORT_VIDEO_WIDTH}x${SHORT_VIDEO_HEIGHT} (9:16 band)`,
-      );
-      return normalizedPath;
-    }
-
-    await sharp(thumbnailPath)
-      .resize(SHORT_VIDEO_WIDTH, SHORT_VIDEO_HEIGHT, {
-        fit: 'contain',
-        background: { r: 242, g: 244, b: 247 },
-      })
-      .png()
-      .toFile(normalizedPath);
+    const raw = await fs.readFile(thumbnailPath);
+    const scaled = await scaleShortThumbnailToVideoSize(raw);
+    await fs.writeFile(normalizedPath, scaled);
 
     logger.info(
-      `Short thumbnail letterboxed ${width}x${height} → ${SHORT_VIDEO_WIDTH}x${SHORT_VIDEO_HEIGHT}`,
+      `Short thumbnail scaled ${width}x${height} → ${SHORT_VIDEO_WIDTH}x${SHORT_VIDEO_HEIGHT} (full image, no crop)`,
     );
     return normalizedPath;
   }
