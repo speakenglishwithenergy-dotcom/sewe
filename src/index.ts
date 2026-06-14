@@ -351,10 +351,10 @@ async function main(): Promise<void> {
   // ── Step 7: Final video (intro + thumbnail + podcast + outro) ─────────────
   logger.step(7, totalSteps, 'Composing final video...');
   if (await fileExists(THUMBNAIL_VIDEO_PATH)) {
-    logger.info(`⏭  Thumbnail video already exists — skipping`);
-  } else {
-    await videoService.generateThumbnailVideo(THUMBNAIL_PATH, THUMBNAIL_VIDEO_PATH);
+    logger.info(`Existing thumbnail video found — removing to force regeneration`);
+    await fs.unlink(THUMBNAIL_VIDEO_PATH);
   }
+  await videoService.generateThumbnailVideo(THUMBNAIL_PATH, THUMBNAIL_VIDEO_PATH);
 
   if (await fileExists(FINAL_VIDEO_PATH)) {
     logger.info(`Existing final video found — removing to force regeneration`);
