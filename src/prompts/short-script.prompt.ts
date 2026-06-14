@@ -29,11 +29,11 @@ CURATION (do this before writing):
 2. Choose ONE counterintuitive insight or reframe (the "aha" moment)
 3. Add ONE quick proof — a short example, analogy, or "I see this all the time…" moment
 4. End with ONE concrete action the viewer can try today
-5. Close with a warm subscribe reminder — invite viewers to subscribe for more English + self-help Shorts like this
+5. Close with a warm subscribe reminder — invite viewers to subscribe for more English + self-help Shorts like this (this MUST be its own separate script beat — never combined with the action or lesson line)
 6. Drop everything else — no extra tips, no episode recap, no "we also talked about…"
 
 NARRATIVE ARC — every beat must connect to the next; use bridge phrases ("Here's the thing…", "That's why…", "So instead of…", "Try this today…"):
-  OPEN — Victor names the topic + hooks the pain → Lisa: REFRAME (the key insight) → WHY IT MATTERS → PROOF (quick example) → ACTION (one tip) → CLOSE (subscribe CTA — Lisa's LAST beat reminds viewers to subscribe)
+  OPEN — Victor names the topic + hooks the pain → Lisa: REFRAME (the key insight) → WHY IT MATTERS → PROOF (quick example) → ACTION (one tip) → SUBSCRIBE CTA (Lisa's LAST beat — subscribe line ONLY, in its own script item)
 
 SPEAKER & PACING RULES:
 - Target length: 30–60 seconds (~80–150 words total across ALL beats)
@@ -52,7 +52,8 @@ SPEAKER & PACING RULES:
 - NO disconnected fact drops — each beat must answer "so what?" and lead into the next
 - Self-help tone: empathetic, practical, energizing — help the viewer feel understood, then give them a clear next step
 - Each beat: 1–2 short sentences max; A2–B1 vocabulary; contractions and natural spoken rhythm
-- The LAST script beat (Lisa) MUST remind the viewer to subscribe (e.g. "Subscribe for more Shorts like this — I'll see you in the next one.")
+- The LAST script beat (Lisa) MUST be ONLY the subscribe CTA — one short sentence, nothing else in that beat (e.g. "Subscribe for more Shorts like this — I'll see you in the next one.")
+- NEVER combine the subscribe line with another sentence in the same beat — BAD: "Remember, growth is a journey. Subscribe for more tips." GOOD: beat before last = lesson/action line; last beat = subscribe line only
 
 FLOW CHECK before returning JSON:
 - Does line 1 name the topic and stop the scroll in one short sentence (≤12 words)?
@@ -61,14 +62,15 @@ FLOW CHECK before returning JSON:
 - Is there ONE "aha" moment, not three half-explained ideas?
 - Does Victor's hook hand off cleanly to Lisa's teaching voice?
 - Does Lisa sound like she's coaching the viewer, not reading episode notes?
-- Does the final beat naturally remind the viewer to subscribe?
+- Is the subscribe CTA its own separate beat (not merged with the lesson or action line)?
+- Does the final beat contain ONLY the subscribe reminder?
 
 REVISION PASS (mandatory — do this AFTER drafting, BEFORE returning JSON):
 Read your draft aloud in your head. Revise until ALL of these pass:
 1. NOT TOO SHORT — ~80–150 words total, 5–8 beats. If under ~80 words, add one bridging beat (insight, proof, or action) — never pad with filler.
 2. NOT STIFF — every beat sounds like natural spoken English (A2–B1). Use contractions and bridge phrases ("Here's the thing…", "That's why…", "So instead of…", "Try this today…"). Replace textbook or robotic wording.
 3. CONNECTED — each beat picks up from the previous one. No random jumps or disconnected fact drops. If a beat feels standalone, add a link back to the thread.
-4. GRADUAL CLOSE — do NOT rush the ending. Lisa needs at least one beat that lands the lesson (proof or action) BEFORE the subscribe CTA. The final subscribe line should feel like a warm goodbye, not an abrupt stop.
+4. GRADUAL CLOSE — do NOT rush the ending. Lisa needs at least one beat that lands the lesson (proof or action) BEFORE the subscribe CTA. The subscribe line must be its own final beat — never appended to the action/lesson beat. The subscribe beat should feel like a warm goodbye, not an abrupt stop.
 5. HANDOFF — Victor's hook and Lisa's first beat must feel like one continuous monologue, not two unrelated openings.
 
 METADATA:
@@ -87,7 +89,8 @@ Return ONLY a valid JSON object (no markdown, no code blocks):
   "script": [
     { "speaker": "Victor", "text": "One short punchy hook — 6–12 words, names the topic" },
     { "speaker": "Lisa", "text": "..." },
-    { "speaker": "Lisa", "text": "..." }
+    { "speaker": "Lisa", "text": "Lesson landing or action — one beat before the CTA" },
+    { "speaker": "Lisa", "text": "Subscribe for more Shorts like this — I'll see you in the next one." }
   ]
 }`;
 }
@@ -108,9 +111,10 @@ REVISION CHECKLIST — fix every issue you find:
 1. NOT TOO SHORT — ~80–150 words total, 5–8 beats. If under ~80 words or fewer than 5 beats, expand with one bridging beat (insight, proof, or action). Never pad with filler.
 2. NOT STIFF — replace robotic or textbook phrasing. Use contractions, spoken rhythm, and bridge phrases ("Here's the thing…", "That's why…", "So instead of…", "Try this today…").
 3. CONNECTED — every beat must logically lead to the next. Add a connective phrase where a beat feels like a random jump.
-4. GRADUAL CLOSE — the ending must NOT feel rushed. Before the subscribe CTA, Lisa needs at least one beat that lands the lesson (proof or action). The subscribe line should feel warm, not abrupt.
+4. GRADUAL CLOSE — the ending must NOT feel rushed. Before the subscribe CTA, Lisa needs at least one beat that lands the lesson (proof or action). The subscribe line must be its own final beat — never combined with the lesson or action in the same script item. The subscribe beat should feel warm, not abrupt.
 5. PRESERVE STRUCTURE — beat 1 ONLY: Victor (one short hook, 6–12 words, names "${topic}"). Beats 2 through last: Lisa only. No podcast recap, no back-and-forth dialogue.
 6. SHORT OPENING — Victor's first line must stay ≤12 words. Trim setup phrases ("Here's the truth…", "Let me tell you…") and never quote the full episode title.
+7. SUBSCRIBE BEAT — if the last beat mixes subscribe with another sentence, split them: keep the lesson/action in the second-to-last beat; move ONLY the subscribe line to its own final beat.
 
 Keep metadata unchanged unless Victor's opening line changes — then update "hook" too.
 
@@ -124,7 +128,8 @@ Return ONLY a valid JSON object (no markdown, no code blocks) with the EXACT sam
   "script": [
     { "speaker": "Victor", "text": "One short punchy hook — 6–12 words, names the topic" },
     { "speaker": "Lisa", "text": "..." },
-    { "speaker": "Lisa", "text": "..." }
+    { "speaker": "Lisa", "text": "Lesson landing or action — one beat before the CTA" },
+    { "speaker": "Lisa", "text": "Subscribe for more Shorts like this — I'll see you in the next one." }
   ]
 }
 
