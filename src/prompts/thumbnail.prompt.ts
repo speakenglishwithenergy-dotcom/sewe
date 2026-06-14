@@ -1,9 +1,14 @@
 import {
   THUMBNAIL_ART_STYLE,
+  THUMBNAIL_BADGE_UNCHANGED,
+  THUMBNAIL_BRANDING_LOCK_RULE,
   THUMBNAIL_BRAND_COLORS,
   THUMBNAIL_CHARACTERS_EXPRESSION_GUIDANCE,
   THUMBNAIL_CHARACTERS_UNCHANGED,
+  THUMBNAIL_EXPRESSION_MODERATION,
   THUMBNAIL_LISA_EXPRESSION_GUIDANCE,
+  THUMBNAIL_LOGO_UNCHANGED,
+  THUMBNAIL_TOPIC_RELEVANCE,
   THUMBNAIL_VICTOR_EXPRESSION_GUIDANCE,
 } from './thumbnail-brand';
 
@@ -21,20 +26,13 @@ export function buildThumbnailImagePrompt(input: ThumbnailPromptInput): string {
 
 This is a STRICT TEMPLATE EDIT. Copy the reference image's fixed branding blocks exactly. Only replace (1) the left headline text and (2) Victor + Lisa topic context.
 
+${THUMBNAIL_BRANDING_LOCK_RULE}
+
 ═══ DO NOT MODIFY — copy pixel-perfect from reference ═══
 
-TOP RIGHT — logo block (untouched):
-- Microphone icon above the wordmark
-- "Speak" and "ENGLISH" in dark navy #0D1B3D bold sans-serif
-- Orange #FF7A00 "WITH ENERGY" banner treatment
-- Open book icon below
-- Same size, position, spacing, colors, and fonts as reference — zero changes
+${THUMBNAIL_LOGO_UNCHANGED}
 
-BOTTOM LEFT — badge block (untouched):
-- Circular teal/green icon with white microphone
-- Green rounded pill with white "ENGLISH PODCAST" in bold caps
-- "FOR LEARNING ENGLISH" subtitle below in dark navy
-- Same size, position, spacing, colors, and fonts as reference — zero changes
+${THUMBNAIL_BADGE_UNCHANGED}
 
 ALSO UNCHANGED:
 - Landscape 16:9 composition with safe margins — nothing touches frame edges
@@ -63,11 +61,12 @@ Typography MUST match the reference demo exactly:
 
 ═══ CHANGE ONLY — Victor + Lisa scene context (right ~60%) ═══
 
+Episode topic: "${topic}"
+Every expression, gesture, prop, and scene detail below MUST connect to this topic.
+
 ${thumbnailScene}
 
 ${THUMBNAIL_CHARACTERS_EXPRESSION_GUIDANCE}
-
-Episode topic: "${topic}"
 
 High contrast, readable at small size, no watermarks, no extra text beyond what is specified.`;
 }
@@ -83,16 +82,21 @@ Episode title: "${episodeTitle}"
 Topic: "${topic}"
 Thumbnail headline: "${thumbnailText}"
 
-The thumbnail uses a fixed template. Logo (top right) and badge (bottom left) are locked. Write ONLY the Victor + Lisa scene changes for this episode.
+The thumbnail uses a fixed template. Logo (top right) and badge (bottom left) are locked — never describe redrawing or regenerating logo icons (microphone, book) or the badge microphone. Write ONLY the Victor + Lisa scene changes for this episode. Every detail must relate to the topic above.
 
-Describe what to change from the default template:
+${THUMBNAIL_TOPIC_RELEVANCE}
+
+Describe what to change from the default template — all choices driven by topic "${topic}":
+${THUMBNAIL_EXPRESSION_MODERATION}
 ${THUMBNAIL_VICTOR_EXPRESSION_GUIDANCE}
 ${THUMBNAIL_LISA_EXPRESSION_GUIDANCE}
-- One visual metaphor tied to the topic (prop, gesture, or small comic element — thought bubble only when confusion is the hook)
-- Three book spine titles on the desk stack — short uppercase phrases related to the episode (replace MINDSET / FOCUS / GROWTH)
-- Background/shelf accents on the wall that subtly reflect the episode topic
+- Victor's expression + gesture: a specific learner moment FROM this topic
+- Lisa's expression + gesture: coaches Victor through THIS topic's insight
+- One topic-specific visual metaphor (prop, gesture, or small comic element — thought bubble only when confusion is the hook)
+- Three book spine titles on the desk stack — short uppercase phrases directly about this episode (replace MINDSET / FOCUS / GROWTH)
+- Background/shelf accents that subtly reflect this episode's topic
 
-Do NOT describe Victor/Lisa core appearance, mugs, mics, logo, badge, headline, or desk layout — those stay fixed.
+Do NOT describe Victor/Lisa core appearance, mugs, mics, logo, badge, headline, or desk layout — those stay fixed. Never describe redrawing or regenerating logo icons (microphone, book) or the badge microphone.
 
 Return ONLY valid JSON:
 {
