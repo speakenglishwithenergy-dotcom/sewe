@@ -18,6 +18,7 @@ import { VideoService } from './video/video.service';
 import { ProjectService } from './project/project.service';
 import { SocialMetadataService } from './social/social-metadata.service';
 import {
+  getPublishOutputDir,
   SOCIAL_METADATA_JSON,
   YOUTUBE_DESCRIPTION_TXT,
   YOUTUBE_SHORT_CAPTION_TXT,
@@ -197,12 +198,14 @@ function parseArgs(): CliArgs {
 }
 
 function printSocialMetadataSummary(projectDir: string, hasShort: boolean): void {
+  const publishDir = getPublishOutputDir(projectDir);
   console.log(`
-  Social Meta   : ${path.join(projectDir, SOCIAL_METADATA_JSON)}
-  YT Desc       : ${path.join(projectDir, YOUTUBE_DESCRIPTION_TXT)}
-  YT Tags       : ${path.join(projectDir, YOUTUBE_TAGS_TXT)}`);
+  Publish Meta  : ${publishDir}
+  Social Meta   : ${path.join(publishDir, SOCIAL_METADATA_JSON)}
+  YT Desc       : ${path.join(publishDir, YOUTUBE_DESCRIPTION_TXT)}
+  YT Tags       : ${path.join(publishDir, YOUTUBE_TAGS_TXT)}`);
   if (hasShort) {
-    console.log(`  YT Short Cap  : ${path.join(projectDir, YOUTUBE_SHORT_CAPTION_TXT)}`);
+    console.log(`  YT Short Cap  : ${path.join(publishDir, YOUTUBE_SHORT_CAPTION_TXT)}`);
   }
 }
 

@@ -2,10 +2,38 @@ import fs from 'fs/promises';
 import path from 'path';
 import { SocialMetadata, YouTubeMetadata, YouTubeShortMetadata } from '../types';
 
+export const PUBLISH_OUTPUT_SUBDIR = 'publish';
 export const SOCIAL_METADATA_JSON = 'social-metadata.json';
 export const YOUTUBE_DESCRIPTION_TXT = 'youtube-description.txt';
 export const YOUTUBE_TAGS_TXT = 'youtube-tags.txt';
 export const YOUTUBE_SHORT_CAPTION_TXT = 'youtube-short-caption.txt';
+
+export function getPublishOutputDir(projectDir: string): string {
+  return path.join(projectDir, PUBLISH_OUTPUT_SUBDIR);
+}
+
+export function getSocialMetadataPath(projectDir: string): string {
+  return path.join(getPublishOutputDir(projectDir), SOCIAL_METADATA_JSON);
+}
+
+/** Resolve cached social metadata (publish/ first, then legacy project root). */
+export async function resolveSocialMetadataPath(projectDir: string): Promise<string | null> {
+  const publishPath = getSocialMetadataPath(projectDir);
+  try {
+    await fs.access(publishPath);
+    return publishPath;
+  } catch {
+    // fall through
+  }
+
+  const legacyPath = path.join(projectDir, SOCIAL_METADATA_JSON);
+  try {
+    await fs.access(legacyPath);
+    return legacyPath;
+  } catch {
+    return null;
+  }
+}
 
 export function formatYouTubeDescription(meta: YouTubeMetadata): string {
   const chapterBlock = meta.chapters.map((c) => `${c.time} ${c.label}`).join('\n');
@@ -49,8 +77,11 @@ export async function writeSocialMetadataExports(
   projectDir: string,
   meta: SocialMetadata,
 ): Promise<void> {
+  const publishDir = getPublishOutputDir(projectDir);
+  await fs.mkdir(publishDir, { recursive: true });
+
   await fs.writeFile(
-    path.join(projectDir, SOCIAL_METADATA_JSON),
+    path.join(publishDir, SOCIAL_METADATA_JSON),
     JSON.stringify(meta, null, 2),
     'utf-8',
   );
@@ -58,7 +89,7 @@ export async function writeSocialMetadataExports(
   const files = buildExportBundle(meta);
   await Promise.all(
     Object.entries(files).map(([filename, content]) =>
-      fs.writeFile(path.join(projectDir, filename), content, 'utf-8'),
+      fs.writeFile(path.join(publishDir, filename), content, 'utf-8'),
     ),
   );
 }

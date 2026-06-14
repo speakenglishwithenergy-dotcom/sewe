@@ -15,7 +15,7 @@ import {
   buildYouTubeShortMetadataPrompt,
 } from '../prompts/social-metadata.prompt';
 import { refineChapterTimes } from './chapters.util';
-import { SOCIAL_METADATA_JSON, writeSocialMetadataExports } from './social-metadata.export';
+import { resolveSocialMetadataPath, writeSocialMetadataExports } from './social-metadata.export';
 import { logger } from '../utils/logger';
 
 const SYSTEM_PROMPT =
@@ -30,9 +30,9 @@ export class SocialMetadataService {
     topic: string,
     options?: { shortScript?: ShortScript; segments?: AudioSegment[] },
   ): Promise<SocialMetadata> {
-    const cachePath = path.join(projectDir, SOCIAL_METADATA_JSON);
+    const cachePath = await resolveSocialMetadataPath(projectDir);
 
-    try {
+    if (cachePath) {
       const raw = await fs.readFile(cachePath, 'utf-8');
       const cached = SocialMetadataSchema.parse(JSON.parse(raw));
 
@@ -52,8 +52,6 @@ export class SocialMetadataService {
       const merged: SocialMetadata = { ...cached, youtubeShort };
       await writeSocialMetadataExports(projectDir, merged);
       return merged;
-    } catch {
-      // cache miss — generate fresh
     }
 
     logger.info('Generating YouTube social metadata...');
@@ -75,7 +73,7 @@ export class SocialMetadataService {
 
     const meta: SocialMetadata = { youtube, youtubeShort };
     await writeSocialMetadataExports(projectDir, meta);
-    logger.success(`Social metadata saved → ${cachePath}`);
+    logger.success(`Social metadata saved → ${path.join(projectDir, 'publish')}`);
     return meta;
   }
 
