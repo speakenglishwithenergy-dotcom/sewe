@@ -5,17 +5,32 @@ import { normalizeSocialMetadata, formatChannelDescription, formatChannelShortCa
 
 export const PUBLISH_OUTPUT_SUBDIR = 'publish';
 export const SOCIAL_METADATA_JSON = 'social-metadata.json';
-export const YOUTUBE_TITLE_TXT = 'youtube-title.txt';
-export const YOUTUBE_DESCRIPTION_TXT = 'youtube-description.txt';
-export const YOUTUBE_TAGS_TXT = 'youtube-tags.txt';
-export const YOUTUBE_PINNED_COMMENT_TXT = 'youtube-pinned-comment.txt';
-export const YOUTUBE_SHORT_TITLE_TXT = 'youtube-short-title.txt';
-export const YOUTUBE_SHORT_CAPTION_TXT = 'youtube-short-caption.txt';
-export const YOUTUBE_SHORT_PINNED_COMMENT_TXT = 'youtube-short-pinned-comment.txt';
-export const FACEBOOK_CAPTION_TXT = 'facebook-caption.txt';
-export const FACEBOOK_FIRST_COMMENT_TXT = 'facebook-first-comment.txt';
-export const FACEBOOK_SHORT_CAPTION_TXT = 'facebook-short-caption.txt';
-export const FACEBOOK_SHORT_FIRST_COMMENT_TXT = 'facebook-short-first-comment.txt';
+export const LONG_YOUTUBE_TITLE_TXT = 'long-youtube-title.txt';
+export const LONG_YOUTUBE_DESCRIPTION_TXT = 'long-youtube-description.txt';
+export const LONG_YOUTUBE_TAGS_TXT = 'long-youtube-tags.txt';
+export const LONG_YOUTUBE_PINNED_COMMENT_TXT = 'long-youtube-pinned-comment.txt';
+export const SHORT_YOUTUBE_TITLE_TXT = 'short-youtube-title.txt';
+export const SHORT_YOUTUBE_CAPTION_TXT = 'short-youtube-caption.txt';
+export const SHORT_YOUTUBE_PINNED_COMMENT_TXT = 'short-youtube-pinned-comment.txt';
+export const LONG_FACEBOOK_CAPTION_TXT = 'long-facebook-caption.txt';
+export const LONG_FACEBOOK_FIRST_COMMENT_TXT = 'long-facebook-first-comment.txt';
+export const SHORT_FACEBOOK_CAPTION_TXT = 'short-facebook-caption.txt';
+export const SHORT_FACEBOOK_FIRST_COMMENT_TXT = 'short-facebook-first-comment.txt';
+
+/** Previous export filenames — removed on re-export to avoid duplicates. */
+const LEGACY_PUBLISH_TXT_FILES = [
+  'youtube-title.txt',
+  'youtube-description.txt',
+  'youtube-tags.txt',
+  'youtube-pinned-comment.txt',
+  'youtube-short-title.txt',
+  'youtube-short-caption.txt',
+  'youtube-short-pinned-comment.txt',
+  'facebook-caption.txt',
+  'facebook-first-comment.txt',
+  'facebook-short-caption.txt',
+  'facebook-short-first-comment.txt',
+] as const;
 
 export function getPublishOutputDir(projectDir: string): string {
   return path.join(projectDir, PUBLISH_OUTPUT_SUBDIR);
@@ -46,26 +61,26 @@ export async function resolveSocialMetadataPath(projectDir: string): Promise<str
 
 export function buildExportBundle(meta: SocialMetadata): Record<string, string> {
   const files: Record<string, string> = {
-    [YOUTUBE_TITLE_TXT]: meta.youtube.title,
-    [YOUTUBE_DESCRIPTION_TXT]: formatChannelDescription(meta.youtube),
-    [YOUTUBE_TAGS_TXT]: formatYouTubeTags(meta.youtube.tags),
-    [YOUTUBE_PINNED_COMMENT_TXT]: meta.youtube.pinnedComment,
+    [LONG_YOUTUBE_TITLE_TXT]: meta.youtube.title,
+    [LONG_YOUTUBE_DESCRIPTION_TXT]: formatChannelDescription(meta.youtube),
+    [LONG_YOUTUBE_TAGS_TXT]: formatYouTubeTags(meta.youtube.tags),
+    [LONG_YOUTUBE_PINNED_COMMENT_TXT]: meta.youtube.pinnedComment,
   };
 
   if (meta.youtubeShort) {
-    files[YOUTUBE_SHORT_TITLE_TXT] = meta.youtubeShort.title;
-    files[YOUTUBE_SHORT_CAPTION_TXT] = formatChannelShortCaption(meta.youtubeShort);
-    files[YOUTUBE_SHORT_PINNED_COMMENT_TXT] = meta.youtubeShort.pinnedComment;
+    files[SHORT_YOUTUBE_TITLE_TXT] = meta.youtubeShort.title;
+    files[SHORT_YOUTUBE_CAPTION_TXT] = formatChannelShortCaption(meta.youtubeShort);
+    files[SHORT_YOUTUBE_PINNED_COMMENT_TXT] = meta.youtubeShort.pinnedComment;
   }
 
   if (meta.facebook) {
-    files[FACEBOOK_CAPTION_TXT] = formatFacebookCaption(meta.facebook);
-    files[FACEBOOK_FIRST_COMMENT_TXT] = meta.facebook.firstComment;
+    files[LONG_FACEBOOK_CAPTION_TXT] = formatFacebookCaption(meta.facebook);
+    files[LONG_FACEBOOK_FIRST_COMMENT_TXT] = meta.facebook.firstComment;
   }
 
   if (meta.facebookShort) {
-    files[FACEBOOK_SHORT_CAPTION_TXT] = formatFacebookShortCaption(meta.facebookShort);
-    files[FACEBOOK_SHORT_FIRST_COMMENT_TXT] = meta.facebookShort.firstComment;
+    files[SHORT_FACEBOOK_CAPTION_TXT] = formatFacebookShortCaption(meta.facebookShort);
+    files[SHORT_FACEBOOK_FIRST_COMMENT_TXT] = meta.facebookShort.firstComment;
   }
 
   return files;
@@ -78,6 +93,16 @@ export async function writeSocialMetadataExports(
   const normalized = normalizeSocialMetadata(meta);
   const publishDir = getPublishOutputDir(projectDir);
   await fs.mkdir(publishDir, { recursive: true });
+
+  await Promise.all(
+    LEGACY_PUBLISH_TXT_FILES.map(async (filename) => {
+      try {
+        await fs.unlink(path.join(publishDir, filename));
+      } catch {
+        // ignore missing legacy files
+      }
+    }),
+  );
 
   await fs.writeFile(
     path.join(publishDir, SOCIAL_METADATA_JSON),
