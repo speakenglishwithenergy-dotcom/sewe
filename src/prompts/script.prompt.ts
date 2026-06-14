@@ -53,7 +53,7 @@ export const SCRIPT_SECTIONS: ScriptSectionDef[] = [
     label: 'Closing',
     lineCount: 11,
     brief:
-      'Recap the three main points in your own words (not a bullet list), one clear actionable tip, subscribe CTA, warm goodbye naming the channel.',
+      'Finish the conversation first: recap the three main points in your own words (not a bullet list), land one clear actionable tip, and let Victor and Lisa react naturally. Only after that wrap-up, end with a brief warm goodbye and "see you next time" — do NOT ask viewers to like, share, or subscribe (the video outro already covers that).',
   },
 ];
 
@@ -148,7 +148,11 @@ export function buildSectionPrompt(
 
   const closingNote =
     section.id === 'closing'
-      ? `\nThe FINAL dialogue line MUST mention "${CHANNEL_NAME}" (e.g. "See you next time on ${CHANNEL_NAME}!").\n`
+      ? `\nClosing structure:
+1. Most lines: keep talking — recap takeaways and one actionable tip in natural dialogue between Victor and Lisa.
+2. Last 1–2 lines only: a simple warm sign-off (goodbye + "see you next time on ${CHANNEL_NAME}").
+Do NOT include like, share, or subscribe CTAs — the video outro handles that.
+The FINAL dialogue line MUST mention "${CHANNEL_NAME}" (e.g. "See you next time on ${CHANNEL_NAME}!").\n`
       : '';
 
   return `You are writing ONE section of a podcast script for "${CHANNEL_NAME}".
