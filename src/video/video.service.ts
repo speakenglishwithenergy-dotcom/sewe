@@ -41,6 +41,31 @@ export class VideoService {
     logger.success(`Thumbnail video saved → ${outputPath}`);
   }
 
+  async generateFinalVideo(
+    introPath: string,
+    thumbnailPath: string,
+    backgroundPath: string,
+    audioPath: string,
+    subtitlesPath: string,
+    outroPath: string,
+    outputPath: string,
+  ): Promise<void> {
+    await this.ensureBackground(backgroundPath);
+
+    await this.ffmpeg.generateFinalVideo(
+      introPath,
+      thumbnailPath,
+      backgroundPath,
+      audioPath,
+      subtitlesPath,
+      outroPath,
+      outputPath,
+      THUMBNAIL_VIDEO_DURATION,
+    );
+
+    logger.success(`Final video saved → ${outputPath}`);
+  }
+
   async composeFinalVideo(
     introPath: string,
     thumbnailVideoPath: string,

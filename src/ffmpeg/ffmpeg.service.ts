@@ -12,6 +12,9 @@ const PODCAST_VOLUME = 2.0;
 /** Crossfade duration between final-video segments. */
 const FADE_DURATION = 0.5;
 
+/** Thumbnail still shown at the start of the final video (seconds). */
+const THUMBNAIL_VIDEO_DURATION = 5;
+
 const VIDEO_WIDTH = 1920;
 const VIDEO_HEIGHT = 1080;
 const SHORT_VIDEO_WIDTH = 1080;
@@ -40,6 +43,7 @@ interface FFprobeFormatOutput {
 export class FFmpegService {
   private ffmpegBin = 'ffmpeg';
   private ffprobeBin = 'ffprobe';
+  private useVideoToolbox = false;
 
   /**
    * Verify that ffmpeg and ffprobe are available on PATH.
@@ -49,6 +53,34 @@ export class FFmpegService {
     // Resolve the best available ffmpeg binary.
     this.ffmpegBin = await this.resolveBin(FFMPEG_CANDIDATES, 'ffmpeg');
     this.ffprobeBin = await this.resolveBin(FFPROBE_CANDIDATES, 'ffprobe');
+
+    if (process.platform === 'darwin') {
+      this.useVideoToolbox = await this.hasEncoder('h264_videotoolbox');
+      if (this.useVideoToolbox) {
+        logger.info('Using hardware encoder: h264_videotoolbox');
+      } else {
+        logger.info('Using software encoder: libx264 (preset medium)');
+      }
+    } else {
+      logger.info('Using software encoder: libx264 (preset medium)');
+    }
+  }
+
+  private async hasEncoder(codec: string): Promise<boolean> {
+    try {
+      const { stdout } = await execFileAsync(this.ffmpegBin, ['-hide_banner', '-encoders']);
+      return stdout.includes(codec);
+    } catch {
+      return false;
+    }
+  }
+
+  /** H.264 encode args — VideoToolbox on macOS when available, else libx264 medium. */
+  private getVideoEncodeArgs(): string[] {
+    if (this.useVideoToolbox) {
+      return ['-c:v', 'h264_videotoolbox', '-q:v', '65'];
+    }
+    return ['-c:v', 'libx264', '-preset', 'medium', '-crf', '20'];
   }
 
   private async resolveBin(candidates: string[], name: string): Promise<string> {
@@ -183,12 +215,12 @@ export class FFmpegService {
     // Styles are embedded in the ASS file so inline IPA colour overrides work.
     const subtitleFilter = `subtitles=filename=${safeSubs}`;
 
-    // Wave strip: 500×200 dot waveform, brand purple, overlaid above subtitle zone
+    // Wave strip: 800×320 dot waveform, brand purple, overlaid above subtitle zone
     const filterComplex = [
       `[0:v]scale=1920:1080[bg]`,
       `[1:a]volume=${PODCAST_VOLUME},asplit=2[aout][awave]`,
-      `[awave]showwaves=size=500x200:mode=point:colors=0x2ba6e1@0.9:rate=30,format=yuva420p[waves]`,
-      `[bg][waves]overlay=700:800,format=yuv420p,${subtitleFilter}[vout]`,
+      `[awave]showwaves=size=800x320:mode=point:colors=0x2ba6e1@0.9:rate=30,format=yuva420p[waves]`,
+      `[bg][waves]overlay=560:760,format=yuv420p,${subtitleFilter}[vout]`,
     ].join(';');
 
     await execFileAsync(
@@ -200,9 +232,7 @@ export class FFmpegService {
         '-filter_complex', filterComplex,
         '-map', '[vout]',
         '-map', '[aout]',
-        '-c:v', 'libx264',
-        '-preset', 'slow',
-        '-crf', '20',
+        ...this.getVideoEncodeArgs(),
         '-c:a', 'aac',
         '-b:a', '192k',
         '-pix_fmt', 'yuv420p',
@@ -247,9 +277,7 @@ export class FFmpegService {
         '-filter_complex', filterComplex,
         '-map', '[vout]',
         '-map', '[aout]',
-        '-c:v', 'libx264',
-        '-preset', 'slow',
-        '-crf', '20',
+        ...this.getVideoEncodeArgs(),
         '-c:a', 'aac',
         '-b:a', '192k',
         '-pix_fmt', 'yuv420p',
@@ -283,9 +311,7 @@ export class FFmpegService {
         '-i', 'anullsrc=r=44100:cl=stereo',
         '-t', String(durationSeconds),
         '-vf', `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=${VIDEO_FPS},format=yuv420p`,
-        '-c:v', 'libx264',
-        '-preset', 'slow',
-        '-crf', '20',
+        ...this.getVideoEncodeArgs(),
         '-c:a', 'aac',
         '-b:a', '192k',
         '-shortest',
@@ -367,9 +393,114 @@ export class FFmpegService {
       '-filter_complex', filterComplex,
       '-map', '[vout]',
       '-map', '[aout]',
-      '-c:v', 'libx264',
-      '-preset', 'slow',
-      '-crf', '20',
+      ...this.getVideoEncodeArgs(),
+      '-c:a', 'aac',
+      '-b:a', '192k',
+      '-pix_fmt', 'yuv420p',
+      '-movflags', '+faststart',
+      '-y',
+      outputPath,
+    ];
+
+    await execFileAsync(this.ffmpegBin, ffmpegArgs, { maxBuffer: 256 * 1024 * 1024 });
+  }
+
+  /**
+   * Single-pass final video: intro + thumbnail + podcast body + outro with crossfades.
+   * Renders the podcast segment (background, waveform, burned-in ASS) inline — no
+   * intermediate podcast-video.mp4 encode.
+   */
+  async generateFinalVideo(
+    introPath: string,
+    thumbnailPath: string,
+    backgroundPath: string,
+    audioPath: string,
+    subtitlesPath: string,
+    outroPath: string,
+    outputPath: string,
+    thumbnailDurationSeconds = THUMBNAIL_VIDEO_DURATION,
+  ): Promise<void> {
+    const fade = FADE_DURATION;
+    const thumbDur = thumbnailDurationSeconds;
+
+    const [introDur, podcastDur, outroDur] = await Promise.all([
+      this.getMediaDuration(introPath),
+      this.getMediaDuration(audioPath),
+      this.getMediaDuration(outroPath),
+    ]);
+
+    const segmentDurations = [introDur, thumbDur, podcastDur, outroDur];
+    const segmentNames = ['intro', 'thumbnail', 'podcast', 'outro'];
+
+    for (let i = 0; i < segmentDurations.length; i++) {
+      if (segmentDurations[i] <= fade) {
+        throw new Error(
+          `${segmentNames[i]} segment is ${segmentDurations[i]}s — must be longer than ${fade}s fade`,
+        );
+      }
+    }
+
+    logger.info(
+      `Rendering final video (single-pass): intro ${introDur.toFixed(1)}s + thumb ${thumbDur}s + ` +
+        `podcast ${podcastDur.toFixed(1)}s + outro ${outroDur.toFixed(1)}s...`,
+    );
+
+    const safeSubs = subtitlesPath.replace(/\\/g, '\\\\').replace(/:/g, '\\:');
+    const subtitleFilter = `subtitles=filename=${safeSubs}`;
+
+    const normalizeVideo = (index: number, label: string): string =>
+      `[${index}:v]scale=${VIDEO_WIDTH}:${VIDEO_HEIGHT}:force_original_aspect_ratio=decrease,` +
+      `pad=${VIDEO_WIDTH}:${VIDEO_HEIGHT}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=${VIDEO_FPS},format=yuv420p[${label}]`;
+
+    const normalizeAudio = (index: number, label: string): string =>
+      `[${index}:a]aformat=sample_rates=44100:channel_layouts=stereo[${label}]`;
+
+    const filters: string[] = [
+      normalizeVideo(0, 'v0'),
+      normalizeAudio(0, 'a0'),
+      normalizeVideo(1, 'v1'),
+      normalizeAudio(2, 'a1'),
+      `[3:v]scale=${VIDEO_WIDTH}:${VIDEO_HEIGHT}[bg]`,
+      `[4:a]volume=${PODCAST_VOLUME},asplit=2[apod][awave]`,
+      `[awave]showwaves=size=800x320:mode=point:colors=0x2ba6e1@0.9:rate=30,format=yuva420p[waves]`,
+      `[bg][waves]overlay=560:760,format=yuv420p,${subtitleFilter},fps=${VIDEO_FPS}[v2]`,
+      `[apod]aformat=sample_rates=44100:channel_layouts=stereo[a2]`,
+      normalizeVideo(5, 'v3'),
+      normalizeAudio(5, 'a3'),
+    ];
+
+    let videoLabel = 'v0';
+    let audioLabel = 'a0';
+    let cumulativeDuration = segmentDurations[0];
+
+    for (let i = 1; i < segmentDurations.length; i++) {
+      const outV = i === segmentDurations.length - 1 ? 'vout' : `vx${i}`;
+      const outA = i === segmentDurations.length - 1 ? 'aout' : `ax${i}`;
+      const offset = cumulativeDuration - i * fade;
+
+      filters.push(
+        `[${videoLabel}][v${i}]xfade=transition=fade:duration=${fade}:offset=${offset.toFixed(3)}[${outV}]`,
+      );
+      filters.push(
+        `[${audioLabel}][a${i}]acrossfade=d=${fade}:c1=tri:c2=tri[${outA}]`,
+      );
+
+      videoLabel = outV;
+      audioLabel = outA;
+      cumulativeDuration += segmentDurations[i];
+    }
+
+    const ffmpegArgs = [
+      '-i', introPath,
+      '-loop', '1', '-t', String(thumbDur), '-i', thumbnailPath,
+      '-f', 'lavfi', '-t', String(thumbDur), '-i', 'anullsrc=r=44100:cl=stereo',
+      '-loop', '1', '-i', backgroundPath,
+      '-i', audioPath,
+      '-i', outroPath,
+      '-filter_complex', filters.join(';'),
+      '-map', '[vout]',
+      '-map', '[aout]',
+      ...this.getVideoEncodeArgs(),
       '-c:a', 'aac',
       '-b:a', '192k',
       '-pix_fmt', 'yuv420p',

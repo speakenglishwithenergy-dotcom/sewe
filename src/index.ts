@@ -234,8 +234,6 @@ async function main(): Promise<void> {
   const PODCAST_AUDIO_PATH = path.join(PROJECT_DIR, 'podcast.mp3');
   const SUBTITLES_PATH = path.join(PROJECT_DIR, 'subtitles.ass');
   const THUMBNAIL_PATH = path.join(PROJECT_DIR, 'thumbnail.png');
-  const PODCAST_VIDEO_PATH = path.join(PROJECT_DIR, 'podcast-video.mp4');
-  const THUMBNAIL_VIDEO_PATH = path.join(PROJECT_DIR, 'thumbnail-video.mp4');
   const FINAL_VIDEO_PATH = path.join(PROJECT_DIR, 'final.mp4');
 
   await fs.mkdir(AUDIO_DIR, { recursive: true });
@@ -366,7 +364,7 @@ async function main(): Promise<void> {
   }
 
   // ── Step 2: Thumbnail ─────────────────────────────────────────────────────
-  const totalSteps = 8;
+  const totalSteps = 6;
   logger.step(2, totalSteps, 'Generating YouTube thumbnail...');
   if (await fileExists(THUMBNAIL_PATH)) {
     logger.info(`⏭  Thumbnail already exists — skipping`);
@@ -428,51 +426,36 @@ async function main(): Promise<void> {
     logger.success(`Podcast audio saved → ${PODCAST_AUDIO_PATH}`);
   }
 
-  // ── Step 6: Podcast video ─────────────────────────────────────────────────
-  logger.step(6, totalSteps, 'Rendering podcast video...');
-  if (await fileExists(PODCAST_VIDEO_PATH)) {
-    logger.info(`Existing podcast video found — removing to force regeneration`);
-    await fs.unlink(PODCAST_VIDEO_PATH);
-  }
-  await videoService.generatePodcastVideo(
-    PODCAST_AUDIO_PATH,
-    SUBTITLES_PATH,
-    BACKGROUND_PATH,
-    PODCAST_VIDEO_PATH,
-  );
-
-  // ── Step 7: Final video (intro + thumbnail + podcast + outro) ─────────────
-  logger.step(7, totalSteps, 'Composing final video...');
-  if (await fileExists(THUMBNAIL_VIDEO_PATH)) {
-    logger.info(`Existing thumbnail video found — removing to force regeneration`);
-    await fs.unlink(THUMBNAIL_VIDEO_PATH);
-  }
-  await videoService.generateThumbnailVideo(THUMBNAIL_PATH, THUMBNAIL_VIDEO_PATH);
+  // ── Step 6: Final video + Short (parallel) ────────────────────────────────
+  logger.step(6, totalSteps, 'Rendering final video + short (parallel)...');
 
   if (await fileExists(FINAL_VIDEO_PATH)) {
-    logger.info(`Existing final video found — removing to force regeneration`);
+    logger.info('Existing final video found — removing to force regeneration');
     await fs.unlink(FINAL_VIDEO_PATH);
   }
-  await videoService.composeFinalVideo(
-    INTRO_PATH,
-    THUMBNAIL_VIDEO_PATH,
-    PODCAST_VIDEO_PATH,
-    OUTRO_PATH,
-    FINAL_VIDEO_PATH,
-  );
 
-  // ── Step 8: Short video (auto) ────────────────────────────────────────────
-  logger.step(8, 8, 'Generating YouTube Short / TikTok video...');
   const shortPaths = buildShortPaths(PROJECT_DIR);
-  const shortScript = await runShortPipeline(project, podcastScript, {
-    shortScriptService,
-    keywordsService,
-    thumbnailService,
-    ttsService,
-    subtitleService,
-    ffmpegService,
-    videoService,
-  }, shortPaths);
+
+  const [shortScript] = await Promise.all([
+    runShortPipeline(project, podcastScript, {
+      shortScriptService,
+      keywordsService,
+      thumbnailService,
+      ttsService,
+      subtitleService,
+      ffmpegService,
+      videoService,
+    }, shortPaths),
+    videoService.generateFinalVideo(
+      INTRO_PATH,
+      THUMBNAIL_PATH,
+      BACKGROUND_PATH,
+      PODCAST_AUDIO_PATH,
+      SUBTITLES_PATH,
+      OUTRO_PATH,
+      FINAL_VIDEO_PATH,
+    ),
+  ]);
 
   const socialMeta = await socialMetadataService.loadOrGenerate(
     PROJECT_DIR,
@@ -495,8 +478,6 @@ async function main(): Promise<void> {
   Thumbnail   : ${THUMBNAIL_PATH}
   Audio       : ${PODCAST_AUDIO_PATH}
   Subtitles   : ${SUBTITLES_PATH}
-  Podcast     : ${PODCAST_VIDEO_PATH}
-  Thumb Video : ${THUMBNAIL_VIDEO_PATH}
   Final Video : ${FINAL_VIDEO_PATH}
 
   Short Title     : ${shortScript.title}
