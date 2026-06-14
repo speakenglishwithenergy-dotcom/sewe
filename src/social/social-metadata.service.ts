@@ -29,9 +29,9 @@ export class SocialMetadataService {
     projectDir: string,
     podcastScript: PodcastScript,
     topic: string,
-    options?: { shortScript?: ShortScript; segments?: AudioSegment[] },
+    options?: { shortScript?: ShortScript; segments?: AudioSegment[]; regenerate?: boolean },
   ): Promise<SocialMetadata> {
-    const cachePath = await resolveSocialMetadataPath(projectDir);
+    const cachePath = options?.regenerate ? null : await resolveSocialMetadataPath(projectDir);
 
     if (cachePath) {
       const raw = await fs.readFile(cachePath, 'utf-8');
@@ -56,7 +56,11 @@ export class SocialMetadataService {
       return normalizeSocialMetadata(merged);
     }
 
-    logger.info('Generating YouTube social metadata...');
+    if (options?.regenerate) {
+      logger.info('Regenerating YouTube social metadata (LLM)...');
+    } else {
+      logger.info('Generating YouTube social metadata...');
+    }
     const youtube = await this.generateYouTubeMetadata(
       podcastScript,
       topic,

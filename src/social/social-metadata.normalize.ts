@@ -1,9 +1,13 @@
 import {
+  PUBLISH_CHAPTER_LABELS,
   PUBLISH_CORE_HASHTAGS,
   PUBLISH_CORE_TAGS,
+  PUBLISH_DEFAULT_BULLETS,
   PUBLISH_DESCRIPTION,
   PUBLISH_LIMITS,
   PUBLISH_SHORT_CORE_HASHTAGS,
+  PUBLISH_YOUTUBE_TITLE_BASE_MAX,
+  PUBLISH_YOUTUBE_TITLE_SUFFIX,
 } from './publish.config';
 import { SocialMetadata, YouTubeMetadata, YouTubeShortMetadata } from '../types';
 
@@ -77,29 +81,61 @@ function extractBullets(description: string): string[] {
   return match[1]
     .split('\n')
     .map((line) => line.replace(/^[-•*]\s*/, '').trim())
-    .filter(Boolean)
-    .slice(0, 3);
+    .filter(Boolean);
+}
+
+/** Always return exactly 3 bullets — pad with channel defaults if needed. */
+function normalizeBullets(bullets: string[]): string[] {
+  const trimmed = bullets.map((bullet) => bullet.trim()).filter(Boolean).slice(0, 3);
+  while (trimmed.length < 3) {
+    trimmed.push(PUBLISH_DEFAULT_BULLETS[trimmed.length]);
+  }
+  return trimmed;
+}
+
+function normalizeChapterLabels(
+  chapters: YouTubeMetadata['chapters'],
+): YouTubeMetadata['chapters'] {
+  if (chapters.length !== PUBLISH_CHAPTER_LABELS.length) return chapters;
+
+  return chapters.map((chapter, index) => ({
+    time: chapter.time,
+    label: PUBLISH_CHAPTER_LABELS[index],
+  }));
 }
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function stripYouTubeTitleSuffix(title: string): string {
+  const suffixPattern = new RegExp(`${escapeRegExp(PUBLISH_YOUTUBE_TITLE_SUFFIX)}$`);
+  return title.replace(suffixPattern, '').trim();
+}
+
+/** Append channel title suffix; total length stays within youtubeTitleMax. */
+export function formatYouTubeTitle(title: string): string {
+  const base = truncateAtWord(stripYouTubeTitleSuffix(title), PUBLISH_YOUTUBE_TITLE_BASE_MAX);
+  return `${base}${PUBLISH_YOUTUBE_TITLE_SUFFIX}`;
+}
+
+export function formatYouTubeTags(tags: string[]): string {
+  return tags.join(', ');
+}
+
 /** Build the canonical channel description layout from structured metadata. */
 export function formatChannelDescription(meta: YouTubeMetadata): string {
   const hook = extractHook(meta.description);
-  const bullets = extractBullets(meta.description);
+  const bullets = normalizeBullets(extractBullets(meta.description));
   const hashtags = mergeUniqueHashtags(
     PUBLISH_CORE_HASHTAGS,
     meta.hashtags,
     PUBLISH_LIMITS.youtubeHashtagsMax,
   );
-  const chapterBlock = meta.chapters.map((chapter) => `${chapter.time} ${chapter.label}`).join('\n');
+  const chapters = normalizeChapterLabels(meta.chapters);
+  const chapterBlock = chapters.map((chapter) => `${chapter.time} ${chapter.label}`).join('\n');
 
-  const bulletBlock =
-    bullets.length > 0
-      ? bullets.map((bullet) => `• ${bullet}`).join('\n')
-      : '• Practical English tips you can use today';
+  const bulletBlock = bullets.map((bullet) => `• ${bullet}`).join('\n');
 
   return [
     hook,
@@ -138,11 +174,10 @@ function normalizeYouTubeMetadata(meta: YouTubeMetadata): YouTubeMetadata {
   );
   const normalized: YouTubeMetadata = {
     ...meta,
-    title: truncateAtWord(meta.title, PUBLISH_LIMITS.youtubeTitleMax),
-    titleVariants: meta.titleVariants.map((title) =>
-      truncateAtWord(title, PUBLISH_LIMITS.youtubeTitleMax),
-    ),
+    title: formatYouTubeTitle(meta.title),
+    titleVariants: meta.titleVariants.map((title) => formatYouTubeTitle(title)),
     tags: mergeUniqueTags(PUBLISH_CORE_TAGS, meta.tags, PUBLISH_LIMITS.youtubeTagsMax),
+    chapters: normalizeChapterLabels(meta.chapters),
     hashtags,
     pinnedComment: meta.pinnedComment.trim(),
   };

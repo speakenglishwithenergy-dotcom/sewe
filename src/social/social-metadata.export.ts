@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { SocialMetadata } from '../types';
-import { normalizeSocialMetadata, formatChannelDescription, formatChannelShortCaption } from './social-metadata.normalize';
+import { normalizeSocialMetadata, formatChannelDescription, formatChannelShortCaption, formatYouTubeTags } from './social-metadata.normalize';
 
 export const PUBLISH_OUTPUT_SUBDIR = 'publish';
 export const SOCIAL_METADATA_JSON = 'social-metadata.json';
@@ -44,7 +44,7 @@ export function buildExportBundle(meta: SocialMetadata): Record<string, string> 
   const files: Record<string, string> = {
     [YOUTUBE_TITLE_TXT]: meta.youtube.title,
     [YOUTUBE_DESCRIPTION_TXT]: formatChannelDescription(meta.youtube),
-    [YOUTUBE_TAGS_TXT]: meta.youtube.tags.join('\n'),
+    [YOUTUBE_TAGS_TXT]: formatYouTubeTags(meta.youtube.tags),
     [YOUTUBE_PINNED_COMMENT_TXT]: meta.youtube.pinnedComment,
   };
 

@@ -129,7 +129,7 @@ Create episode metadata for a podcast on this topic: "${topic}"
 Return ONLY a valid JSON object (no markdown):
 {
   "title": "Episode title — catchy, YouTube-friendly, max 70 characters, main keyword near the front",
-  "description": "YouTube SEO description using \\n line breaks:\\n1) Hook line ≤125 chars with main keyword\\n2) Blank line\\n3) 📌 In this episode you'll learn: + 3 bullet takeaways\\n4) Blank line\\n5) Warm 2-sentence summary\\n6) 🔔 Subscribe CTA for ${CHANNEL_NAME}",
+  "description": "YouTube SEO description using \\n line breaks:\\n1) Hook line ≤125 chars with main keyword\\n2) Blank line\\n3) 📌 In this episode you'll learn: + exactly 3 bullet takeaways (• prefix)\\n4) Blank line\\n5) Warm 2-sentence summary\\n6) 🔔 Subscribe for more English tips with energy!",
   "thumbnailText": "Stacked headline — 4 lines max, ALL CAPS, 5–8 words total, use \\n between lines (e.g. WHY\\nSMART\\nPEOPLE STAY\\nSTUCK?)",
   "thumbnailScene": "Topic-specific changes only — Victor expression/thought bubble metaphor, Lisa gesture, 3 book spine titles (uppercase, topic-related)"
 }`;

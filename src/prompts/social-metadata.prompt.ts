@@ -1,11 +1,14 @@
 import { PodcastScript, ShortScript } from '../types';
 import { CHANNEL_NAME } from './script.prompt';
 import {
+  PUBLISH_CHAPTER_LABELS,
   PUBLISH_CORE_HASHTAGS,
   PUBLISH_CORE_TAGS,
   PUBLISH_DESCRIPTION,
   PUBLISH_LIMITS,
   PUBLISH_SHORT_CORE_HASHTAGS,
+  PUBLISH_YOUTUBE_TITLE_BASE_MAX,
+  PUBLISH_YOUTUBE_TITLE_SUFFIX,
 } from '../social/publish.config';
 
 function formatScriptExcerpt(script: PodcastScript, maxLines = 40): string {
@@ -29,25 +32,26 @@ ${formatScriptExcerpt(podcastScript)}
 
 AUDIENCE: English learners (A2–B1), self-improvement fans, people who want practical speaking tips.
 
-DESCRIPTION STRUCTURE (use \\n for line breaks inside the JSON string):
-1. HOOK — first 1–2 lines, ≤${PUBLISH_LIMITS.hookMaxChars} characters total, front-load main keyword (e.g. "learn English", "English fluency")
+CHANNEL STANDARD (enforced automatically — do not duplicate in your output):
+- Core tags always prepended: ${PUBLISH_CORE_TAGS.join(', ')}
+- Core hashtags always prepended: ${PUBLISH_CORE_HASHTAGS.join(', ')}
+- Podcast title suffix always appended: "${PUBLISH_YOUTUBE_TITLE_SUFFIX}" (do not include in your title output)
+- Description layout is rebuilt from your hook, bullets, and chapters — fixed sections:
+  "${PUBLISH_DESCRIPTION.learnHeader}", "${PUBLISH_DESCRIPTION.chaptersHeader}",
+  "${PUBLISH_DESCRIPTION.subscribeCta}", "${PUBLISH_DESCRIPTION.shortCta}"
+
+DESCRIPTION CONTENT (use \\n for line breaks inside the JSON string):
+1. HOOK — first 1–2 lines, ≤${PUBLISH_LIMITS.hookMaxChars} characters, front-load main keyword (e.g. "learn English", "English fluency")
 2. Blank line
 3. "${PUBLISH_DESCRIPTION.learnHeader}" + exactly 3 bullet takeaways (• prefix)
-4. Blank line
-5. "${PUBLISH_DESCRIPTION.chaptersHeader}" + 5 chapter lines (format "M:SS Label" — estimate times for an ~8–10 min episode)
-6. Blank line
-7. "${PUBLISH_DESCRIPTION.subscribeCta}"
-8. "${PUBLISH_DESCRIPTION.shortCta}"
-9. Blank line
-10. Hashtag line: 3–5 hashtags starting with # (must include ${PUBLISH_CORE_HASHTAGS.join(', ')})
 
 RULES:
-- "title": keep or slightly improve the episode title, max ${PUBLISH_LIMITS.youtubeTitleMax} characters, keyword-rich
-- "titleVariants": 2 alternative titles for A/B testing, same max length
-- "tags": ${PUBLISH_LIMITS.youtubeTagsMax} YouTube tags (lowercase phrases, no # prefix). Always include: ${PUBLISH_CORE_TAGS.slice(0, 3).join(', ')}
-- "chapters": exactly 5 entries matching Intro, Main idea 1, Main idea 2, Main idea 3, Closing — use estimated timestamps
+- "title": keep or slightly improve the episode title, max ${PUBLISH_YOUTUBE_TITLE_BASE_MAX} characters (suffix added automatically), keyword-rich
+- "titleVariants": 2 alternative titles for A/B testing, same max length (suffix added automatically)
+- "tags": up to ${PUBLISH_LIMITS.youtubeTagsMax - PUBLISH_CORE_TAGS.length} episode-specific YouTube tags (lowercase, no #). Core channel tags are added automatically.
+- "chapters": exactly 5 entries with labels ${PUBLISH_CHAPTER_LABELS.map((l) => `"${l}"`).join(', ')} — estimate timestamps for an ~8–10 min episode
 - "pinnedComment": one engaging question to spark comments (1–2 sentences, include emoji)
-- "hashtags": 3–5 hashtags with # prefix; always include ${PUBLISH_CORE_HASHTAGS.join(' and ')}
+- "hashtags": 1–3 episode-specific hashtags with # prefix (core channel hashtags added automatically)
 - Tone: warm, encouraging, professional — not clickbait
 
 Return ONLY a valid JSON object (no markdown):
@@ -55,10 +59,10 @@ Return ONLY a valid JSON object (no markdown):
   "title": "...",
   "titleVariants": ["...", "..."],
   "description": "...",
-  "tags": ["learn english", "..."],
+  "tags": ["mental blocks", "..."],
   "chapters": [{ "time": "0:00", "label": "Intro" }, ...],
   "pinnedComment": "...",
-  "hashtags": ["#LearnEnglish", "..."]
+  "hashtags": ["#EnglishFluency", "..."]
 }`;
 }
 
@@ -85,10 +89,13 @@ ${shortLines}
 
 AUDIENCE: English learners scrolling Shorts — need instant hook + value.
 
+CHANNEL STANDARD (enforced automatically):
+- Core Short hashtags always prepended: ${PUBLISH_SHORT_CORE_HASHTAGS.join(', ')}
+
 RULES:
 - "title": scroll-stopping, max ${PUBLISH_LIMITS.youtubeShortTitleMax} characters, different angle from podcast title
 - "caption": 1–2 sentences (≤${PUBLISH_LIMITS.shortCaptionMaxChars} chars) — hook + one concrete takeaway, NO hashtags inside
-- "hashtags": exactly 3–5, start with #; always include ${PUBLISH_SHORT_CORE_HASHTAGS.join(' and ')}
+- "hashtags": 1–2 episode-specific hashtags with # prefix (core channel hashtags added automatically)
 - "pinnedComment": short question or CTA to drive comments (1 sentence, emoji ok)
 - Tone: direct, energetic, speak to viewer as "you"
 
@@ -96,7 +103,7 @@ Return ONLY a valid JSON object (no markdown):
 {
   "title": "...",
   "caption": "...",
-  "hashtags": ["#LearnEnglish", "#EnglishTips", "#Shorts"],
+  "hashtags": ["#EnglishTips", "#BreakThrough"],
   "pinnedComment": "..."
 }`;
 }

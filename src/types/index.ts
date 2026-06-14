@@ -61,17 +61,17 @@ export const YouTubeMetadataSchema = z.object({
   title: z.string().min(1),
   titleVariants: z.array(z.string().min(1)).min(1).max(3),
   description: z.string().min(1),
-  tags: z.array(z.string().min(1)).min(5).max(15),
+  tags: z.array(z.string().min(1)).min(1).max(15),
   chapters: z.array(YouTubeChapterSchema).min(3),
   pinnedComment: z.string().min(1),
-  hashtags: z.array(z.string().min(1)).min(3).max(5),
+  hashtags: z.array(z.string().min(1)).min(1).max(5),
 });
 export type YouTubeMetadata = z.infer<typeof YouTubeMetadataSchema>;
 
 export const YouTubeShortMetadataSchema = z.object({
   title: z.string().min(1),
   caption: z.string().min(1),
-  hashtags: z.array(z.string().min(1)).min(3).max(5),
+  hashtags: z.array(z.string().min(1)).min(1).max(5),
   pinnedComment: z.string().min(1),
 });
 export type YouTubeShortMetadata = z.infer<typeof YouTubeShortMetadataSchema>;

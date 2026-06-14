@@ -19,6 +19,7 @@ import { ProjectService } from './project/project.service';
 import { SocialMetadataService } from './social/social-metadata.service';
 import {
   getPublishOutputDir,
+  resolveSocialMetadataPath,
   YOUTUBE_DESCRIPTION_TXT,
   YOUTUBE_PINNED_COMMENT_TXT,
   YOUTUBE_SHORT_CAPTION_TXT,
@@ -58,9 +59,28 @@ async function fileExists(filePath: string): Promise<boolean> {
 
 type CacheScope = 'all' | 'short' | 'podcast';
 
+/** normalize = re-export from cache; generate = LLM; auto = normalize if cache exists else generate */
+type MetadataRegenMode = 'auto' | 'normalize' | 'generate';
+
 type CliArgs =
-  | { mode: 'new'; topic: string; test: boolean; short: boolean; podcast: boolean; force: boolean }
-  | { mode: 'resume'; projectId: string; test: boolean; short: boolean; podcast: boolean; force: boolean }
+  | {
+      mode: 'new';
+      topic: string;
+      test: boolean;
+      short: boolean;
+      podcast: boolean;
+      force: boolean;
+      metadataRegen?: MetadataRegenMode;
+    }
+  | {
+      mode: 'resume';
+      projectId: string;
+      test: boolean;
+      short: boolean;
+      podcast: boolean;
+      force: boolean;
+      metadataRegen?: MetadataRegenMode;
+    }
   | { mode: 'list' };
 
 async function removeIfExists(filePath: string): Promise<void> {
@@ -142,15 +162,33 @@ async function clearProjectCache(
   logger.info('Cleared cached artifacts (thumbnails preserved, script will regenerate)');
 }
 
+function parseMetadataRegenArg(args: string[]): MetadataRegenMode | undefined {
+  const valued = args.find((a) => a.startsWith('--regenerate-metadata='));
+  if (valued) {
+    const mode = valued.replace('--regenerate-metadata=', '').trim();
+    if (mode === 'normalize' || mode === 'generate') return mode;
+    logger.error('--regenerate-metadata must be "normalize" or "generate"');
+    process.exit(1);
+  }
+  if (args.includes('--regenerate-metadata')) return 'auto';
+  return undefined;
+}
+
 function parseArgs(): CliArgs {
   const args = process.argv.slice(2);
   const test = args.includes('--test');
   const short = args.includes('--short');
   const podcast = args.includes('--podcast');
   const force = args.includes('--force');
+  const metadataRegen = parseMetadataRegenArg(args);
 
   if (short && podcast) {
     logger.error('--short and --podcast cannot be used together');
+    process.exit(1);
+  }
+
+  if (metadataRegen && (test || short || podcast || force)) {
+    logger.error('--regenerate-metadata cannot be combined with --test, --short, --podcast, or --force');
     process.exit(1);
   }
 
@@ -166,6 +204,9 @@ function parseArgs(): CliArgs {
     if (force && test) {
       logger.error('--force cannot be used with --test');
       process.exit(1);
+    }
+    if (metadataRegen) {
+      return { mode: 'resume', projectId, test: false, short: false, podcast: false, force: false, metadataRegen };
     }
     return { mode: 'resume', projectId, test, short, podcast, force };
   }
@@ -184,6 +225,8 @@ function parseArgs(): CliArgs {
     logger.info('  npm run generate -- --project=20260612-143022 --short --force # re-run short only');
     logger.info('  npm run generate -- --project=20260612-143022 --podcast     # podcast only');
     logger.info('  npm run generate -- --project=20260612-143022 --podcast --force # re-run podcast only');
+    logger.info('  npm run generate -- --project=20260612-143022 --regenerate-metadata           # re-export metadata (cache + normalize)');
+    logger.info('  npm run generate -- --project=20260612-143022 --regenerate-metadata=generate  # regenerate metadata via LLM');
     logger.info('  npm run generate -- --list                                  # list all projects');
     process.exit(1);
   }
@@ -197,7 +240,20 @@ function parseArgs(): CliArgs {
     logger.error('--force requires --project (use it to re-run an existing project)');
     process.exit(1);
   }
+  if (metadataRegen) {
+    logger.error('--regenerate-metadata requires --project');
+    process.exit(1);
+  }
   return { mode: 'new', topic, test, short, podcast, force };
+}
+
+async function resolveMetadataRegenerate(
+  projectDir: string,
+  mode: MetadataRegenMode,
+): Promise<boolean> {
+  if (mode === 'generate') return true;
+  if (mode === 'normalize') return false;
+  return (await resolveSocialMetadataPath(projectDir)) === null;
 }
 
 function printSocialMetadataSummary(projectDir: string, hasShort: boolean): void {
@@ -262,6 +318,11 @@ async function main(): Promise<void> {
     if (args.test) logger.info('Mode             : TEST (script only)');
     if (args.short) logger.info('Mode             : SHORT only');
     if (args.podcast) logger.info('Mode             : PODCAST only');
+    if (args.metadataRegen) {
+      logger.info(
+        `Mode             : METADATA ONLY (${args.metadataRegen === 'generate' ? 'LLM' : args.metadataRegen === 'normalize' ? 'normalize' : 'auto'})`,
+      );
+    }
     if (args.force) logger.info('Mode             : FORCE (re-run, keep thumbnails)');
   } else {
     project = await projectService.create(args.topic);
@@ -329,6 +390,62 @@ async function main(): Promise<void> {
     project.description = podcastScript.description;
     project.thumbnailText = podcastScript.thumbnailText;
     await projectService.save(project);
+  }
+
+  // ── Metadata-only mode ────────────────────────────────────────────────────
+  if (args.mode === 'resume' && args.metadataRegen) {
+    const regenerate = await resolveMetadataRegenerate(PROJECT_DIR, args.metadataRegen);
+    logger.info(
+      regenerate
+        ? 'Mode             : REGENERATE METADATA (LLM)'
+        : 'Mode             : REGENERATE METADATA (normalize from cache)',
+    );
+
+    const SHORT_SCRIPT_PATH = path.join(PROJECT_DIR, 'short-script.json');
+    let shortScript: ShortScript | undefined;
+    if (await fileExists(SHORT_SCRIPT_PATH)) {
+      shortScript = JSON.parse(await fs.readFile(SHORT_SCRIPT_PATH, 'utf-8')) as ShortScript;
+    }
+
+    let segments;
+    const firstSegmentPath = path.join(AUDIO_DIR, '001.wav');
+    if (await fileExists(firstSegmentPath)) {
+      const supertonicService = new SupertonicService(SUPERTONIC_ONNX_DIR, SUPERTONIC_VOICES_DIR);
+      const ttsService = new TTSService(supertonicService, ffmpegService);
+      segments = await ttsService.generateSegments(podcastScript.script, AUDIO_DIR);
+    }
+
+    const socialMeta = await socialMetadataService.loadOrGenerate(
+      PROJECT_DIR,
+      podcastScript,
+      project.topic,
+      { shortScript, segments, regenerate },
+    );
+
+    logger.info('');
+    logger.divider('═');
+    logger.success('Social metadata updated.');
+    logger.divider('═');
+    console.log(`
+  Project ID : ${project.id}
+  Title      : ${podcastScript.title}`);
+    printSocialMetadataSummary(PROJECT_DIR, !!shortScript);
+    console.log(`
+  `);
+    logger.info('YouTube Description (copy-paste ready):\n');
+    console.log(socialMeta.youtube.description);
+    logger.info('\nYouTube Tags:\n');
+    console.log(socialMeta.youtube.tags.join(', '));
+    logger.info('\nPinned comment:\n');
+    console.log(socialMeta.youtube.pinnedComment);
+    if (socialMeta.youtubeShort) {
+      logger.info('\nYouTube Short Caption:\n');
+      console.log(`${socialMeta.youtubeShort.caption}\n\n${socialMeta.youtubeShort.hashtags.join(' ')}`);
+      logger.info('\nShort pinned comment:\n');
+      console.log(socialMeta.youtubeShort.pinnedComment);
+    }
+    console.timeEnd('Total execution time');
+    return;
   }
 
   // ── Test mode: stop after script ─────────────────────────────────────────
