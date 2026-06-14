@@ -1,6 +1,7 @@
 import path from 'path';
 import fs from 'fs/promises';
 import { ShortScriptService } from '../ai/short-script.service';
+import { KeywordsService } from '../ai/keywords.service';
 import { ThumbnailService } from '../ai/thumbnail.service';
 import { TTSService } from '../audio/tts.service';
 import { SubtitleService } from '../subtitles/subtitle.service';
@@ -27,6 +28,7 @@ export interface ShortPipelinePaths {
 
 export interface ShortPipelineServices {
   shortScriptService: ShortScriptService;
+  keywordsService: KeywordsService;
   thumbnailService: ThumbnailService;
   ttsService: TTSService;
   subtitleService: SubtitleService;
@@ -77,6 +79,12 @@ export async function runShortPipeline(
     shortScript = await services.shortScriptService.generate(podcastScript, project.topic);
     await fs.writeFile(paths.shortScriptPath, JSON.stringify(shortScript, null, 2), 'utf-8');
     logger.info(`Short script saved → ${paths.shortScriptPath}`);
+  }
+
+  if (!shortScript.script.every((line) => line.keywords?.length)) {
+    shortScript.script = await services.keywordsService.enrichScript(shortScript.script);
+    await fs.writeFile(paths.shortScriptPath, JSON.stringify(shortScript, null, 2), 'utf-8');
+    logger.info(`Short keywords saved → ${paths.shortScriptPath}`);
   }
 
   // ── Step 2: Short thumbnail ──────────────────────────────────────────────

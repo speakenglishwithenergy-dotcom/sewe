@@ -1,4 +1,4 @@
-import { PodcastScript } from '../types';
+import { PodcastScript, ShortScript } from '../types';
 
 export function buildShortScriptPrompt(podcastScript: PodcastScript, topic: string): string {
   const scriptText = podcastScript.script
@@ -59,6 +59,14 @@ FLOW CHECK before returning JSON:
 - Does Lisa sound like she's coaching the viewer, not reading episode notes?
 - Does the final beat naturally remind the viewer to subscribe?
 
+REVISION PASS (mandatory — do this AFTER drafting, BEFORE returning JSON):
+Read your draft aloud in your head. Revise until ALL of these pass:
+1. NOT TOO SHORT — ~80–150 words total, 5–8 beats. If under ~80 words, add one bridging beat (insight, proof, or action) — never pad with filler.
+2. NOT STIFF — every beat sounds like natural spoken English (A2–B1). Use contractions and bridge phrases ("Here's the thing…", "That's why…", "So instead of…", "Try this today…"). Replace textbook or robotic wording.
+3. CONNECTED — each beat picks up from the previous one. No random jumps or disconnected fact drops. If a beat feels standalone, add a link back to the thread.
+4. GRADUAL CLOSE — do NOT rush the ending. Lisa needs at least one beat that lands the lesson (proof or action) BEFORE the subscribe CTA. The final subscribe line should feel like a warm goodbye, not an abrupt stop.
+5. HANDOFF — Victor's hook and Lisa's first beat must feel like one continuous monologue, not two unrelated openings.
+
 METADATA:
 - "hook": the exact opening line (must name the topic and match the first script beat)
 - "thumbnailText": reuse the episode thumbnail headline exactly — same ALL-CAPS stacked lines with \\n: "${podcastScript.thumbnailText.replace(/\n/g, '\\n')}"
@@ -78,4 +86,42 @@ Return ONLY a valid JSON object (no markdown, no code blocks):
     { "speaker": "Lisa", "text": "..." }
   ]
 }`;
+}
+
+export function buildShortScriptReviewPrompt(draft: ShortScript, topic: string): string {
+  const draftJson = JSON.stringify(draft, null, 2);
+
+  return `You are a senior short-form script editor for "Speak English With Energy".
+
+You received a DRAFT Short script. Double-check it and REVISE — do not rewrite from scratch unless a beat is broken.
+
+Topic: "${topic}"
+
+DRAFT JSON:
+${draftJson}
+
+REVISION CHECKLIST — fix every issue you find:
+1. NOT TOO SHORT — ~80–150 words total, 5–8 beats. If under ~80 words or fewer than 5 beats, expand with one bridging beat (insight, proof, or action). Never pad with filler.
+2. NOT STIFF — replace robotic or textbook phrasing. Use contractions, spoken rhythm, and bridge phrases ("Here's the thing…", "That's why…", "So instead of…", "Try this today…").
+3. CONNECTED — every beat must logically lead to the next. Add a connective phrase where a beat feels like a random jump.
+4. GRADUAL CLOSE — the ending must NOT feel rushed. Before the subscribe CTA, Lisa needs at least one beat that lands the lesson (proof or action). The subscribe line should feel warm, not abrupt.
+5. PRESERVE STRUCTURE — beat 1 ONLY: Victor (names "${topic}"). Beats 2 through last: Lisa only. No podcast recap, no back-and-forth dialogue.
+
+Keep metadata unchanged unless Victor's opening line changes — then update "hook" too.
+
+Return ONLY a valid JSON object (no markdown, no code blocks) with the EXACT same structure as the draft:
+{
+  "title": "Short catchy title — max 50 characters",
+  "description": "TikTok/Short caption with 2–3 hashtags",
+  "hook": "Opening line that names the topic and hooks the viewer",
+  "thumbnailText": "ALL-CAPS stacked lines with \\n",
+  "thumbnailScene": "Victor confused with puzzle pieces in thought bubble. Lisa points encouragingly. Book spines: MINDSET, FOCUS, GROWTH.",
+  "script": [
+    { "speaker": "Victor", "text": "Opening hook — names the topic" },
+    { "speaker": "Lisa", "text": "..." },
+    { "speaker": "Lisa", "text": "..." }
+  ]
+}
+
+Every script item MUST have exactly "speaker" ("Victor" or "Lisa") and "text" (spoken line string). Do NOT return script as plain strings or use other field names.`;
 }

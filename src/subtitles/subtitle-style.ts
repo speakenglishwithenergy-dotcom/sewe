@@ -9,8 +9,11 @@ export const SUBTITLE_IPA_COLOUR = '&H00E1A62B';
 /** Podcast outline — black. */
 export const SUBTITLE_PODCAST_OUTLINE_COLOUR = '&H00000000';
 
-/** Brand orange #FF7A00 — hook subtitle box (ASS BGR). */
+/** Brand orange #FF7A00 — hook subtitle box and keyword highlights (ASS BGR). */
 export const SUBTITLE_SHORT_HOOK_BACK_COLOUR = '&H00007AFF';
+
+/** Keyword highlights in English dialogue — brand orange (#FF7A00). */
+export const SUBTITLE_KEYWORD_COLOUR = SUBTITLE_SHORT_HOOK_BACK_COLOUR;
 
 /** Dark navy #0D1B3D — hook box border (ASS BGR). */
 export const SUBTITLE_SHORT_HOOK_OUTLINE_COLOUR = '&H003D1B0D';
@@ -79,4 +82,9 @@ export function buildPodcastAssStyleLine(): string {
 /** Wrap IPA lines with an ASS colour override. */
 export function formatIpaSubtitleText(ipa: string): string {
   return `{\\c${SUBTITLE_IPA_COLOUR}&}${ipa}`;
+}
+
+/** Wrap a keyword with ASS colour + bold overrides, resetting style afterward. */
+export function formatKeywordHighlight(word: string, colour = SUBTITLE_KEYWORD_COLOUR): string {
+  return `{\\c${colour}&\\b1}${word}{\\r}`;
 }

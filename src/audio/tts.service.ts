@@ -134,6 +134,7 @@ export class TTSService {
         speaker: line.speaker as Speaker,
         text: line.text,
         ipa: line.ipa,
+        keywords: line.keywords,
         filePath,
         duration,
         startTime: currentTime,

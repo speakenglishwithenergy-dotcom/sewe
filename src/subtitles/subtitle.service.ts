@@ -2,6 +2,10 @@ import fs from 'fs/promises';
 import { AudioSegment } from '../types';
 import { logger } from '../utils/logger';
 import { buildPodcastAssDocument, buildShortAssDocument } from './subtitle-ass.util';
+import {
+  SHORT_HOOK_KEYWORD_COLOUR,
+  highlightWrappedSubtitleText,
+} from './subtitle-highlight.util';
 import { formatIpaSubtitleText } from './subtitle-style';
 
 export class SubtitleService {
@@ -25,7 +29,8 @@ export class SubtitleService {
     const SUBTITLE_LINE_WIDTH = lineWidth;
 
     const dialogues = segments.map((segment) => {
-      const english = wrapSubtitleText(segment.text, SUBTITLE_LINE_WIDTH);
+      const wrapped = wrapSubtitleText(segment.text, SUBTITLE_LINE_WIDTH);
+      const english = highlightWrappedSubtitleText(wrapped, segment.keywords);
       const text = includeIpa && segment.ipa
         ? `${english}\n${formatIpaSubtitleText(wrapSubtitleText(segment.ipa, SUBTITLE_LINE_WIDTH))}`
         : english;
@@ -56,12 +61,22 @@ export class SubtitleService {
 
     const LINGER_SECONDS = 0.5;
 
-    const dialogues = segments.map((segment, i) => ({
-      startSeconds: segment.startTime,
-      endSeconds: segment.startTime + segment.duration + LINGER_SECONDS,
-      style: i === 0 ? 'Hook' as const : 'Default' as const,
-      text: wrapSubtitleText(segment.text, lineWidth),
-    }));
+    const dialogues = segments.map((segment, i) => {
+      const wrapped = wrapSubtitleText(segment.text, lineWidth);
+      const isHook = i === 0;
+      const text = highlightWrappedSubtitleText(
+        wrapped,
+        segment.keywords,
+        isHook ? SHORT_HOOK_KEYWORD_COLOUR : undefined,
+      );
+
+      return {
+        startSeconds: segment.startTime,
+        endSeconds: segment.startTime + segment.duration + LINGER_SECONDS,
+        style: isHook ? 'Hook' as const : 'Default' as const,
+        text,
+      };
+    });
 
     const assContent = buildShortAssDocument(dialogues);
     await fs.writeFile(outputPath, assContent, 'utf-8');

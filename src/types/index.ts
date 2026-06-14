@@ -12,6 +12,8 @@ export const DialogueLineSchema = z.object({
   text: z.string().min(1),
   /** General American English IPA transcription of the spoken line */
   ipa: z.string().min(1).optional(),
+  /** 1–3 key vocabulary or concept words/phrases to highlight in subtitles */
+  keywords: z.array(z.string().min(1)).min(1).max(3).optional(),
 });
 export type DialogueLine = z.infer<typeof DialogueLineSchema>;
 
@@ -87,6 +89,7 @@ export interface AudioSegment {
   speaker: Speaker;
   text: string;
   ipa?: string;
+  keywords?: string[];
   filePath: string;
   /** Duration in seconds */
   duration: number;

@@ -4,6 +4,7 @@ import fs from 'fs/promises';
 
 import { OpenAIService } from './ai/openai.service';
 import { IpaService } from './ai/ipa.service';
+import { KeywordsService } from './ai/keywords.service';
 import { ScriptService } from './ai/script.service';
 import { ShortScriptService } from './ai/short-script.service';
 import { ThumbnailService } from './ai/thumbnail.service';
@@ -240,12 +241,14 @@ async function main(): Promise<void> {
   if (args.short) {
     const supertonicService = new SupertonicService(SUPERTONIC_ONNX_DIR, SUPERTONIC_VOICES_DIR);
     const ttsService = new TTSService(supertonicService, ffmpegService);
+    const keywordsService = new KeywordsService(openaiService);
     const subtitleService = new SubtitleService();
     const videoService = new VideoService(ffmpegService);
     const shortPaths = buildShortPaths(PROJECT_DIR);
 
     const shortScript = await runShortPipeline(project, podcastScript, {
       shortScriptService,
+      keywordsService,
       thumbnailService,
       ttsService,
       subtitleService,
@@ -303,6 +306,7 @@ async function main(): Promise<void> {
   const supertonicService = new SupertonicService(SUPERTONIC_ONNX_DIR, SUPERTONIC_VOICES_DIR);
   const ttsService = new TTSService(supertonicService, ffmpegService);
   const ipaService = new IpaService(openaiService);
+  const keywordsService = new KeywordsService(openaiService);
   const subtitleService = new SubtitleService();
   const videoService = new VideoService(ffmpegService);
 
@@ -313,6 +317,12 @@ async function main(): Promise<void> {
     podcastScript.script = await ipaService.enrichScript(podcastScript.script);
     await fs.writeFile(SCRIPT_PATH, JSON.stringify(podcastScript, null, 2), 'utf-8');
     logger.info(`IPA saved → ${SCRIPT_PATH}`);
+  }
+
+  if (!podcastScript.script.every((line) => line.keywords?.length)) {
+    podcastScript.script = await keywordsService.enrichScript(podcastScript.script);
+    await fs.writeFile(SCRIPT_PATH, JSON.stringify(podcastScript, null, 2), 'utf-8');
+    logger.info(`Keywords saved → ${SCRIPT_PATH}`);
   }
 
   const segments = await ttsService.generateSegments(podcastScript.script, AUDIO_DIR);
@@ -373,6 +383,7 @@ async function main(): Promise<void> {
   const shortPaths = buildShortPaths(PROJECT_DIR);
   const shortScript = await runShortPipeline(project, podcastScript, {
     shortScriptService,
+    keywordsService,
     thumbnailService,
     ttsService,
     subtitleService,
