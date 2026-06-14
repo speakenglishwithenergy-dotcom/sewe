@@ -76,9 +76,25 @@ export const YouTubeShortMetadataSchema = z.object({
 });
 export type YouTubeShortMetadata = z.infer<typeof YouTubeShortMetadataSchema>;
 
+export const FacebookMetadataSchema = z.object({
+  caption: z.string().min(1),
+  hashtags: z.array(z.string().min(1)).min(1).max(5),
+  firstComment: z.string().min(1),
+});
+export type FacebookMetadata = z.infer<typeof FacebookMetadataSchema>;
+
+export const FacebookShortMetadataSchema = z.object({
+  caption: z.string().min(1),
+  hashtags: z.array(z.string().min(1)).min(1).max(5),
+  firstComment: z.string().min(1),
+});
+export type FacebookShortMetadata = z.infer<typeof FacebookShortMetadataSchema>;
+
 export const SocialMetadataSchema = z.object({
   youtube: YouTubeMetadataSchema,
   youtubeShort: YouTubeShortMetadataSchema.optional(),
+  facebook: FacebookMetadataSchema.optional(),
+  facebookShort: FacebookShortMetadataSchema.optional(),
 });
 export type SocialMetadata = z.infer<typeof SocialMetadataSchema>;
 

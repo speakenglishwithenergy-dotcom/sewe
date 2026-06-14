@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { SocialMetadata } from '../types';
-import { normalizeSocialMetadata, formatChannelDescription, formatChannelShortCaption, formatYouTubeTags } from './social-metadata.normalize';
+import { normalizeSocialMetadata, formatChannelDescription, formatChannelShortCaption, formatFacebookCaption, formatFacebookShortCaption, formatYouTubeTags } from './social-metadata.normalize';
 
 export const PUBLISH_OUTPUT_SUBDIR = 'publish';
 export const SOCIAL_METADATA_JSON = 'social-metadata.json';
@@ -12,6 +12,10 @@ export const YOUTUBE_PINNED_COMMENT_TXT = 'youtube-pinned-comment.txt';
 export const YOUTUBE_SHORT_TITLE_TXT = 'youtube-short-title.txt';
 export const YOUTUBE_SHORT_CAPTION_TXT = 'youtube-short-caption.txt';
 export const YOUTUBE_SHORT_PINNED_COMMENT_TXT = 'youtube-short-pinned-comment.txt';
+export const FACEBOOK_CAPTION_TXT = 'facebook-caption.txt';
+export const FACEBOOK_FIRST_COMMENT_TXT = 'facebook-first-comment.txt';
+export const FACEBOOK_SHORT_CAPTION_TXT = 'facebook-short-caption.txt';
+export const FACEBOOK_SHORT_FIRST_COMMENT_TXT = 'facebook-short-first-comment.txt';
 
 export function getPublishOutputDir(projectDir: string): string {
   return path.join(projectDir, PUBLISH_OUTPUT_SUBDIR);
@@ -52,6 +56,16 @@ export function buildExportBundle(meta: SocialMetadata): Record<string, string> 
     files[YOUTUBE_SHORT_TITLE_TXT] = meta.youtubeShort.title;
     files[YOUTUBE_SHORT_CAPTION_TXT] = formatChannelShortCaption(meta.youtubeShort);
     files[YOUTUBE_SHORT_PINNED_COMMENT_TXT] = meta.youtubeShort.pinnedComment;
+  }
+
+  if (meta.facebook) {
+    files[FACEBOOK_CAPTION_TXT] = formatFacebookCaption(meta.facebook);
+    files[FACEBOOK_FIRST_COMMENT_TXT] = meta.facebook.firstComment;
+  }
+
+  if (meta.facebookShort) {
+    files[FACEBOOK_SHORT_CAPTION_TXT] = formatFacebookShortCaption(meta.facebookShort);
+    files[FACEBOOK_SHORT_FIRST_COMMENT_TXT] = meta.facebookShort.firstComment;
   }
 
   return files;

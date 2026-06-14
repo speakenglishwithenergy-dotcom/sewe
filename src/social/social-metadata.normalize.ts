@@ -4,12 +4,22 @@ import {
   PUBLISH_CORE_TAGS,
   PUBLISH_DEFAULT_BULLETS,
   PUBLISH_DESCRIPTION,
+  PUBLISH_FACEBOOK,
+  PUBLISH_FACEBOOK_CORE_HASHTAGS,
+  PUBLISH_FACEBOOK_SHORT_CORE_HASHTAGS,
   PUBLISH_LIMITS,
   PUBLISH_SHORT_CORE_HASHTAGS,
+  PUBLISH_SHORT_LINKS,
   PUBLISH_YOUTUBE_TITLE_BASE_MAX,
   PUBLISH_YOUTUBE_TITLE_SUFFIX,
 } from './publish.config';
-import { SocialMetadata, YouTubeMetadata, YouTubeShortMetadata } from '../types';
+import {
+  FacebookMetadata,
+  FacebookShortMetadata,
+  SocialMetadata,
+  YouTubeMetadata,
+  YouTubeShortMetadata,
+} from '../types';
 
 function normalizeTag(tag: string): string {
   return tag.trim().toLowerCase().replace(/^#/, '');
@@ -65,15 +75,26 @@ function truncateAtWord(text: string, maxLength: number): string {
   return slice.trim();
 }
 
-function extractHook(description: string): string {
-  const beforeLearn = description.split(PUBLISH_DESCRIPTION.learnHeader)[0]?.trim() ?? description.trim();
+/** Remove hashtag-only lines and trailing inline hashtags from LLM caption text. */
+function stripEmbeddedHashtags(text: string): string {
+  return text
+    .split('\n')
+    .filter((line) => !/^(\s*#\w+\s*)+$/.test(line.trim()))
+    .map((line) => line.replace(/\s+#\w+(?:\s+#\w+)*\s*$/g, '').trim())
+    .filter(Boolean)
+    .join('\n')
+    .trim();
+}
+
+function extractHook(description: string, learnHeader: string): string {
+  const beforeLearn = description.split(learnHeader)[0]?.trim() ?? description.trim();
   const hook = beforeLearn.split('\n\n')[0]?.trim() ?? beforeLearn;
   return truncateAtWord(hook, PUBLISH_LIMITS.hookMaxChars);
 }
 
-function extractBullets(description: string): string[] {
+function extractBullets(description: string, learnHeader: string): string[] {
   const learnPattern = new RegExp(
-    `${escapeRegExp(PUBLISH_DESCRIPTION.learnHeader)}\\s*\\n([\\s\\S]*?)(?=\\n\\n${escapeRegExp(PUBLISH_DESCRIPTION.chaptersHeader)}|\\n\\n🔔|$)`,
+    `${escapeRegExp(learnHeader)}\\s*\\n([\\s\\S]*?)(?=\\n\\n${escapeRegExp(PUBLISH_DESCRIPTION.chaptersHeader)}|\\n\\n👍|\\n\\n🔔|$)`,
   );
   const match = description.match(learnPattern);
   if (!match) return [];
@@ -123,10 +144,14 @@ export function formatYouTubeTags(tags: string[]): string {
   return tags.join(', ');
 }
 
+function formatShortLinksFooter(): string {
+  return [PUBLISH_SHORT_LINKS.youtubeLine, PUBLISH_SHORT_LINKS.facebookLine].join('\n');
+}
+
 /** Build the canonical channel description layout from structured metadata. */
 export function formatChannelDescription(meta: YouTubeMetadata): string {
-  const hook = extractHook(meta.description);
-  const bullets = normalizeBullets(extractBullets(meta.description));
+  const hook = extractHook(meta.description, PUBLISH_DESCRIPTION.learnHeader);
+  const bullets = normalizeBullets(extractBullets(meta.description, PUBLISH_DESCRIPTION.learnHeader));
   const hashtags = mergeUniqueHashtags(
     PUBLISH_CORE_HASHTAGS,
     meta.hashtags,
@@ -149,6 +174,10 @@ export function formatChannelDescription(meta: YouTubeMetadata): string {
     PUBLISH_DESCRIPTION.subscribeCta,
     PUBLISH_DESCRIPTION.shortCta,
     '',
+    PUBLISH_DESCRIPTION.linksHeader,
+    PUBLISH_DESCRIPTION.youtubeLinkLine,
+    PUBLISH_DESCRIPTION.facebookLinkLine,
+    '',
     hashtags.join(' '),
   ]
     .join('\n')
@@ -163,7 +192,44 @@ export function formatChannelShortCaption(meta: YouTubeShortMetadata): string {
     PUBLISH_LIMITS.shortHashtagsMax,
   );
 
-  return `${caption}\n\n${hashtags.join(' ')}`.trim();
+  return [caption, '', hashtags.join(' '), '', formatShortLinksFooter()].join('\n').trim();
+}
+
+/** Build the canonical Facebook podcast post caption from structured metadata. */
+export function formatFacebookCaption(meta: FacebookMetadata): string {
+  const hook = extractHook(meta.caption, PUBLISH_FACEBOOK.learnHeader);
+  const bullets = normalizeBullets(extractBullets(meta.caption, PUBLISH_FACEBOOK.learnHeader));
+  const hashtags = mergeUniqueHashtags(
+    PUBLISH_FACEBOOK_CORE_HASHTAGS,
+    meta.hashtags,
+    PUBLISH_LIMITS.facebookHashtagsMax,
+  );
+  const bulletBlock = bullets.map((bullet) => `• ${bullet}`).join('\n');
+
+  return [
+    hook,
+    '',
+    PUBLISH_FACEBOOK.learnHeader,
+    bulletBlock,
+    '',
+    PUBLISH_FACEBOOK.followCta,
+    PUBLISH_FACEBOOK.youtubeCta,
+    '',
+    hashtags.join(' '),
+  ]
+    .join('\n')
+    .trim();
+}
+
+export function formatFacebookShortCaption(meta: FacebookShortMetadata): string {
+  const caption = truncateAtWord(meta.caption.trim(), PUBLISH_LIMITS.facebookShortCaptionMaxChars);
+  const hashtags = mergeUniqueHashtags(
+    PUBLISH_FACEBOOK_SHORT_CORE_HASHTAGS,
+    meta.hashtags,
+    PUBLISH_LIMITS.facebookShortHashtagsMax,
+  );
+
+  return [caption, '', hashtags.join(' '), '', PUBLISH_SHORT_LINKS.youtubeLine].join('\n').trim();
 }
 
 function normalizeYouTubeMetadata(meta: YouTubeMetadata): YouTubeMetadata {
@@ -192,7 +258,7 @@ function normalizeYouTubeShortMetadata(meta: YouTubeShortMetadata): YouTubeShort
   return {
     ...meta,
     title: truncateAtWord(meta.title, PUBLISH_LIMITS.youtubeShortTitleMax),
-    caption: truncateAtWord(meta.caption.trim(), PUBLISH_LIMITS.shortCaptionMaxChars),
+    caption: truncateAtWord(stripEmbeddedHashtags(meta.caption.trim()), PUBLISH_LIMITS.shortCaptionMaxChars),
     hashtags: mergeUniqueHashtags(
       PUBLISH_SHORT_CORE_HASHTAGS,
       meta.hashtags,
@@ -202,11 +268,48 @@ function normalizeYouTubeShortMetadata(meta: YouTubeShortMetadata): YouTubeShort
   };
 }
 
+function normalizeFacebookMetadata(meta: FacebookMetadata): FacebookMetadata {
+  const normalized: FacebookMetadata = {
+    ...meta,
+    hashtags: mergeUniqueHashtags(
+      PUBLISH_FACEBOOK_CORE_HASHTAGS,
+      meta.hashtags,
+      PUBLISH_LIMITS.facebookHashtagsMax,
+    ),
+    firstComment: meta.firstComment.trim(),
+  };
+
+  return {
+    ...normalized,
+    caption: formatFacebookCaption(normalized),
+  };
+}
+
+function normalizeFacebookShortMetadata(meta: FacebookShortMetadata): FacebookShortMetadata {
+  return {
+    ...meta,
+    caption: truncateAtWord(
+      stripEmbeddedHashtags(meta.caption.trim()),
+      PUBLISH_LIMITS.facebookShortCaptionMaxChars,
+    ),
+    hashtags: mergeUniqueHashtags(
+      PUBLISH_FACEBOOK_SHORT_CORE_HASHTAGS,
+      meta.hashtags,
+      PUBLISH_LIMITS.facebookShortHashtagsMax,
+    ),
+    firstComment: meta.firstComment.trim(),
+  };
+}
+
 export function normalizeSocialMetadata(meta: SocialMetadata): SocialMetadata {
   const youtube = normalizeYouTubeMetadata(meta.youtube);
   const youtubeShort = meta.youtubeShort
     ? normalizeYouTubeShortMetadata(meta.youtubeShort)
     : undefined;
+  const facebook = meta.facebook ? normalizeFacebookMetadata(meta.facebook) : undefined;
+  const facebookShort = meta.facebookShort
+    ? normalizeFacebookShortMetadata(meta.facebookShort)
+    : undefined;
 
-  return { youtube, youtubeShort };
+  return { youtube, youtubeShort, facebook, facebookShort };
 }

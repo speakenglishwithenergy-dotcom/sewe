@@ -18,6 +18,10 @@ import { VideoService } from './video/video.service';
 import { ProjectService } from './project/project.service';
 import { SocialMetadataService } from './social/social-metadata.service';
 import {
+  FACEBOOK_CAPTION_TXT,
+  FACEBOOK_FIRST_COMMENT_TXT,
+  FACEBOOK_SHORT_CAPTION_TXT,
+  FACEBOOK_SHORT_FIRST_COMMENT_TXT,
   getPublishOutputDir,
   resolveSocialMetadataPath,
   YOUTUBE_DESCRIPTION_TXT,
@@ -28,6 +32,7 @@ import {
   YOUTUBE_TAGS_TXT,
   YOUTUBE_TITLE_TXT,
 } from './social/social-metadata.export';
+import { formatChannelShortCaption, formatFacebookShortCaption } from './social/social-metadata.normalize';
 import { buildShortPaths, runShortPipeline } from './short/short.pipeline';
 import { PodcastScript, Project, ShortScript } from './types';
 import { buildPodcastVideoPath, buildShortVideoPath } from './utils/filename.util';
@@ -263,11 +268,42 @@ function printSocialMetadataSummary(projectDir: string, hasShort: boolean): void
   YT Title      : ${path.join(publishDir, YOUTUBE_TITLE_TXT)}
   YT Desc       : ${path.join(publishDir, YOUTUBE_DESCRIPTION_TXT)}
   YT Tags       : ${path.join(publishDir, YOUTUBE_TAGS_TXT)}
-  YT Pin Comment: ${path.join(publishDir, YOUTUBE_PINNED_COMMENT_TXT)}`);
+  YT Pin Comment: ${path.join(publishDir, YOUTUBE_PINNED_COMMENT_TXT)}
+  FB Caption    : ${path.join(publishDir, FACEBOOK_CAPTION_TXT)}
+  FB 1st Comment: ${path.join(publishDir, FACEBOOK_FIRST_COMMENT_TXT)}`);
   if (hasShort) {
     console.log(`  YT Short Title: ${path.join(publishDir, YOUTUBE_SHORT_TITLE_TXT)}
   YT Short Cap  : ${path.join(publishDir, YOUTUBE_SHORT_CAPTION_TXT)}
-  YT Short Pin  : ${path.join(publishDir, YOUTUBE_SHORT_PINNED_COMMENT_TXT)}`);
+  YT Short Pin  : ${path.join(publishDir, YOUTUBE_SHORT_PINNED_COMMENT_TXT)}
+  FB Reel Cap   : ${path.join(publishDir, FACEBOOK_SHORT_CAPTION_TXT)}
+  FB Reel 1st   : ${path.join(publishDir, FACEBOOK_SHORT_FIRST_COMMENT_TXT)}`);
+  }
+}
+
+function printSocialMetadataPreview(socialMeta: Awaited<ReturnType<SocialMetadataService['loadOrGenerate']>>): void {
+  logger.info('\nYouTube Description (copy-paste ready):\n');
+  console.log(socialMeta.youtube.description);
+  logger.info('\nYouTube Tags:\n');
+  console.log(socialMeta.youtube.tags.join(', '));
+  logger.info('\nPinned comment:\n');
+  console.log(socialMeta.youtube.pinnedComment);
+  if (socialMeta.youtubeShort) {
+    logger.info('\nYouTube Short Caption:\n');
+    console.log(formatChannelShortCaption(socialMeta.youtubeShort));
+    logger.info('\nShort pinned comment:\n');
+    console.log(socialMeta.youtubeShort.pinnedComment);
+  }
+  if (socialMeta.facebook) {
+    logger.info('\nFacebook Caption:\n');
+    console.log(socialMeta.facebook.caption);
+    logger.info('\nFacebook first comment:\n');
+    console.log(socialMeta.facebook.firstComment);
+  }
+  if (socialMeta.facebookShort) {
+    logger.info('\nFacebook Reel Caption:\n');
+    console.log(formatFacebookShortCaption(socialMeta.facebookShort));
+    logger.info('\nFacebook Reel first comment:\n');
+    console.log(socialMeta.facebookShort.firstComment);
   }
 }
 
@@ -432,18 +468,7 @@ async function main(): Promise<void> {
     printSocialMetadataSummary(PROJECT_DIR, !!shortScript);
     console.log(`
   `);
-    logger.info('YouTube Description (copy-paste ready):\n');
-    console.log(socialMeta.youtube.description);
-    logger.info('\nYouTube Tags:\n');
-    console.log(socialMeta.youtube.tags.join(', '));
-    logger.info('\nPinned comment:\n');
-    console.log(socialMeta.youtube.pinnedComment);
-    if (socialMeta.youtubeShort) {
-      logger.info('\nYouTube Short Caption:\n');
-      console.log(`${socialMeta.youtubeShort.caption}\n\n${socialMeta.youtubeShort.hashtags.join(' ')}`);
-      logger.info('\nShort pinned comment:\n');
-      console.log(socialMeta.youtubeShort.pinnedComment);
-    }
+    printSocialMetadataPreview(socialMeta);
     console.timeEnd('Total execution time');
     return;
   }
@@ -471,10 +496,7 @@ async function main(): Promise<void> {
   `);
     console.log('First 3 lines:');
     podcastScript.script.slice(0, 3).forEach((l) => console.log(`  ${l.speaker}: ${l.text}`));
-    logger.info('\nYouTube Description (copy-paste ready):\n');
-    console.log(socialMeta.youtube.description);
-    logger.info('\nPinned comment:\n');
-    console.log(socialMeta.youtube.pinnedComment);
+    printSocialMetadataPreview(socialMeta);
     return;
   }
 
@@ -522,14 +544,7 @@ async function main(): Promise<void> {
     printSocialMetadataSummary(PROJECT_DIR, true);
     console.log(`
   `);
-    logger.info('YouTube Description:\n');
-    console.log(socialMeta.youtube.description);
-    if (socialMeta.youtubeShort) {
-      logger.info('\nYouTube Short Caption:\n');
-      console.log(`${socialMeta.youtubeShort.caption}\n\n${socialMeta.youtubeShort.hashtags.join(' ')}`);
-      logger.info('\nShort pinned comment:\n');
-      console.log(socialMeta.youtubeShort.pinnedComment);
-    }
+    printSocialMetadataPreview(socialMeta);
     console.timeEnd('Total execution time');
     return;
   }
@@ -723,18 +738,7 @@ async function main(): Promise<void> {
   printSocialMetadataSummary(PROJECT_DIR, !!shortScript);
   console.log(`
   `);
-  logger.info('YouTube Description (copy-paste ready):\n');
-  console.log(socialMeta.youtube.description);
-  logger.info('\nYouTube Tags:\n');
-  console.log(socialMeta.youtube.tags.join(', '));
-  logger.info('\nPinned comment:\n');
-  console.log(socialMeta.youtube.pinnedComment);
-  if (socialMeta.youtubeShort) {
-    logger.info('\nYouTube Short Caption:\n');
-    console.log(`${socialMeta.youtubeShort.caption}\n\n${socialMeta.youtubeShort.hashtags.join(' ')}`);
-    logger.info('\nShort pinned comment:\n');
-    console.log(socialMeta.youtubeShort.pinnedComment);
-  }
+  printSocialMetadataPreview(socialMeta);
   console.timeEnd('Total execution time');
 }
 
