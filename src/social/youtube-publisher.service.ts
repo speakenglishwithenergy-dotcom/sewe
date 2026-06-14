@@ -6,6 +6,7 @@ import { logger } from '../utils/logger';
 
 export interface YouTubeUploadInput {
   videoPath: string;
+  thumbnailPath?: string;
   title: string;
   description: string;
   tags: string[];
@@ -58,6 +59,8 @@ export class YouTubePublisherService {
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     logger.success(`${label} uploaded → ${url}`);
 
+    await this.setCustomThumbnail(youtube, videoId, input.thumbnailPath);
+
     const commentPosted = await this.postPinnedComment(youtube, videoId, input.pinnedComment);
 
     return {
@@ -67,6 +70,44 @@ export class YouTubePublisherService {
       url,
       commentPosted,
     };
+  }
+
+  private async setCustomThumbnail(
+    youtube: ReturnType<typeof google.youtube>,
+    videoId: string,
+    thumbnailPath: string | undefined,
+  ): Promise<void> {
+    if (!thumbnailPath) return;
+
+    logger.info(`Setting YouTube thumbnail → ${thumbnailPath}`);
+
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await youtube.thumbnails.set({
+          videoId,
+          requestBody: {},
+          media: {
+            mimeType: 'image/png',
+            body: fs.createReadStream(thumbnailPath),
+          },
+        });
+        logger.success('YouTube thumbnail set');
+        return;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        const retryable = /notFound|videoNotFound|404/i.test(message);
+        if (retryable && attempt < maxAttempts) {
+          await sleep(3000);
+          continue;
+        }
+        logger.error(`Could not set YouTube thumbnail: ${message}`);
+        logger.info(
+          'Video uploaded successfully. Verify your channel for custom thumbnails or set one manually in YouTube Studio.',
+        );
+        return;
+      }
+    }
   }
 
   private async postPinnedComment(
@@ -115,4 +156,8 @@ export class YouTubePublisherService {
       return false;
     }
   }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

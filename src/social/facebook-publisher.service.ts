@@ -10,6 +10,7 @@ const GRAPH_VIDEO_BASE = `https://graph-video.facebook.com/${GRAPH_API_VERSION}`
 
 export interface FacebookUploadInput {
   videoPath: string;
+  thumbnailPath?: string;
   caption: string;
   firstComment: string;
   format: 'long' | 'short';
@@ -47,6 +48,9 @@ export class FacebookPublisherService {
     form.append('description', input.caption);
     form.append('published', this.publishLive ? 'true' : 'false');
     form.append('source', fs.createReadStream(input.videoPath));
+    if (input.thumbnailPath) {
+      form.append('thumb', fs.createReadStream(input.thumbnailPath));
+    }
 
     const response = await this.postMultipart(
       `${GRAPH_VIDEO_BASE}/${this.config.pageId}/videos`,
@@ -124,6 +128,8 @@ export class FacebookPublisherService {
       : `https://www.facebook.com/${videoId}`;
     logger.success(`Facebook Reel uploaded (${visibility}) → ${url}`);
 
+    await this.setVideoThumbnail(videoId, input.thumbnailPath);
+
     const commentPosted = await this.maybePostFirstComment(videoId, input.firstComment);
 
     return {
@@ -133,6 +139,26 @@ export class FacebookPublisherService {
       url,
       commentPosted,
     };
+  }
+
+  private async setVideoThumbnail(videoId: string, thumbnailPath: string | undefined): Promise<void> {
+    if (!thumbnailPath) return;
+
+    logger.info(`Setting Facebook video thumbnail → ${thumbnailPath}`);
+
+    const form = new FormData();
+    form.append('access_token', this.config.accessToken);
+    form.append('is_preferred', 'true');
+    form.append('source', fs.createReadStream(thumbnailPath));
+
+    try {
+      await this.postMultipart(`${GRAPH_BASE}/${videoId}/thumbnails`, form);
+      logger.success('Facebook video thumbnail set');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      logger.error(`Could not set Facebook video thumbnail: ${message}`);
+      logger.info('Video uploaded successfully — set the cover image manually in Meta Business Suite if needed.');
+    }
   }
 
   private async maybePostFirstComment(objectId: string, message: string): Promise<boolean> {

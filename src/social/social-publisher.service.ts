@@ -59,6 +59,14 @@ async function resolveShortVideoPath(
   ]);
 }
 
+async function resolveLongThumbnailPath(projectDir: string): Promise<string | null> {
+  return resolveVideoPath([path.join(projectDir, 'thumbnail.png')]);
+}
+
+async function resolveShortThumbnailPath(projectDir: string): Promise<string | null> {
+  return resolveVideoPath([path.join(projectDir, 'short-thumbnail.png')]);
+}
+
 async function loadPublishStatus(projectDir: string): Promise<PublishStatus> {
   const statusPath = path.join(getPublishOutputDir(projectDir), PUBLISH_STATUS_FILE);
   try {
@@ -157,6 +165,10 @@ export class SocialPublisherService {
       if (!videoPath) {
         throw new Error('Long-form video not found — run the full pipeline first');
       }
+      const thumbnailPath = (await resolveLongThumbnailPath(projectDir)) ?? undefined;
+      if (!thumbnailPath) {
+        logger.info('No long-form thumbnail found — platforms will use an auto-generated frame');
+      }
 
       if (targets.includes('youtube') && youtube) {
         if (!force && isAlreadyPublished(status, 'youtube', 'long')) {
@@ -164,6 +176,7 @@ export class SocialPublisherService {
         } else {
           const result = await youtube.uploadVideo({
             videoPath,
+            thumbnailPath,
             title: socialMeta.youtube.title,
             description: formatChannelDescription(socialMeta.youtube),
             tags: socialMeta.youtube.tags,
@@ -181,6 +194,7 @@ export class SocialPublisherService {
         } else {
           const result = await facebook.uploadVideo({
             videoPath,
+            thumbnailPath,
             caption: formatFacebookCaption(socialMeta.facebook),
             firstComment: socialMeta.facebook.firstComment,
             format: 'long',
@@ -196,6 +210,10 @@ export class SocialPublisherService {
       if (!videoPath) {
         throw new Error('Short video not found — run the short pipeline first');
       }
+      const thumbnailPath = (await resolveShortThumbnailPath(projectDir)) ?? undefined;
+      if (!thumbnailPath) {
+        logger.info('No short thumbnail found — platforms will use an auto-generated frame');
+      }
 
       if (targets.includes('youtube') && youtube) {
         if (!force && isAlreadyPublished(status, 'youtube', 'short')) {
@@ -203,6 +221,7 @@ export class SocialPublisherService {
         } else {
           const result = await youtube.uploadVideo({
             videoPath,
+            thumbnailPath,
             title: socialMeta.youtubeShort.title,
             description: formatChannelShortCaption(socialMeta.youtubeShort),
             tags: [],
@@ -220,6 +239,7 @@ export class SocialPublisherService {
         } else {
           const result = await facebook.uploadVideo({
             videoPath,
+            thumbnailPath,
             caption: formatFacebookShortCaption(socialMeta.facebookShort),
             firstComment: socialMeta.facebookShort.firstComment,
             format: 'short',
