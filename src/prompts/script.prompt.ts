@@ -1,12 +1,11 @@
 import { DialogueLine } from '../types';
-import { THUMBNAIL_LISA_EXPRESSION_GUIDANCE, THUMBNAIL_VICTOR_EXPRESSION_GUIDANCE } from './thumbnail-brand';
 
 /**
  * Calibrated from Supertonic TTS at speed 0.85 (~105 spoken words/min).
- * 8–10 min final video ≈ 900–1,050 words of podcast dialogue.
+ * 9–10.5 min final video ≈ 980–1,100 words of podcast dialogue.
  */
-export const SCRIPT_TARGET_MIN_WORDS = 900;
-export const SCRIPT_TARGET_MIN_LINES = 50;
+export const SCRIPT_TARGET_MIN_WORDS = 980;
+export const SCRIPT_TARGET_MIN_LINES = 54;
 
 export const CHANNEL_NAME = 'Speak English With Energy';
 
@@ -19,35 +18,35 @@ export interface ScriptSectionDef {
   brief: string;
 }
 
-/** Five sections → 52 dialogue lines when all quotas are met (~9 min at ~16–18 words/line). */
+/** Five sections → 56 dialogue lines when all quotas are met (~9.5–10 min at ~15–17 words/line). */
 export const SCRIPT_SECTIONS: ScriptSectionDef[] = [
   {
     id: 'intro',
     label: 'Intro & hook',
-    lineCount: 9,
+    lineCount: 10,
     brief:
       'Warm greeting, introduce the topic, explain why it matters to English learners and self-improvement fans today.',
   },
   {
     id: 'main1',
     label: 'Main idea 1',
-    lineCount: 11,
+    lineCount: 12,
     brief:
-      'Core concept of the topic. Victor shares a personal anecdote. Lisa asks follow-up questions and pushes for clarity.',
+      'Core concept of the topic. Victor shares a brief personal anecdote. Lisa asks sharp follow-ups — keep it moving.',
   },
   {
     id: 'main2',
     label: 'Main idea 2',
-    lineCount: 11,
+    lineCount: 12,
     brief:
-      'Deeper insight or second angle. Relatable everyday example. Discuss a common misconception and correct it.',
+      'Second angle with a quick everyday example. Name one misconception and correct it without lingering.',
   },
   {
     id: 'main3',
     label: 'Main idea 3',
-    lineCount: 11,
+    lineCount: 12,
     brief:
-      'Practical strategies, common mistakes, and what listeners can try this week. Keep it actionable.',
+      'Practical tips and one common mistake — what listeners can try this week. Stay actionable, not repetitive.',
   },
   {
     id: 'closing',
@@ -65,8 +64,8 @@ const HOSTS_BLOCK = `The podcast features two hosts:
 const DIALOGUE_RULES = `- English level: A2-B1 (clear vocabulary, common expressions)
 - Only Victor and Lisa speak — no narrator
 - Natural spoken English with fillers ("well", "you know", "actually", "I mean", "right")
-- Each line: 1–2 sentences (~14–20 words per line) — natural spoken rhythm, not one-liners
-- Keep the conversation flowing — avoid repeating the same point, but let ideas breathe a little
+- Each line: 1–2 short sentences (~12–18 words per line) — punchy, not one-liners
+- Keep momentum: every line should move the conversation forward, not restate the same point
 - Victor and Lisa alternate; each line must respond to the previous one
 - Do NOT include IPA — text only`;
 
@@ -112,17 +111,12 @@ ${HOSTS_BLOCK}
 
 Create episode metadata for a podcast on this topic: "${topic}"
 
-THUMBNAIL SCENE RULES:
-${THUMBNAIL_VICTOR_EXPRESSION_GUIDANCE}
-${THUMBNAIL_LISA_EXPRESSION_GUIDANCE}
-Also describe: 3 book spine titles (uppercase, topic-related), optional background accent.
-
 Return ONLY a valid JSON object (no markdown):
 {
   "title": "Episode title — catchy, YouTube-friendly, max 70 characters, main keyword near the front",
   "description": "YouTube SEO description using \\n line breaks:\\n1) Hook line ≤125 chars with main keyword\\n2) Blank line\\n3) 📌 In this episode you'll learn: + 3 bullet takeaways\\n4) Blank line\\n5) Warm 2-sentence summary\\n6) 🔔 Subscribe CTA for ${CHANNEL_NAME}",
   "thumbnailText": "Stacked headline — 4 lines max, ALL CAPS, 5–8 words total, use \\n between lines (e.g. WHY\\nSMART\\nPEOPLE STAY\\nSTUCK?)",
-  "thumbnailScene": "One vivid sentence — Victor's exaggerated reaction + visual metaphor, Lisa's dynamic coaching reaction, 3 book spine titles"
+  "thumbnailScene": "Topic-specific changes only — Victor expression/thought bubble metaphor, Lisa gesture, 3 book spine titles (uppercase, topic-related)"
 }`;
 }
 
@@ -159,7 +153,7 @@ ${formatRecentContext(previousLines)}
 
 REQUIREMENTS FOR THIS SECTION:
 - Write EXACTLY ${section.lineCount} dialogue lines in the script array — count carefully
-- Cover the brief fully with enough detail; avoid filler or circling back to the same idea
+- Hit every point in the brief, but stay tight — no filler, no circling back to the same idea
 
 Return ONLY a valid JSON object (no markdown):
 {
@@ -190,7 +184,7 @@ ${DIALOGUE_RULES}
 RECENT DIALOGUE (continue from here):
 ${formatRecentContext(previousLines, 8)}
 
-Write EXACTLY ${linesNeeded} additional dialogue lines — extra examples, a brief story, or deeper Q&A.
+Write EXACTLY ${linesNeeded} additional dialogue lines — a fresh example or sharper Q&A, not more recap.
 Do NOT write a recap or closing yet.
 
 Return ONLY a valid JSON object:
@@ -221,7 +215,7 @@ Return ONLY a valid JSON object:
   "title": "Episode title",
   "description": "Short description.",
   "thumbnailText": "WHY\\nSMART\\nPEOPLE STAY\\nSTUCK?",
-  "thumbnailScene": "Victor jaw-drop surprised, hands up — tangled red tape wrapped around him like a bad habit. Lisa leans in with finger up, bright coaching smile revealing the fix. Book spines: MINDSET, FOCUS, GROWTH.",
+  "thumbnailScene": "Victor confused with tangled scribble in thought bubble. Lisa points at him explaining. Book spines: MINDSET, FOCUS, GROWTH.",
   "script": [
     { "speaker": "Victor", "text": "...", "ipa": "/.../" },
     { "speaker": "Lisa", "text": "...", "ipa": "/.../" }
