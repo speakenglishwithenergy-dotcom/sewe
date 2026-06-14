@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import { AudioSegment } from '../types';
 import { logger } from '../utils/logger';
+import { formatIpaSubtitleText } from './subtitle-style';
 
 export class SubtitleService {
   /**
@@ -26,7 +27,7 @@ export class SubtitleService {
       const end = formatSRTTime(segment.startTime + segment.duration + LINGER_SECONDS);
       const english = wrapSubtitleText(segment.text, SUBTITLE_LINE_WIDTH);
       const text = includeIpa && segment.ipa
-        ? `${english}\n${wrapSubtitleText(segment.ipa, SUBTITLE_LINE_WIDTH)}`
+        ? `${english}\n${formatIpaSubtitleText(wrapSubtitleText(segment.ipa, SUBTITLE_LINE_WIDTH))}`
         : english;
       return `${i + 1}\n${start} --> ${end}\n${text}`;
     });

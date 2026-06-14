@@ -3,6 +3,7 @@ import { promisify } from 'util';
 import path from 'path';
 import fs from 'fs/promises';
 import { logger } from '../utils/logger';
+import { buildSubtitleForceStyle } from '../subtitles/subtitle-style';
 
 const execFileAsync = promisify(execFile);
 
@@ -182,18 +183,7 @@ export class FFmpegService {
 
     // Commas in force_style must be escaped as \, so they are not treated as
     // filtergraph-level filter separators (FFmpeg 8.x is strict about this).
-    const forceStyle = [
-      'Fontsize=14',
-      'PrimaryColour=&H00FFFFFF',
-      'OutlineColour=&H00000000',
-      'BorderStyle=1',
-      'Outline=1',
-      'Shadow=1',
-      'Alignment=2',
-      'MarginV=70',
-    ].join('\\,');
-
-    const subtitleFilter = `subtitles=filename=${safeSubs}:force_style=${forceStyle}`;
+    const subtitleFilter = `subtitles=filename=${safeSubs}:force_style=${buildSubtitleForceStyle(14, 70)}`;
 
     // Wave strip: 500×200 dot waveform, brand purple, overlaid above subtitle zone
     const filterComplex = [
@@ -242,18 +232,7 @@ export class FFmpegService {
 
     const safeSubs = subtitlesPath.replace(/\\/g, '\\\\').replace(/:/g, '\\:');
 
-    const forceStyle = [
-      'Fontsize=10',
-      'PrimaryColour=&H00FFFFFF',
-      'OutlineColour=&H00000000',
-      'BorderStyle=1',
-      'Outline=1',
-      'Shadow=1',
-      'Alignment=2',
-      'MarginV=48',
-    ].join('\\,');
-
-    const subtitleFilter = `subtitles=filename=${safeSubs}:force_style=${forceStyle}`;
+    const subtitleFilter = `subtitles=filename=${safeSubs}:force_style=${buildSubtitleForceStyle(10, 48)}`;
 
     const filterComplex = [
       `[0:v]scale=${SHORT_VIDEO_WIDTH}:${SHORT_VIDEO_HEIGHT}[bg]`,
