@@ -1,7 +1,6 @@
 import {
   THUMBNAIL_ART_STYLE,
   THUMBNAIL_BRAND_COLORS,
-  THUMBNAIL_CHARACTER_COLOR_REFERENCE,
   THUMBNAIL_CHARACTERS_UNCHANGED,
 } from './thumbnail-brand';
 
@@ -19,11 +18,7 @@ export function buildShortThumbnailImagePrompt(input: ShortThumbnailPromptInput)
 
 This is a STRICT TEMPLATE EDIT. Keep the vertical reference layout and branding identical. Only change the headline text and topic-specific context.
 
-A second reference image (landscape podcast thumbnail) is provided ONLY for Victor and Lisa sweater colors — copy those colors exactly, not the vertical template's sweater colors if they differ.
-
-${THUMBNAIL_CHARACTER_COLOR_REFERENCE}
-
-KEEP UNCHANGED (match vertical reference exactly):
+KEEP UNCHANGED (match the provided vertical reference exactly):
 - Vertical 9:16 portrait composition with safe margins — nothing touches the frame edges
 - TOP ~30%: stacked headline area centered (same typography style, spacing, and colors as reference)
 - MIDDLE/BOTTOM ~70%: Victor and Lisa at the podcast desk — same character designs, positions, and core props

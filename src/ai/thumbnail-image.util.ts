@@ -15,10 +15,14 @@ export const CONTENT_TOP = Math.round((API_CANVAS_HEIGHT - CONTENT_HEIGHT) / 2);
 export const SHORT_THUMB_WIDTH = 1080;
 export const SHORT_THUMB_HEIGHT = 1920;
 
-/** 9:16 content area inside gpt-image-1's fixed 1536x1024 (3:2) canvas */
-export const SHORT_CONTENT_HEIGHT = API_CANVAS_HEIGHT;
-export const SHORT_CONTENT_WIDTH = Math.round(SHORT_CONTENT_HEIGHT * (9 / 16)); // 576
-export const SHORT_CONTENT_LEFT = Math.round((API_CANVAS_WIDTH - SHORT_CONTENT_WIDTH) / 2); // 480
+/** Portrait API canvas (2:3) for gpt-image-1 short thumbnails */
+export const API_PORTRAIT_WIDTH = 1024;
+export const API_PORTRAIT_HEIGHT = 1536;
+
+/** 9:16 content area inside portrait 1024x1536 canvas */
+export const SHORT_CONTENT_HEIGHT = API_PORTRAIT_HEIGHT;
+export const SHORT_CONTENT_WIDTH = Math.round(SHORT_CONTENT_HEIGHT * (9 / 16)); // 864
+export const SHORT_CONTENT_LEFT = Math.round((API_PORTRAIT_WIDTH - SHORT_CONTENT_WIDTH) / 2); // 80
 
 const LETTERBOX_BG = { r: 242, g: 244, b: 247 };
 
@@ -55,7 +59,7 @@ export async function finalizeThumbnailImage(apiBuffer: Buffer): Promise<Buffer>
 }
 
 /**
- * Fit the 9:16 demo reference into gpt-image-1's 3:2 canvas so the model
+ * Fit the 9:16 demo reference into gpt-image-1's portrait 2:3 canvas so the model
  * does not stretch or crop the template during edit.
  */
 export async function prepareShortReferenceImage(inputPath: string): Promise<Buffer> {
@@ -63,7 +67,7 @@ export async function prepareShortReferenceImage(inputPath: string): Promise<Buf
     .resize(SHORT_CONTENT_WIDTH, SHORT_CONTENT_HEIGHT, { fit: 'fill' })
     .extend({
       left: SHORT_CONTENT_LEFT,
-      right: API_CANVAS_WIDTH - SHORT_CONTENT_WIDTH - SHORT_CONTENT_LEFT,
+      right: API_PORTRAIT_WIDTH - SHORT_CONTENT_WIDTH - SHORT_CONTENT_LEFT,
       background: LETTERBOX_BG,
     })
     .png()

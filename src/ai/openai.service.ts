@@ -86,6 +86,7 @@ export class OpenAIService {
     prompt: string,
     referenceImages: Array<string | Buffer>,
     referenceNames?: string[],
+    options?: { size?: '1024x1024' | '1536x1024' | '1024x1536' | 'auto' },
   ): Promise<Buffer> {
     logger.info(`Calling ${this.imageModel} for thumbnail generation...`);
 
@@ -103,8 +104,7 @@ export class OpenAIService {
       model: this.imageModel,
       image: images.length === 1 ? images[0] : images,
       prompt,
-      // gpt-image-1 only supports 3:2 landscape; reference is letterboxed to 16:9 center band
-      size: '1536x1024',
+      size: options?.size ?? '1536x1024',
       quality: 'high',
     });
 

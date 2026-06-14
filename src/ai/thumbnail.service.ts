@@ -2,15 +2,9 @@ import fs from 'fs/promises';
 import path from 'path';
 import { OpenAIService } from './openai.service';
 import {
-  finalizeThumbnailImage,
-  finalizeShortThumbnailImage,
   getImageDimensions,
   prepareReferenceImage,
   prepareShortReferenceImage,
-  SHORT_THUMB_HEIGHT,
-  SHORT_THUMB_WIDTH,
-  YOUTUBE_THUMB_HEIGHT,
-  YOUTUBE_THUMB_WIDTH,
 } from './thumbnail-image.util';
 import { PodcastScript, ShortScript } from '../types';
 import {
@@ -57,12 +51,9 @@ export class ThumbnailService {
     const apiSize = await getImageDimensions(apiBuffer);
     logger.info(`API returned → ${apiSize.width}x${apiSize.height}`);
 
-    const thumbnailBuffer = await finalizeThumbnailImage(apiBuffer);
-    await fs.writeFile(outputPath, thumbnailBuffer);
+    await fs.writeFile(outputPath, apiBuffer);
 
-    logger.success(
-      `Thumbnail saved → ${outputPath} (${YOUTUBE_THUMB_WIDTH}x${YOUTUBE_THUMB_HEIGHT}, 16:9)`,
-    );
+    logger.success(`Thumbnail saved → ${outputPath} (${apiSize.width}x${apiSize.height})`);
   }
 
   async generateShort(
@@ -72,7 +63,6 @@ export class ThumbnailService {
     outputPath: string,
   ): Promise<void> {
     const demoShortPath = path.join(this.assetsDir, 'demo-short-thumbnail.png');
-    const demoLandscapePath = path.join(this.assetsDir, 'demo-thumbnail.png');
 
     const thumbnailScene =
       episode.thumbnailScene ??
@@ -89,25 +79,21 @@ export class ThumbnailService {
     logger.info(`Generating short thumbnail for: "${episode.thumbnailText}"`);
 
     const shortReferenceBuffer = await prepareShortReferenceImage(demoShortPath);
-    const landscapeReferenceBuffer = await prepareReferenceImage(demoLandscapePath);
     const refSize = await getImageDimensions(shortReferenceBuffer);
-    logger.info(`Reference prepared → ${refSize.width}x${refSize.height} (9:16 content letterboxed for API)`);
-    logger.info('Including landscape reference for Victor/Lisa sweater color consistency');
+    logger.info(`Reference prepared → ${refSize.width}x${refSize.height} (9:16 content letterboxed for portrait API)`);
 
     const apiBuffer = await this.openai.generateImageEdit(
       prompt,
-      [shortReferenceBuffer, landscapeReferenceBuffer],
-      ['demo-short-thumbnail.png', 'demo-thumbnail-character-colors.png'],
+      [shortReferenceBuffer],
+      ['demo-short-thumbnail.png'],
+      { size: '1024x1536' },
     );
     const apiSize = await getImageDimensions(apiBuffer);
     logger.info(`API returned → ${apiSize.width}x${apiSize.height}`);
 
-    const thumbnailBuffer = await finalizeShortThumbnailImage(apiBuffer);
-    await fs.writeFile(outputPath, thumbnailBuffer);
+    await fs.writeFile(outputPath, apiBuffer);
 
-    logger.success(
-      `Short thumbnail saved → ${outputPath} (${SHORT_THUMB_WIDTH}x${SHORT_THUMB_HEIGHT}, 9:16)`,
-    );
+    logger.success(`Short thumbnail saved → ${outputPath} (${apiSize.width}x${apiSize.height})`);
   }
 
   private async generateScene(
