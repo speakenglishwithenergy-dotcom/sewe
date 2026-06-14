@@ -1,7 +1,10 @@
 import {
   THUMBNAIL_ART_STYLE,
   THUMBNAIL_BRAND_COLORS,
+  THUMBNAIL_CHARACTERS_EXPRESSION_GUIDANCE,
   THUMBNAIL_CHARACTERS_UNCHANGED,
+  THUMBNAIL_LISA_EXPRESSION_GUIDANCE,
+  THUMBNAIL_VICTOR_EXPRESSION_GUIDANCE,
 } from './thumbnail-brand';
 
 export interface ThumbnailPromptInput {
@@ -62,6 +65,8 @@ Typography MUST match the reference demo exactly:
 
 ${thumbnailScene}
 
+${THUMBNAIL_CHARACTERS_EXPRESSION_GUIDANCE}
+
 Episode topic: "${topic}"
 
 High contrast, readable at small size, no watermarks, no extra text beyond what is specified.`;
@@ -81,9 +86,9 @@ Thumbnail headline: "${thumbnailText}"
 The thumbnail uses a fixed template. Logo (top right) and badge (bottom left) are locked. Write ONLY the Victor + Lisa scene changes for this episode.
 
 Describe what to change from the default template:
-- Victor's expression and pose — reflect the listener's problem from the episode title
-- Thought bubble — one visual metaphor tied to the episode topic (scribble, chart, clock, question mark, etc.)
-- Lisa's expression and gesture — teaching, pointing, encouraging
+${THUMBNAIL_VICTOR_EXPRESSION_GUIDANCE}
+${THUMBNAIL_LISA_EXPRESSION_GUIDANCE}
+- One visual metaphor tied to the topic (prop, gesture, or small comic element — thought bubble only when confusion is the hook)
 - Three book spine titles on the desk stack — short uppercase phrases related to the episode (replace MINDSET / FOCUS / GROWTH)
 - Background/shelf accents on the wall that subtly reflect the episode topic
 

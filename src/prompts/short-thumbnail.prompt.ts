@@ -1,7 +1,10 @@
 import {
   THUMBNAIL_ART_STYLE,
   THUMBNAIL_BRAND_COLORS,
+  THUMBNAIL_CHARACTERS_EXPRESSION_GUIDANCE,
   THUMBNAIL_CHARACTERS_UNCHANGED,
+  THUMBNAIL_LISA_EXPRESSION_GUIDANCE,
+  THUMBNAIL_VICTOR_EXPRESSION_GUIDANCE,
 } from './thumbnail-brand';
 
 export interface ShortThumbnailPromptInput {
@@ -40,6 +43,8 @@ Use the same treatment as the reference: navy sans-serif lines, one keyword in l
 CHANGE ONLY — topic context on the characters:
 ${thumbnailScene}
 
+${THUMBNAIL_CHARACTERS_EXPRESSION_GUIDANCE}
+
 Episode topic: "${topic}"
 
 High contrast, readable on a phone screen, no watermarks, no extra text beyond what is specified.`;
@@ -59,9 +64,9 @@ Thumbnail headline: "${thumbnailText}"
 The thumbnail uses a fixed VERTICAL 9:16 template (Victor and Lisa at a podcast desk, headline at top). Write ONLY the topic-specific changes — not the full scene.
 
 Describe what to change from the default template:
-- Victor's expression and pose — reflect the listener's problem from the episode title
-- Thought bubble content — one visual metaphor tied to the topic (scribble, chart, clock, etc.)
-- Lisa's expression and gesture (teaching, pointing, encouraging)
+${THUMBNAIL_VICTOR_EXPRESSION_GUIDANCE}
+${THUMBNAIL_LISA_EXPRESSION_GUIDANCE}
+- One visual metaphor tied to the topic (prop, gesture, or small comic element — thought bubble only when confusion is the hook)
 - Three book spine titles on the desk stack — short uppercase words related to the topic
 - Optional subtle background accents that reflect the topic
 

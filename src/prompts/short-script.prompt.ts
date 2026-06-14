@@ -70,7 +70,7 @@ Read your draft aloud in your head. Revise until ALL of these pass:
 METADATA:
 - "hook": the exact opening line (must name the topic and match the first script beat)
 - "thumbnailText": reuse the episode thumbnail headline exactly — same ALL-CAPS stacked lines with \\n: "${podcastScript.thumbnailText.replace(/\n/g, '\\n')}"
-- "thumbnailScene": reuse the episode thumbnail scene exactly: "${podcastScript.thumbnailScene ?? 'Victor confused with topic-related metaphor in thought bubble. Lisa points encouragingly. Book spines related to the topic.'}"
+- "thumbnailScene": reuse the episode thumbnail scene exactly: "${podcastScript.thumbnailScene ?? 'Victor jaw-drop surprised with comic prop tied to the topic. Lisa claps excitedly with a big coaching grin. Book spines related to the topic.'}"
 - English level: A2–B1 (clear vocabulary, short sentences)
 
 Return ONLY a valid JSON object (no markdown, no code blocks):
@@ -79,7 +79,7 @@ Return ONLY a valid JSON object (no markdown, no code blocks):
   "description": "TikTok/Short caption with 2–3 hashtags",
   "hook": "Opening line that names the topic and hooks the viewer",
   "thumbnailText": "${podcastScript.thumbnailText.replace(/\n/g, '\\n')}",
-  "thumbnailScene": "Victor confused with puzzle pieces in thought bubble. Lisa points encouragingly. Book spines: MINDSET, FOCUS, GROWTH.",
+  "thumbnailScene": "Victor embarrassed laugh, hand on back of neck — puzzle pieces flying off desk. Lisa leans toward camera with whisper gesture, playful knowing smirk. Book spines: MINDSET, FOCUS, GROWTH.",
   "script": [
     { "speaker": "Victor", "text": "Opening hook — names the topic" },
     { "speaker": "Lisa", "text": "..." },
@@ -115,7 +115,7 @@ Return ONLY a valid JSON object (no markdown, no code blocks) with the EXACT sam
   "description": "TikTok/Short caption with 2–3 hashtags",
   "hook": "Opening line that names the topic and hooks the viewer",
   "thumbnailText": "ALL-CAPS stacked lines with \\n",
-  "thumbnailScene": "Victor confused with puzzle pieces in thought bubble. Lisa points encouragingly. Book spines: MINDSET, FOCUS, GROWTH.",
+  "thumbnailScene": "Victor embarrassed laugh, hand on back of neck — puzzle pieces flying off desk. Lisa leans toward camera with whisper gesture, playful knowing smirk. Book spines: MINDSET, FOCUS, GROWTH.",
   "script": [
     { "speaker": "Victor", "text": "Opening hook — names the topic" },
     { "speaker": "Lisa", "text": "..." },
