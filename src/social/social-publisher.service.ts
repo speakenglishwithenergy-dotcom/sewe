@@ -51,12 +51,17 @@ async function resolveLongVideoPath(projectDir: string, script: PodcastScript): 
 
 async function resolveShortVideoPath(
   projectDir: string,
-  shortScript: ShortScript,
+  podcastTitle: string,
+  shortTitle?: string,
 ): Promise<string | null> {
-  return resolveVideoPath([
-    buildShortVideoPath(projectDir, shortScript.title),
+  const candidates = [
+    buildShortVideoPath(projectDir, podcastTitle),
     path.join(projectDir, 'short.mp4'),
-  ]);
+  ];
+  if (shortTitle && shortTitle !== podcastTitle) {
+    candidates.splice(1, 0, buildShortVideoPath(projectDir, shortTitle));
+  }
+  return resolveVideoPath(candidates);
 }
 
 async function resolveLongThumbnailPath(projectDir: string): Promise<string | null> {
@@ -206,7 +211,11 @@ export class SocialPublisherService {
     }
 
     if (formats.includes('short') && shortScript && socialMeta.youtubeShort) {
-      const videoPath = await resolveShortVideoPath(projectDir, shortScript);
+      const videoPath = await resolveShortVideoPath(
+        projectDir,
+        podcastScript.title,
+        shortScript.title,
+      );
       if (!videoPath) {
         throw new Error('Short video not found — run the short pipeline first');
       }
