@@ -50,14 +50,69 @@ async function fileExists(filePath: string): Promise<boolean> {
 // ─── CLI arg parsing ──────────────────────────────────────────────────────────
 
 type CliArgs =
-  | { mode: 'new'; topic: string; test: boolean; short: boolean }
-  | { mode: 'resume'; projectId: string; test: boolean; short: boolean }
+  | { mode: 'new'; topic: string; test: boolean; short: boolean; force: boolean }
+  | { mode: 'resume'; projectId: string; test: boolean; short: boolean; force: boolean }
   | { mode: 'list' };
+
+async function removeIfExists(filePath: string): Promise<void> {
+  try {
+    await fs.unlink(filePath);
+  } catch {
+    // already absent
+  }
+}
+
+async function removeDirIfExists(dirPath: string): Promise<void> {
+  try {
+    await fs.rm(dirPath, { recursive: true, force: true });
+  } catch {
+    // already absent
+  }
+}
+
+/** Clear cached outputs so the pipeline re-runs; keeps thumbnail.png and short-thumbnail.png. */
+async function clearProjectCache(
+  projectDir: string,
+  opts: { shortOnly: boolean },
+): Promise<void> {
+  const shortArtifacts = [
+    path.join(projectDir, 'short-script.json'),
+    path.join(projectDir, 'short.mp3'),
+    path.join(projectDir, 'short-subtitles.ass'),
+    path.join(projectDir, 'short.mp4'),
+    path.join(projectDir, 'short'),
+  ];
+
+  const podcastArtifacts = [
+    path.join(projectDir, 'script.json'),
+    path.join(projectDir, 'audio'),
+    path.join(projectDir, 'podcast.mp3'),
+    path.join(projectDir, 'subtitles.ass'),
+    path.join(projectDir, 'podcast-video.mp4'),
+    path.join(projectDir, 'thumbnail-video.mp4'),
+    path.join(projectDir, 'final.mp4'),
+  ];
+
+  const targets = opts.shortOnly ? shortArtifacts : [...podcastArtifacts, ...shortArtifacts];
+
+  for (const target of targets) {
+    const stat = await fs.stat(target).catch(() => null);
+    if (!stat) continue;
+    if (stat.isDirectory()) {
+      await removeDirIfExists(target);
+    } else {
+      await removeIfExists(target);
+    }
+  }
+
+  logger.info('Cleared cached artifacts (thumbnails preserved, script will regenerate)');
+}
 
 function parseArgs(): CliArgs {
   const args = process.argv.slice(2);
   const test = args.includes('--test');
   const short = args.includes('--short');
+  const force = args.includes('--force');
 
   if (args.includes('--list')) return { mode: 'list' };
 
@@ -68,7 +123,11 @@ function parseArgs(): CliArgs {
       logger.error('--project value cannot be empty');
       process.exit(1);
     }
-    return { mode: 'resume', projectId, test, short };
+    if (force && test) {
+      logger.error('--force cannot be used with --test');
+      process.exit(1);
+    }
+    return { mode: 'resume', projectId, test, short, force };
   }
 
   const topicArg = args.find((a) => a.startsWith('--topic='));
@@ -79,7 +138,9 @@ function parseArgs(): CliArgs {
     logger.info('  npm run generate -- --topic="..." --test                    # quick test (script only)');
     logger.info('  npm run generate -- --topic="..." --short                   # script + short only');
     logger.info('  npm run generate -- --project=20260612-143022               # resume project (podcast + short)');
+    logger.info('  npm run generate -- --project=20260612-143022 --force         # re-run from scratch (keep thumbnails)');
     logger.info('  npm run generate -- --project=20260612-143022 --short       # short only');
+    logger.info('  npm run generate -- --project=20260612-143022 --short --force # re-run short only');
     logger.info('  npm run generate -- --list                                  # list all projects');
     process.exit(1);
   }
@@ -89,7 +150,11 @@ function parseArgs(): CliArgs {
     logger.error('--topic value cannot be empty');
     process.exit(1);
   }
-  return { mode: 'new', topic, test, short };
+  if (force) {
+    logger.error('--force requires --project (use it to re-run an existing project)');
+    process.exit(1);
+  }
+  return { mode: 'new', topic, test, short, force };
 }
 
 function printSocialMetadataSummary(projectDir: string, hasShort: boolean): void {
@@ -148,6 +213,7 @@ async function main(): Promise<void> {
     logger.info(`Topic            : "${project.topic}"`);
     if (args.test) logger.info('Mode             : TEST (script only)');
     if (args.short) logger.info('Mode             : SHORT only');
+    if (args.force) logger.info('Mode             : FORCE (re-run, keep thumbnails)');
   } else {
     project = await projectService.create(args.topic);
     logger.divider('═');
@@ -174,6 +240,10 @@ async function main(): Promise<void> {
 
   await fs.mkdir(AUDIO_DIR, { recursive: true });
 
+  if (args.mode === 'resume' && args.force) {
+    await clearProjectCache(PROJECT_DIR, { shortOnly: args.short });
+  }
+
   // ── Wire up services ──────────────────────────────────────────────────────
   const openaiService = new OpenAIService();
   const ffmpegService = new FFmpegService();
@@ -199,8 +269,10 @@ async function main(): Promise<void> {
     logger.info(`Script saved → ${SCRIPT_PATH}`);
   }
 
-  // Persist title/description into project metadata if not yet saved
-  if (!project.title) {
+  // Persist title/description into project metadata
+  const shouldUpdateMeta =
+    !project.title || (args.mode === 'resume' && args.force && !args.short);
+  if (shouldUpdateMeta) {
     project.title = podcastScript.title;
     project.description = podcastScript.description;
     project.thumbnailText = podcastScript.thumbnailText;
