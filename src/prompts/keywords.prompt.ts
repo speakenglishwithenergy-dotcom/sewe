@@ -28,37 +28,46 @@ ALWAYS HIGHLIGHT (whenever the exact phrase appears in the line):
 CORE TOPIC TERMS (highlight whenever they appear):
 ${topicTermsBlock}
 
-GOAL: help A2–B1 learners follow along quickly — be GENEROUS with highlights. Learners benefit from seeing several useful words/phrases per line.
+GOAL: help A2–B1 learners follow along quickly — highlight useful PHRASES and collocations they can reuse, not isolated vocabulary crumbs.
 
-DEFAULT: aim for 2–4 highlights per line. Single-word reactions and pure greetings are the ONLY exceptions.
+DEFAULT: aim for 2–4 highlights per line, mostly multi-word phrases. Single-word reactions and pure greetings are the ONLY exceptions.
 
-WHAT TO HIGHLIGHT (single words OR short phrases, verbatim in the sentence):
-1. ALL topic-related words and phrases in the line
+PHRASE-FIRST (most important):
+- Prefer 2–4 word phrases over single words whenever the sentence contains them
+- Idioms, phrasal verbs, collocations, and topic expressions are the best highlights
+- Do NOT add a single word if it is already part of a longer highlighted phrase
+  (e.g. if you highlight "romanticize the past", do NOT also add "romanticize")
+- Single words are a last resort — only when no good phrase covers that idea
+
+WHAT TO HIGHLIGHT (verbatim in the sentence):
+1. Topic phrases and multi-word expressions in the line
 2. Idioms and natural expressions ("make sense", "look back", "rose-colored glasses", "living in the moment", "fall into the trap", "highlight reel")
-3. Strong verbs, key nouns, and adjectives that carry meaning
-4. Useful collocations learners should notice ("share memories", "communication skills", "gratitude journal")
+3. Useful collocations learners should notice ("share memories", "communication skills", "gratitude journal", "affects us all", "fascinating topic")
+4. Single strong content words ONLY when no phrase in the line captures them
 
 WHEN TO USE FEWER OR NO HIGHLIGHTS:
 - Pure greeting/sign-off ONLY ("Hey everyone!", "See you next time!", "Take care!")
 - Very short empty reactions with zero content ("Exactly.", "Right.", "I see.")
 
-Even short questions or transitions should get at least 1 highlight if they contain a topic word or useful phrase.
+Even short questions or transitions should get at least 1 phrase highlight if they contain a useful expression.
 
 RULES:
 - keywords must appear EXACTLY in the sentence (same words, ignoring case)
-- Prefer phrases over single filler words when both appear
-- Up to 4 highlights per line — use the full budget on rich sentences
+- At least half the highlights on a line should be phrases (2+ words) when the sentence allows it
+- Up to 4 highlights per line — spend the budget on phrases, not redundant single words
 - Skip speaker names ("Victor", "Lisa") — but ALWAYS include "${CHANNEL_NAME}" when it appears
 
 Examples:
 - "Well, today we're diving into why we romanticize the past."
-  → ["diving into", "romanticize the past", "romanticize"]
+  → ["diving into", "romanticize the past"]
 - "That makes sense. I mean, when we share memories, it often brings us closer."
-  → ["makes sense", "share memories", "memories", "closer"]
+  → ["makes sense", "share memories", "brings us closer"]
 - "Hey everyone! Welcome to another episode. I'm Victor, and I'm excited today."
   → []
 - "Yeah, for sure, Lisa. Many people think life was simpler back then, but that's not always true."
-  → ["simpler", "back then", "always true"] or ["simpler", "life", "true"]
+  → ["for sure", "back then", "always true"]
+- "We're so excited to talk about a fascinating topic today, one that affects us all."
+  → ["excited to talk", "fascinating topic", "affects us all"]
 
 Input lines:
 ${JSON.stringify(payload, null, 2)}
@@ -88,8 +97,9 @@ export function buildKeywordsBoostPrompt(
 Episode topic: "${context.topic}"
 Episode title: "${context.title}"
 
-For each line, ADD 1–3 more keywords/phrases (keep existing ones, return the full combined list, max 4 total).
-Look for: topic vocabulary, idioms, phrasal verbs, collocations, and strong content words still not highlighted.
+For each line, ADD 1–3 more PHRASES (keep existing ones, return the full combined list, max 4 total).
+Look for: multi-word topic expressions, idioms, phrasal verbs, and collocations still not highlighted.
+Prefer adding phrases over single words. Remove redundant single words that are already covered by a longer phrase.
 
 Only keep a sparse list for pure greetings/sign-offs.
 

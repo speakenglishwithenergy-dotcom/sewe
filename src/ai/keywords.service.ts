@@ -9,17 +9,18 @@ import {
 import {
   applyAlwaysHighlightPhrases,
   boostKeywordsLocally,
-  dedupeKeywords,
   extractTopicTerms,
   keywordAppearsInText,
   MAX_KEYWORDS_PER_LINE,
   needsKeywordBoost,
+  pruneSubsumedSingleWords,
   shouldAttemptGapFill,
+  sortKeywordsByPhrasePriority,
 } from './keywords.util';
 import { logger } from '../utils/logger';
 
 /** Bump when selection logic changes — triggers automatic re-generation on resume. */
-export const KEYWORDS_GENERATOR_VERSION = 5;
+export const KEYWORDS_GENERATOR_VERSION = 6;
 
 const KeywordsBatchSchema = z.object({
   lines: z.array(
@@ -149,8 +150,8 @@ export class KeywordsService {
     const result = await this.openai.generateJSON(
       buildKeywordsPrompt(lines, context),
       'You are an English teacher curating subtitle highlights for podcast learners. ' +
-        'Be generous — aim for 2–4 useful highlights per substantive line. ' +
-        'Only skip highlights for pure greetings or empty one-word reactions. ' +
+        'Prioritize multi-word phrases, idioms, and collocations over single words. ' +
+        'Aim for 2–4 phrase highlights per substantive line; skip pure greetings or empty reactions. ' +
         'Respond only with valid JSON matching the requested structure exactly.',
       (data) => KeywordsBatchSchema.parse(data),
       { temperature: 0.3 },
@@ -166,7 +167,8 @@ export class KeywordsService {
     const result = await this.openai.generateJSON(
       buildKeywordsBoostPrompt(lines, context),
       'You add more subtitle highlights for English learners. ' +
-        'Return the full expanded keyword list (max 4). Be generous with topic words, idioms, and collocations. ' +
+        'Return the full expanded keyword list (max 4). Prefer phrases and collocations over single words. ' +
+        'Remove redundant single words already covered by a longer phrase. ' +
         'Respond only with valid JSON.',
       (data) => KeywordsBatchSchema.parse(data),
       { temperature: 0.25 },
@@ -190,7 +192,9 @@ export class KeywordsService {
 function finalizeKeywords(text: string, raw: string[], topicTerms: string[]): string[] {
   const filtered = filterKeywordsForText(text, raw);
   const boosted = boostKeywordsLocally(text, filtered, topicTerms);
-  return applyAlwaysHighlightPhrases(text, boosted);
+  const pruned = pruneSubsumedSingleWords(boosted);
+  const prioritized = sortKeywordsByPhrasePriority(pruned);
+  return applyAlwaysHighlightPhrases(text, prioritized);
 }
 
 /** Keep only keywords that actually appear in the sentence. */

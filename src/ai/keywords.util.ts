@@ -138,7 +138,85 @@ export function shouldAttemptGapFill(text: string): boolean {
   return text.trim().split(/\s+/).length >= 4;
 }
 
-/** Add topic terms, learnable phrases, and content words until minimum is met. */
+/** Multi-word topic terms first, then single-word terms. */
+export function partitionTopicTerms(topicTerms: string[]): {
+  phrases: string[];
+  singles: string[];
+} {
+  const phrases: string[] = [];
+  const singles: string[] = [];
+
+  for (const term of topicTerms) {
+    if (term.trim().split(/\s+/).length >= 2) {
+      phrases.push(term);
+    } else {
+      singles.push(term);
+    }
+  }
+
+  return { phrases, singles };
+}
+
+/** Extract 2–3 word collocations from the line (content-word heavy). */
+export function findCollocationPhrasesInText(text: string): string[] {
+  const words = (text.match(/[A-Za-z']+/g) ?? []).map((word) => word.replace(/^'+|'+$/g, ''));
+  const phrases: string[] = [];
+
+  for (let size = 3; size >= 2; size--) {
+    for (let index = 0; index <= words.length - size; index++) {
+      const slice = words.slice(index, index + size);
+      if (!isUsefulCollocation(slice)) {
+        continue;
+      }
+      phrases.push(slice.join(' '));
+    }
+  }
+
+  return [...new Set(phrases)].sort((a, b) => b.length - a.length);
+}
+
+function isUsefulCollocation(words: string[]): boolean {
+  const contentWords = words.filter(
+    (word) => word.length >= 3 && !CONTENT_STOP_WORDS.has(word.toLowerCase()),
+  );
+  return contentWords.length >= 2;
+}
+
+/** Drop single-word keywords already covered by a longer highlighted phrase. */
+export function pruneSubsumedSingleWords(keywords: string[]): string[] {
+  const phrases = keywords.filter((keyword) => keyword.trim().split(/\s+/).length >= 2);
+  const singles = keywords.filter((keyword) => keyword.trim().split(/\s+/).length === 1);
+
+  if (phrases.length === 0) {
+    return keywords;
+  }
+
+  const prunedSingles = singles.filter((single) => {
+    const singleLower = single.toLowerCase();
+    return !phrases.some((phrase) =>
+      phrase
+        .toLowerCase()
+        .split(/\s+/)
+        .some((word) => word === singleLower),
+    );
+  });
+
+  return [...phrases, ...prunedSingles];
+}
+
+/** Prefer longer phrases when trimming to the per-line budget. */
+export function sortKeywordsByPhrasePriority(keywords: string[]): string[] {
+  return [...keywords].sort((a, b) => {
+    const aWords = a.trim().split(/\s+/).length;
+    const bWords = b.trim().split(/\s+/).length;
+    if (aWords !== bWords) {
+      return bWords - aWords;
+    }
+    return b.length - a.length;
+  });
+}
+
+/** Add topic phrases, learnable phrases, and collocations before single words. */
 export function boostKeywordsLocally(
   text: string,
   keywords: string[],
@@ -148,10 +226,13 @@ export function boostKeywordsLocally(
     return [];
   }
 
+  const { phrases: topicPhrases, singles: topicSingles } = partitionTopicTerms(topicTerms);
   const result = [...keywords];
   const candidates = [
-    ...topicTerms,
+    ...topicPhrases,
     ...findLearnablePhrasesInText(text),
+    ...findCollocationPhrasesInText(text),
+    ...topicSingles,
     ...extractContentWords(text),
   ];
 
@@ -167,7 +248,10 @@ export function boostKeywordsLocally(
     }
   }
 
-  return dedupeKeywords(result).slice(0, MAX_KEYWORDS_PER_LINE);
+  return sortKeywordsByPhrasePriority(pruneSubsumedSingleWords(dedupeKeywords(result))).slice(
+    0,
+    MAX_KEYWORDS_PER_LINE,
+  );
 }
 
 export function findLearnablePhrasesInText(text: string): string[] {
@@ -196,13 +280,16 @@ export function applyAlwaysHighlightPhrases(text: string, keywords: string[]): s
   }
 
   if (always.length === 0) {
-    return dedupeKeywords(keywords).slice(0, MAX_KEYWORDS_PER_LINE);
+    return sortKeywordsByPhrasePriority(pruneSubsumedSingleWords(dedupeKeywords(keywords))).slice(
+      0,
+      MAX_KEYWORDS_PER_LINE,
+    );
   }
 
   const alwaysLower = new Set(always.map((phrase) => phrase.toLowerCase()));
-  const rest = dedupeKeywords(keywords).filter(
-    (keyword) => !alwaysLower.has(keyword.toLowerCase()),
-  );
+  const rest = sortKeywordsByPhrasePriority(
+    pruneSubsumedSingleWords(dedupeKeywords(keywords)),
+  ).filter((keyword) => !alwaysLower.has(keyword.toLowerCase()));
   const remaining = Math.max(0, MAX_KEYWORDS_PER_LINE - always.length);
 
   return [...always, ...rest.slice(0, remaining)];
