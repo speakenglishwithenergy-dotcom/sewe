@@ -32,7 +32,7 @@ export const SCRIPT_SECTIONS: ScriptSectionDef[] = [
     label: 'Main idea 1',
     lineCount: 12,
     brief:
-      'Core concept of the topic. Victor shares a brief personal anecdote. Lisa asks sharp follow-ups — keep it moving.',
+      'Core concept of the topic. Victor tells a brief personal story — he may speak 2–3 lines in a row to finish it before Lisa reacts.',
   },
   {
     id: 'main2',
@@ -63,11 +63,25 @@ const HOSTS_BLOCK = `The podcast features two hosts:
 
 const DIALOGUE_RULES = `- English level: A2-B1 (clear vocabulary, common expressions)
 - Only Victor and Lisa speak — no narrator
-- Natural spoken English with fillers ("well", "you know", "actually", "I mean", "right")
+- Natural spoken English — sound like two friends on a real podcast, not a scripted interview
 - Each line: 1–2 short sentences (~12–18 words per line) — punchy, not one-liners
 - Keep momentum: every line should move the conversation forward, not restate the same point
-- Victor and Lisa alternate; each line must respond to the previous one
+- Turn-taking is flexible: the same host MAY speak 2 consecutive lines when finishing a story, adding detail, or continuing a thought — do NOT force strict alternation
+- When telling a story, let the storyteller finish it across consecutive lines instead of pausing mid-story for a prompt question
+- Do NOT end a line with a dangling hook ("right?", "you know?") just to hand off the turn — that feels forced
+- Lisa's questions should react to what was actually said, not mechanically prompt the next beat of a story Victor already started
+- Avoid stiff ping-pong Q&A; mix reactions, follow-ups, and back-and-forth naturally
 - Do NOT include IPA — text only`;
+
+const DIALOGUE_FLOW_EXAMPLE = `Story flow — BAD (forced hand-off):
+Victor: "Well, I remember a time in school where I spoke up in class, right?"
+Lisa: "And did something happen that made you feel embarrassed?"
+Victor: "Yeah, a few classmates laughed, and it really got to me."
+
+Story flow — GOOD (storyteller continues naturally):
+Victor: "Well, I remember a time in school where I spoke up in class."
+Victor: "A few classmates laughed, and honestly, it really got to me."
+Lisa: "Oh, that hurts — did it change how you spoke up after that?"`;
 
 export function scriptHasChannelClosing(script: DialogueLine[]): boolean {
   return script
@@ -148,6 +162,8 @@ ${section.brief}
 ${retryNote}${closingNote}
 ${DIALOGUE_RULES}
 
+${DIALOGUE_FLOW_EXAMPLE}
+
 RECENT DIALOGUE (continue naturally from here — do not repeat):
 ${formatRecentContext(previousLines)}
 
@@ -180,6 +196,8 @@ ${HOSTS_BLOCK}
 The episode is still too short. Add MORE dialogue before the closing.
 
 ${DIALOGUE_RULES}
+
+${DIALOGUE_FLOW_EXAMPLE}
 
 RECENT DIALOGUE (continue from here):
 ${formatRecentContext(previousLines, 8)}
