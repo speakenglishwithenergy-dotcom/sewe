@@ -13,6 +13,8 @@ export interface PublishEnvConfig {
   facebook: {
     pageId: string;
     accessToken: string;
+    /** false = unpublished Page video / draft Reel (default, matches YouTube private) */
+    published: boolean;
   };
 }
 
@@ -48,6 +50,14 @@ export function isPublishConfigured(target: PublishTarget): boolean {
   );
 }
 
+function parseBooleanEnv(value: string | undefined, fallback: boolean): boolean {
+  const normalized = value?.trim().toLowerCase();
+  if (!normalized) return fallback;
+  if (normalized === 'true' || normalized === '1' || normalized === 'yes') return true;
+  if (normalized === 'false' || normalized === '0' || normalized === 'no') return false;
+  throw new Error(`Invalid boolean env value "${value}" — use true or false`);
+}
+
 export function loadPublishEnvConfig(targets: PublishTarget[]): PublishEnvConfig {
   const needsYouTube = targets.includes('youtube');
   const needsFacebook = targets.includes('facebook');
@@ -63,6 +73,7 @@ export function loadPublishEnvConfig(targets: PublishTarget[]): PublishEnvConfig
     facebook: {
       pageId: needsFacebook ? requireEnv('FACEBOOK_PAGE_ID') : '',
       accessToken: needsFacebook ? requireEnv('FACEBOOK_PAGE_ACCESS_TOKEN') : '',
+      published: parseBooleanEnv(process.env.FACEBOOK_PUBLISH_LIVE, false),
     },
   };
 }

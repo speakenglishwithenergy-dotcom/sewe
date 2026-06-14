@@ -26,6 +26,11 @@ interface GraphErrorBody {
 export class FacebookPublisherService {
   constructor(private readonly config: PublishEnvConfig['facebook']) {}
 
+  /** Unpublished Page videos / draft Reels — review in Meta Business Suite before going live. */
+  private get publishLive(): boolean {
+    return this.config.published;
+  }
+
   async uploadVideo(input: FacebookUploadInput): Promise<PublishResult> {
     if (input.format === 'short') {
       return this.uploadReel(input);
@@ -34,12 +39,13 @@ export class FacebookPublisherService {
   }
 
   private async uploadPageVideo(input: FacebookUploadInput): Promise<PublishResult> {
-    logger.info(`Uploading Facebook video → ${input.videoPath}`);
+    const visibility = this.publishLive ? 'public' : 'unpublished (private)';
+    logger.info(`Uploading Facebook video (${visibility}) → ${input.videoPath}`);
 
     const form = new FormData();
     form.append('access_token', this.config.accessToken);
     form.append('description', input.caption);
-    form.append('published', 'true');
+    form.append('published', this.publishLive ? 'true' : 'false');
     form.append('source', fs.createReadStream(input.videoPath));
 
     const response = await this.postMultipart(
@@ -52,9 +58,9 @@ export class FacebookPublisherService {
     }
 
     const url = `https://www.facebook.com/${videoId}`;
-    logger.success(`Facebook video uploaded → ${url}`);
+    logger.success(`Facebook video uploaded (${visibility}) → ${url}`);
 
-    const commentPosted = await this.postFirstComment(videoId, input.firstComment);
+    const commentPosted = await this.maybePostFirstComment(videoId, input.firstComment);
 
     return {
       platform: 'facebook',
@@ -66,7 +72,9 @@ export class FacebookPublisherService {
   }
 
   private async uploadReel(input: FacebookUploadInput): Promise<PublishResult> {
-    logger.info(`Uploading Facebook Reel → ${input.videoPath}`);
+    const videoState = this.publishLive ? 'PUBLISHED' : 'DRAFT';
+    const visibility = this.publishLive ? 'public' : 'draft (private)';
+    logger.info(`Uploading Facebook Reel (${visibility}) → ${input.videoPath}`);
 
     const startParams = new URLSearchParams({
       access_token: this.config.accessToken,
@@ -103,7 +111,7 @@ export class FacebookPublisherService {
       access_token: this.config.accessToken,
       upload_phase: 'finish',
       video_id: videoId,
-      video_state: 'PUBLISHED',
+      video_state: videoState,
       description: input.caption,
     });
     await this.postJson(
@@ -111,10 +119,12 @@ export class FacebookPublisherService {
       {},
     );
 
-    const url = `https://www.facebook.com/reel/${videoId}`;
-    logger.success(`Facebook Reel uploaded → ${url}`);
+    const url = this.publishLive
+      ? `https://www.facebook.com/reel/${videoId}`
+      : `https://www.facebook.com/${videoId}`;
+    logger.success(`Facebook Reel uploaded (${visibility}) → ${url}`);
 
-    const commentPosted = await this.postFirstComment(videoId, input.firstComment);
+    const commentPosted = await this.maybePostFirstComment(videoId, input.firstComment);
 
     return {
       platform: 'facebook',
@@ -123,6 +133,16 @@ export class FacebookPublisherService {
       url,
       commentPosted,
     };
+  }
+
+  private async maybePostFirstComment(objectId: string, message: string): Promise<boolean> {
+    if (!this.publishLive) {
+      logger.info(
+        'Skipping Facebook first comment — video is unpublished/draft (post manually after publishing)',
+      );
+      return false;
+    }
+    return this.postFirstComment(objectId, message);
   }
 
   private async postFirstComment(objectId: string, message: string): Promise<boolean> {
