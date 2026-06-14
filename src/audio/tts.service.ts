@@ -2,14 +2,87 @@ import path from 'path';
 import fs from 'fs/promises';
 import { SupertonicService } from './supertonic.service';
 import { FFmpegService } from '../ffmpeg/ffmpeg.service';
+import {
+  DEFAULT_TTS_MAX_RETRIES,
+  DEFAULT_TTS_TOTAL_STEPS,
+  estimateMinDurationSeconds,
+  isSuspiciousSegmentDuration,
+  isWavFilePlausible,
+  prepareTextForTts,
+} from './tts-stability';
 import { AudioSegment, DialogueLine, VOICE_MAP, PAUSE_BETWEEN_SEGMENTS, Speaker } from '../types';
 import { logger } from '../utils/logger';
+
+const PODCAST_TTS_SPEED = 0.85;
 
 export class TTSService {
   constructor(
     private readonly supertonic: SupertonicService,
     private readonly ffmpeg: FFmpegService,
   ) {}
+
+  private async synthesizeWithStability(
+    text: string,
+    filePath: string,
+    voiceName: string,
+    speed = PODCAST_TTS_SPEED,
+  ): Promise<number> {
+    const preparedText = prepareTextForTts(text);
+    const minDuration = estimateMinDurationSeconds(preparedText, speed);
+    const maxAttempts = DEFAULT_TTS_MAX_RETRIES;
+    const totalSteps = DEFAULT_TTS_TOTAL_STEPS;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      if (attempt > 1) {
+        await fs.unlink(filePath).catch(() => {});
+        logger.warn(
+          `  ↻ TTS retry ${attempt}/${maxAttempts}: "${preparedText.slice(0, 50)}${preparedText.length > 50 ? '…' : ''}"`,
+        );
+      }
+
+      await this.supertonic.generateSpeech(
+        preparedText,
+        'en',
+        voiceName,
+        filePath,
+        speed,
+        totalSteps,
+      );
+
+      const duration = await this.ffmpeg.getAudioDuration(filePath);
+      const wavOk = await isWavFilePlausible(filePath, minDuration);
+      const durationOk = !isSuspiciousSegmentDuration(preparedText, duration, speed);
+
+      if (wavOk && durationOk) {
+        return duration;
+      }
+
+      if (attempt === maxAttempts) {
+        logger.warn(
+          `  ⚠ TTS output still looks off after ${maxAttempts} attempts (${duration.toFixed(2)}s) — keeping last result`,
+        );
+        return duration;
+      }
+    }
+
+    return this.ffmpeg.getAudioDuration(filePath);
+  }
+
+  private async needsRegeneration(
+    text: string,
+    filePath: string,
+    speed = PODCAST_TTS_SPEED,
+  ): Promise<boolean> {
+    const preparedText = prepareTextForTts(text);
+    const minDuration = estimateMinDurationSeconds(preparedText, speed);
+
+    if (!(await isWavFilePlausible(filePath, minDuration))) {
+      return true;
+    }
+
+    const duration = await this.ffmpeg.getAudioDuration(filePath);
+    return isSuspiciousSegmentDuration(preparedText, duration, speed);
+  }
 
   /**
    * Generate one MP3 file per dialogue line.
@@ -22,7 +95,9 @@ export class TTSService {
   ): Promise<AudioSegment[]> {
     await fs.mkdir(audioDir, { recursive: true });
 
-    logger.info(`Generating ${script.length} audio segments via TTS...`);
+    logger.info(
+      `Generating ${script.length} audio segments via TTS (steps=${DEFAULT_TTS_TOTAL_STEPS}, retries=${DEFAULT_TTS_MAX_RETRIES})...`,
+    );
 
     const segments: AudioSegment[] = [];
     let currentTime = 0;
@@ -34,21 +109,22 @@ export class TTSService {
       const filePath = path.join(audioDir, fileName);
 
       const voiceName = VOICE_MAP[line.speaker as Speaker];
+      const preview = prepareTextForTts(line.text);
+      const previewText = `"${preview.slice(0, 60)}${preview.length > 60 ? '…' : ''}"`;
 
-      // Resume: skip TTS call if audio file already exists
       let cached = false;
       try {
         await fs.access(filePath);
-        cached = true;
+        cached = !(await this.needsRegeneration(line.text, filePath));
       } catch {
         // file does not exist — generate it
       }
 
       if (cached) {
-        logger.info(`  [${index}/${script.length}] ⏭  ${line.speaker}: (cached) "${line.text.slice(0, 60)}${line.text.length > 60 ? '…' : ''}"`);
+        logger.info(`  [${index}/${script.length}] ⏭  ${line.speaker}: (cached) ${previewText}`);
       } else {
-        logger.info(`  [${index}/${script.length}] ${line.speaker}: "${line.text.slice(0, 60)}${line.text.length > 60 ? '…' : ''}"`);
-        await this.supertonic.generateSpeech(line.text, 'en', voiceName, filePath, 0.85);
+        logger.info(`  [${index}/${script.length}] ${line.speaker}: ${previewText}`);
+        await this.synthesizeWithStability(line.text, filePath, voiceName);
       }
 
       const duration = await this.ffmpeg.getAudioDuration(filePath);
@@ -63,7 +139,6 @@ export class TTSService {
         startTime: currentTime,
       });
 
-      // Advance time: current segment duration + silence gap before next segment
       currentTime += duration + pauseBetweenSegments;
     }
 
@@ -76,23 +151,26 @@ export class TTSService {
     text: string,
     filePath: string,
     voiceName: string,
-    speed = 0.85,
+    speed = PODCAST_TTS_SPEED,
   ): Promise<number> {
     await fs.mkdir(path.dirname(filePath), { recursive: true });
+
+    const preparedText = prepareTextForTts(text);
+    const previewText = `"${preparedText.slice(0, 60)}${preparedText.length > 60 ? '…' : ''}"`;
 
     let cached = false;
     try {
       await fs.access(filePath);
-      cached = true;
+      cached = !(await this.needsRegeneration(text, filePath, speed));
     } catch {
       // file does not exist — generate it
     }
 
     if (cached) {
-      logger.info(`  ⏭  Narration (cached): "${text.slice(0, 60)}${text.length > 60 ? '…' : ''}"`);
+      logger.info(`  ⏭  Narration (cached): ${previewText}`);
     } else {
-      logger.info(`  Narration: "${text.slice(0, 60)}${text.length > 60 ? '…' : ''}"`);
-      await this.supertonic.generateSpeech(text, 'en', voiceName, filePath, speed);
+      logger.info(`  Narration: ${previewText}`);
+      await this.synthesizeWithStability(text, filePath, voiceName, speed);
     }
 
     return this.ffmpeg.getAudioDuration(filePath);

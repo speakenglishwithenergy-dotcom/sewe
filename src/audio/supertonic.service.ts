@@ -475,6 +475,7 @@ function loadVoiceStyle(voiceStylePath: string): Style {
 
 export class SupertonicService {
   private tts: TextToSpeech | null = null;
+  private readonly voiceStyleCache = new Map<string, Style>();
 
   constructor(
     private readonly onnxDir: string,
@@ -499,25 +500,11 @@ export class SupertonicService {
     return this.tts;
   }
 
-  /**
-   * Synthesize speech and write a 44.1kHz 16-bit WAV to `outputPath`.
-   *
-   * @param text       Input text.
-   * @param lang       BCP-47 language code (e.g. "en", "ko") or "na" for auto.
-   * @param voiceName  Preset voice name without extension, e.g. "M1" or "F1".
-   * @param outputPath Destination .wav file path.
-   * @param speed      Speed factor (0.7–2.0). Default 1.05.
-   * @param totalStep  Denoising steps (5–12). Default 8.
-   */
-  async generateSpeech(
-    text: string,
-    lang: string,
-    voiceName: string,
-    outputPath: string,
-    speed = 1.05,
-    totalStep = 8,
-  ): Promise<void> {
-    const tts = await this.ensureLoaded();
+  private getVoiceStyle(voiceName: string): Style {
+    const cached = this.voiceStyleCache.get(voiceName);
+    if (cached) {
+      return cached;
+    }
 
     const voiceStylePath = path.join(this.voiceStylesDir, `${voiceName}.json`);
     if (!fs.existsSync(voiceStylePath)) {
@@ -528,6 +515,30 @@ export class SupertonicService {
     }
 
     const style = loadVoiceStyle(voiceStylePath);
+    this.voiceStyleCache.set(voiceName, style);
+    return style;
+  }
+
+  /**
+   * Synthesize speech and write a 44.1kHz 16-bit WAV to `outputPath`.
+   *
+   * @param text       Input text.
+   * @param lang       BCP-47 language code (e.g. "en", "ko") or "na" for auto.
+   * @param voiceName  Preset voice name without extension, e.g. "M1" or "F1".
+   * @param outputPath Destination .wav file path.
+   * @param speed      Speed factor (0.7–2.0). Default 1.05.
+   * @param totalStep  Denoising steps (5–12). Default 10.
+   */
+  async generateSpeech(
+    text: string,
+    lang: string,
+    voiceName: string,
+    outputPath: string,
+    speed = 1.05,
+    totalStep = 10,
+  ): Promise<void> {
+    const tts = await this.ensureLoaded();
+    const style = this.getVoiceStyle(voiceName);
     const { wav, duration } = await tts.synthesize(text, lang, style, totalStep, speed);
 
     const wavLen = Math.floor(tts.sampleRate * duration[0]);
