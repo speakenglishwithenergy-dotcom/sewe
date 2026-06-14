@@ -3,7 +3,6 @@ import { promisify } from 'util';
 import path from 'path';
 import fs from 'fs/promises';
 import { logger } from '../utils/logger';
-import { buildSubtitleForceStyle } from '../subtitles/subtitle-style';
 
 const execFileAsync = promisify(execFile);
 
@@ -167,7 +166,7 @@ export class FFmpegService {
 
   /**
    * Compose the final 1920×1080 H.264 video from a static background image,
-   * the merged podcast audio, and a burned-in SRT subtitle track.
+   * the merged podcast audio, and burned-in ASS subtitle track.
    */
   async generateVideo(
     backgroundPath: string,
@@ -181,9 +180,8 @@ export class FFmpegService {
     // Colons are option separators; backslashes need doubling.
     const safeSubs = subtitlesPath.replace(/\\/g, '\\\\').replace(/:/g, '\\:');
 
-    // Commas in force_style must be escaped as \, so they are not treated as
-    // filtergraph-level filter separators (FFmpeg 8.x is strict about this).
-    const subtitleFilter = `subtitles=filename=${safeSubs}:force_style=${buildSubtitleForceStyle(14, 70)}`;
+    // Styles are embedded in the ASS file so inline IPA colour overrides work.
+    const subtitleFilter = `subtitles=filename=${safeSubs}`;
 
     // Wave strip: 500×200 dot waveform, brand purple, overlaid above subtitle zone
     const filterComplex = [

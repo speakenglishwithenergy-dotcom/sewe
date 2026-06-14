@@ -1,5 +1,7 @@
 import { SHORT_THUMB_HEIGHT, SHORT_THUMB_WIDTH } from '../ai/thumbnail-image.util';
 import {
+  buildPodcastAssStyleLine,
+  PODCAST_SUBTITLE_STYLE,
   SUBTITLE_PRIMARY_COLOUR,
   SUBTITLE_SHORT_HOOK_BACK_COLOUR,
   SUBTITLE_SHORT_HOOK_OUTLINE_COLOUR,
@@ -27,6 +29,12 @@ export interface AssDialogueLine {
   text: string;
 }
 
+export interface PodcastAssDialogueLine {
+  startSeconds: number;
+  endSeconds: number;
+  text: string;
+}
+
 /** Convert seconds to ASS timestamp (H:MM:SS.cc). */
 export function formatAssTime(totalSeconds: number): string {
   const safeSeconds = Math.max(0, totalSeconds);
@@ -38,13 +46,55 @@ export function formatAssTime(totalSeconds: number): string {
   return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${String(centiseconds).padStart(2, '0')}`;
 }
 
-/** Escape ASS dialogue text and convert newlines to \\N. */
+/** ASS inline override blocks (e.g. `{\\c&H00E1A62B&}`) must not be escaped. */
+const ASS_OVERRIDE_BLOCK = /(\{\\[^}]*\})/g;
+
+/** Escape ASS dialogue text and convert newlines to \\N. Preserves `{\\...}` override blocks. */
 export function escapeAssDialogueText(text: string): string {
-  return text
-    .replace(/\\/g, '\\\\')
-    .replace(/{/g, '\\{')
-    .replace(/}/g, '\\}')
-    .replace(/\n/g, '\\N');
+  return text.split(ASS_OVERRIDE_BLOCK).map((part) => {
+    if (/^\{\\[^}]*\}$/.test(part)) {
+      return part;
+    }
+
+    return part
+      .replace(/\\/g, '\\\\')
+      .replace(/{/g, '\\{')
+      .replace(/}/g, '\\}')
+      .replace(/\n/g, '\\N');
+  }).join('');
+}
+
+/**
+ * Build a full ASS subtitle document for podcast video.
+ * English text uses the Default style; IPA lines use inline colour overrides.
+ * Style values mirror the former SRT + FFmpeg force_style settings.
+ */
+export function buildPodcastAssDocument(dialogues: PodcastAssDialogueLine[]): string {
+  const defaultStyle = buildPodcastAssStyleLine();
+
+  const events = dialogues.map((line) => {
+    const start = formatAssTime(line.startSeconds);
+    const end = formatAssTime(line.endSeconds);
+    const text = escapeAssDialogueText(line.text);
+    return `Dialogue: 0,${start},${end},Default,,0,0,0,,${text}`;
+  });
+
+  return `[Script Info]
+Title: Podcast Subtitles
+ScriptType: v4.00+
+PlayResX: ${PODCAST_SUBTITLE_STYLE.playResX}
+PlayResY: ${PODCAST_SUBTITLE_STYLE.playResY}
+ScaledBorderAndShadow: yes
+WrapStyle: 0
+
+[V4+ Styles]
+${ASS_STYLE_FORMAT}
+${defaultStyle}
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+${events.join('\n')}
+`;
 }
 
 /**

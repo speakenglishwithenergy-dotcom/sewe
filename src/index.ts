@@ -165,7 +165,7 @@ async function main(): Promise<void> {
   const AUDIO_DIR = path.join(PROJECT_DIR, 'audio');
   const SCRIPT_PATH = path.join(PROJECT_DIR, 'script.json');
   const PODCAST_AUDIO_PATH = path.join(PROJECT_DIR, 'podcast.mp3');
-  const SUBTITLES_PATH = path.join(PROJECT_DIR, 'subtitles.srt');
+  const SUBTITLES_PATH = path.join(PROJECT_DIR, 'subtitles.ass');
   const THUMBNAIL_PATH = path.join(PROJECT_DIR, 'thumbnail.png');
   const PODCAST_VIDEO_PATH = path.join(PROJECT_DIR, 'podcast-video.mp4');
   const THUMBNAIL_VIDEO_PATH = path.join(PROJECT_DIR, 'thumbnail-video.mp4');

@@ -1,14 +1,15 @@
 import fs from 'fs/promises';
 import { AudioSegment } from '../types';
 import { logger } from '../utils/logger';
-import { buildShortAssDocument } from './subtitle-ass.util';
+import { buildPodcastAssDocument, buildShortAssDocument } from './subtitle-ass.util';
 import { formatIpaSubtitleText } from './subtitle-style';
 
 export class SubtitleService {
   /**
-   * Generate an SRT subtitle file from the timed audio segments.
-   * Each segment becomes one subtitle entry. Podcast mode includes IPA below English;
-   * short-form mode shows English only.
+   * Generate an ASS subtitle file from the timed audio segments.
+   * Each segment becomes one subtitle entry. Podcast mode includes IPA below English
+   * with a distinct colour; ASS is required because FFmpeg ignores inline SRT overrides
+   * when force_style is applied.
    * Long lines are wrapped more aggressively to stay readable on screen,
    * with orphan/widow lines rebalanced so a single word is not left alone.
    */
@@ -18,31 +19,33 @@ export class SubtitleService {
     lineWidth = 42,
     includeIpa = true,
   ): Promise<void> {
-    logger.info('Generating SRT subtitle file...');
+    logger.info('Generating ASS subtitle file...');
 
     const LINGER_SECONDS = 0.5;
     const SUBTITLE_LINE_WIDTH = lineWidth;
 
-    const entries = segments.map((segment, i) => {
-      const start = formatSRTTime(segment.startTime);
-      const end = formatSRTTime(segment.startTime + segment.duration + LINGER_SECONDS);
+    const dialogues = segments.map((segment) => {
       const english = wrapSubtitleText(segment.text, SUBTITLE_LINE_WIDTH);
       const text = includeIpa && segment.ipa
         ? `${english}\n${formatIpaSubtitleText(wrapSubtitleText(segment.ipa, SUBTITLE_LINE_WIDTH))}`
         : english;
-      return `${i + 1}\n${start} --> ${end}\n${text}`;
+
+      return {
+        startSeconds: segment.startTime,
+        endSeconds: segment.startTime + segment.duration + LINGER_SECONDS,
+        text,
+      };
     });
 
-    const srtContent = entries.join('\n\n') + '\n';
-    await fs.writeFile(outputPath, srtContent, 'utf-8');
+    const assContent = buildPodcastAssDocument(dialogues);
+    await fs.writeFile(outputPath, assContent, 'utf-8');
 
     logger.success(`Subtitles saved → ${outputPath}`);
   }
 
   /**
    * Generate an ASS subtitle file for short-form video with a dedicated Hook style
-   * on the first segment. ASS is required because FFmpeg ignores inline SRT overrides
-   * when force_style is applied.
+   * on the first segment. English only — no IPA.
    */
   async generateShort(
     segments: AudioSegment[],
@@ -90,24 +93,6 @@ function protectNonBreakingPhrases(text: string): string {
   }
 
   return result;
-}
-
-/**
- * Convert a time value (seconds, with ms precision) to SRT timestamp format.
- * Example: 3661.123  →  "01:01:01,123"
- */
-function formatSRTTime(totalSeconds: number): string {
-  const safeSeconds = Math.max(0, totalSeconds);
-  const hours = Math.floor(safeSeconds / 3600);
-  const minutes = Math.floor((safeSeconds % 3600) / 60);
-  const secs = Math.floor(safeSeconds % 60);
-  const ms = Math.round((safeSeconds % 1) * 1000);
-
-  return [
-    String(hours).padStart(2, '0'),
-    String(minutes).padStart(2, '0'),
-    String(secs).padStart(2, '0'),
-  ].join(':') + ',' + String(ms).padStart(3, '0');
 }
 
 /**
