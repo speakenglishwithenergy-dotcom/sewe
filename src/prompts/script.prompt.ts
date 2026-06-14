@@ -2,10 +2,10 @@ import { DialogueLine } from '../types';
 
 /**
  * Calibrated from Supertonic TTS at speed 0.85 (~105 spoken words/min).
- * 9–10.5 min final video ≈ 980–1,100 words of podcast dialogue.
+ * 10–11.5 min final video ≈ 1,050–1,200 words of podcast dialogue.
  */
-export const SCRIPT_TARGET_MIN_WORDS = 980;
-export const SCRIPT_TARGET_MIN_LINES = 54;
+export const SCRIPT_TARGET_MIN_WORDS = 1100;
+export const SCRIPT_TARGET_MIN_LINES = 62;
 
 export const CHANNEL_NAME = 'Speak English With Energy';
 
@@ -18,42 +18,42 @@ export interface ScriptSectionDef {
   brief: string;
 }
 
-/** Five sections → 56 dialogue lines when all quotas are met (~9.5–10 min at ~15–17 words/line). */
+/** Five sections → 64 dialogue lines when all quotas are met (~10.5–11 min at ~16–18 words/line). */
 export const SCRIPT_SECTIONS: ScriptSectionDef[] = [
   {
     id: 'intro',
     label: 'Intro & hook',
-    lineCount: 10,
+    lineCount: 11,
     brief:
-      'Warm greeting, introduce the topic, explain why it matters to English learners and self-improvement fans today.',
+      'Warm greeting, introduce the topic, paint a quick everyday scene listeners recognize, explain why it matters to English learners today.',
   },
   {
     id: 'main1',
     label: 'Main idea 1',
-    lineCount: 12,
+    lineCount: 14,
     brief:
-      'Core concept of the topic. Victor tells a brief personal story — he may speak 2–3 lines in a row to finish it before Lisa reacts.',
+      'Core concept of the topic. Victor tells a personal story with concrete details — he may speak 2–4 lines in a row to finish it before Lisa reacts.',
   },
   {
     id: 'main2',
     label: 'Main idea 2',
-    lineCount: 12,
+    lineCount: 14,
     brief:
-      'Second angle with a quick everyday example. Name one misconception and correct it without lingering.',
+      'Second angle with a specific everyday example. Name one misconception, correct it, and let the hosts react with a follow-up or "what if" moment.',
   },
   {
     id: 'main3',
     label: 'Main idea 3',
-    lineCount: 12,
+    lineCount: 14,
     brief:
-      'Practical tips and one common mistake — what listeners can try this week. Stay actionable, not repetitive.',
+      'Practical tips and one common mistake — what listeners can try this week. Walk through one tip step by step; stay actionable, not repetitive.',
   },
   {
     id: 'closing',
     label: 'Closing',
-    lineCount: 10,
+    lineCount: 11,
     brief:
-      'Recap the three main points, one clear actionable tip, subscribe CTA, warm goodbye naming the channel.',
+      'Recap the three main points in your own words (not a bullet list), one clear actionable tip, subscribe CTA, warm goodbye naming the channel.',
   },
 ];
 
@@ -64,13 +64,14 @@ const HOSTS_BLOCK = `The podcast features two hosts:
 const DIALOGUE_RULES = `- English level: A2-B1 (clear vocabulary, common expressions)
 - Only Victor and Lisa speak — no narrator
 - Natural spoken English — sound like two friends on a real podcast, not a scripted interview
-- Each line: 1–2 short sentences (~12–18 words per line) — punchy, not one-liners
+- Each line: 1–2 sentences (~14–20 words per line) — conversational, not one-liners; let ideas land with a little room to breathe
 - Keep momentum: every line should move the conversation forward, not restate the same point
-- Turn-taking is flexible: the same host MAY speak 2 consecutive lines when finishing a story, adding detail, or continuing a thought — do NOT force strict alternation
+- Turn-taking is flexible: the same host MAY speak 2–4 consecutive lines when finishing a story, adding detail, or continuing a thought — do NOT force strict alternation
 - When telling a story, let the storyteller finish it across consecutive lines instead of pausing mid-story for a prompt question
 - Do NOT end a line with a dangling hook ("right?", "you know?") just to hand off the turn — that feels forced
 - Lisa's questions should react to what was actually said, not mechanically prompt the next beat of a story Victor already started
 - Avoid stiff ping-pong Q&A; mix reactions, follow-ups, and back-and-forth naturally
+- Sound human, not AI: use specific details (a place, a feeling, a small moment) — avoid generic motivational phrases, symmetrical "three tips" lists, and polished summary language
 - Do NOT include IPA — text only`;
 
 const DIALOGUE_FLOW_EXAMPLE = `Story flow — BAD (forced hand-off):
@@ -169,7 +170,7 @@ ${formatRecentContext(previousLines)}
 
 REQUIREMENTS FOR THIS SECTION:
 - Write EXACTLY ${section.lineCount} dialogue lines in the script array — count carefully
-- Hit every point in the brief, but stay tight — no filler, no circling back to the same idea
+- Hit every point in the brief with enough depth — add color, specifics, and one extra beat where it helps; no filler, no circling back to the same idea
 
 Return ONLY a valid JSON object (no markdown):
 {
@@ -202,8 +203,8 @@ ${DIALOGUE_FLOW_EXAMPLE}
 RECENT DIALOGUE (continue from here):
 ${formatRecentContext(previousLines, 8)}
 
-Write EXACTLY ${linesNeeded} additional dialogue lines — a fresh example or sharper Q&A, not more recap.
-Do NOT write a recap or closing yet.
+Write EXACTLY ${linesNeeded} additional dialogue lines — a fresh example, a "what happened next" beat, or a sharper Q&A with concrete details, not more recap.
+Each line should be ~14–20 words. Do NOT write a recap or closing yet.
 
 Return ONLY a valid JSON object:
 {

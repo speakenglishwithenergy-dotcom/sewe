@@ -13,18 +13,6 @@ const TOPIC_STOP_WORDS = new Set([
   'episode', 'english', 'learn', 'learners', 'listening', 'podcast', 'speak', 'energy',
 ]);
 
-const CONTENT_STOP_WORDS = new Set([
-  ...TOPIC_STOP_WORDS,
-  'a', 'an', 'the', 'and', 'or', 'but', 'so', 'to', 'of', 'in', 'on', 'at', 'for',
-  'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
-  'i', 'you', 'we', 'they', 'he', 'she', 'it', 'my', 'our', 'their', 'his', 'her', 'its',
-  'this', 'that', 'these', 'those', 'here', 'there', 'today', 'very', 'just', 'also', 'even',
-  'well', 'right', 'know', 'mean', 'actually', 'everyone', 'everybody', 'maybe', 'might',
-  'could', 'would', 'should', 'can', 'will', 'don', 'doesn', 'didn', 'isn', 'aren', 'wasn',
-  'lisa', 'victor', 'say', 'said', 'think', 'like', 'get', 'got', 'make', 'made', 'take',
-  'tell', 'talk', 'ask', 'see', 'feel', 'want', 'need', 'going', 'come', 'back', 'still',
-]);
-
 /** Common spoken phrases worth highlighting when they appear verbatim. */
 const LEARNABLE_PHRASES = [
   'romanticize the past',
@@ -104,25 +92,15 @@ export function isPureSocialLine(text: string): boolean {
   return PURE_SOCIAL_PATTERNS.some((pattern) => pattern.test(text.trim()));
 }
 
-/** Target minimum highlights based on sentence length. */
+/** Target minimum highlights — only used to nudge lines with zero highlights. */
 export function minimumKeywordCount(text: string): number {
   if (isPureSocialLine(text)) {
     return 0;
   }
-  const words = text.trim().split(/\s+/).length;
-  if (words >= 18) {
-    return 3;
-  }
-  if (words >= 10) {
-    return 2;
-  }
-  if (words >= 5) {
-    return 1;
-  }
-  return 0;
+  return text.trim().split(/\s+/).length >= 5 ? 1 : 0;
 }
 
-/** Lines that need a boost pass — too few highlights for their length. */
+/** Lines that need a boost pass — substantive lines still missing any highlight. */
 export function needsKeywordBoost(text: string, keywords: string[]): boolean {
   if (isPureSocialLine(text)) {
     return false;
@@ -155,31 +133,6 @@ export function partitionTopicTerms(topicTerms: string[]): {
   }
 
   return { phrases, singles };
-}
-
-/** Extract 2–3 word collocations from the line (content-word heavy). */
-export function findCollocationPhrasesInText(text: string): string[] {
-  const words = (text.match(/[A-Za-z']+/g) ?? []).map((word) => word.replace(/^'+|'+$/g, ''));
-  const phrases: string[] = [];
-
-  for (let size = 3; size >= 2; size--) {
-    for (let index = 0; index <= words.length - size; index++) {
-      const slice = words.slice(index, index + size);
-      if (!isUsefulCollocation(slice)) {
-        continue;
-      }
-      phrases.push(slice.join(' '));
-    }
-  }
-
-  return [...new Set(phrases)].sort((a, b) => b.length - a.length);
-}
-
-function isUsefulCollocation(words: string[]): boolean {
-  const contentWords = words.filter(
-    (word) => word.length >= 3 && !CONTENT_STOP_WORDS.has(word.toLowerCase()),
-  );
-  return contentWords.length >= 2;
 }
 
 /** Drop single-word keywords already covered by a longer highlighted phrase. */
@@ -216,7 +169,7 @@ export function sortKeywordsByPhrasePriority(keywords: string[]): string[] {
   });
 }
 
-/** Add topic phrases, learnable phrases, and collocations before single words. */
+/** Add topic phrases and known learnable phrases when the model missed them. */
 export function boostKeywordsLocally(
   text: string,
   keywords: string[],
@@ -228,13 +181,9 @@ export function boostKeywordsLocally(
 
   const { phrases: topicPhrases, singles: topicSingles } = partitionTopicTerms(topicTerms);
   const result = [...keywords];
-  const candidates = [
-    ...topicPhrases,
-    ...findLearnablePhrasesInText(text),
-    ...findCollocationPhrasesInText(text),
-    ...topicSingles,
-    ...extractContentWords(text),
-  ];
+  // Only topic terms and known learnable phrases — skip arbitrary collocations and
+  // single content words that often fail the semantic-coherence test.
+  const candidates = [...topicPhrases, ...findLearnablePhrasesInText(text), ...topicSingles];
 
   for (const candidate of candidates) {
     if (result.length >= MAX_KEYWORDS_PER_LINE) {
@@ -260,13 +209,6 @@ export function findLearnablePhrasesInText(text: string): string[] {
     const pattern = buildKeywordRegex(phrase);
     return pattern.test(lower);
   }).sort((a, b) => b.length - a.length);
-}
-
-function extractContentWords(text: string): string[] {
-  return (text.match(/[A-Za-z']+/g) ?? [])
-    .map((word) => word.replace(/^'+|'+$/g, ''))
-    .filter((word) => word.length >= 5 && !CONTENT_STOP_WORDS.has(word.toLowerCase()))
-    .sort((a, b) => b.length - a.length);
 }
 
 /** Reserve slots for branding phrases first, then fill remaining budget. */

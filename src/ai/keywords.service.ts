@@ -20,7 +20,7 @@ import {
 import { logger } from '../utils/logger';
 
 /** Bump when selection logic changes — triggers automatic re-generation on resume. */
-export const KEYWORDS_GENERATOR_VERSION = 6;
+export const KEYWORDS_GENERATOR_VERSION = 7;
 
 const KeywordsBatchSchema = z.object({
   lines: z.array(
@@ -31,7 +31,8 @@ const KeywordsBatchSchema = z.object({
   ),
 });
 
-const BATCH_SIZE = 25;
+/** One API call when the script fits; split only when longer than this. */
+const MAX_LINES_PER_KEYWORDS_REQUEST = 40;
 
 export interface KeywordEnrichmentContext {
   topic: string;
@@ -73,17 +74,15 @@ export class KeywordsService {
         `(topic: "${context.topic}")...`,
     );
 
-    for (let offset = 0; offset < batch.length; offset += BATCH_SIZE) {
-      const chunk = batch.slice(offset, offset + BATCH_SIZE);
-      const keywordsByIndex = await this.generateBatch(
-        chunk.map(({ index, text }) => ({ index, text })),
-        promptContext,
-      );
+    const keywordsByIndex = await this.generateKeywordsInChunks(
+      batch.map(({ index, text }) => ({ index, text })),
+      promptContext,
+      (lines, ctx) => this.generateBatch(lines, ctx),
+    );
 
-      for (const { index, text, line } of chunk) {
-        const raw = keywordsByIndex.get(index) ?? [];
-        line.keywords = finalizeKeywords(text, raw, topicTerms);
-      }
+    for (const { index, text, line } of batch) {
+      const raw = keywordsByIndex.get(index) ?? [];
+      line.keywords = finalizeKeywords(text, raw, topicTerms);
     }
 
     await this.runBoostPass(script, promptContext, topicTerms);
@@ -111,17 +110,15 @@ export class KeywordsService {
 
     logger.info(`Boost pass for ${sparse.length} line(s) with too few highlights...`);
 
-    for (let offset = 0; offset < sparse.length; offset += BATCH_SIZE) {
-      const batch = sparse.slice(offset, offset + BATCH_SIZE);
-      const boosted = await this.generateBoostBatch(
-        batch.map(({ index, text, current }) => ({ index, text, current })),
-        promptContext,
-      );
+    const boosted = await this.generateKeywordsInChunks(
+      sparse.map(({ index, text, current }) => ({ index, text, current })),
+      promptContext,
+      (lines, ctx) => this.generateBoostBatch(lines, ctx),
+    );
 
-      for (const { index, text, line, current } of batch) {
-        const raw = boosted.get(index) ?? current;
-        line.keywords = finalizeKeywords(text, raw, topicTerms);
-      }
+    for (const { index, text, line, current } of sparse) {
+      const raw = boosted.get(index) ?? current;
+      line.keywords = finalizeKeywords(text, raw, topicTerms);
     }
   }
 
@@ -143,6 +140,31 @@ export class KeywordsService {
     }
   }
 
+  private async generateKeywordsInChunks<T extends { index: number }>(
+    lines: T[],
+    context: KeywordsPromptContext,
+    generate: (lines: T[], context: KeywordsPromptContext) => Promise<Map<number, string[]>>,
+  ): Promise<Map<number, string[]>> {
+    const chunks = chunkByMaxSize(lines, MAX_LINES_PER_KEYWORDS_REQUEST);
+    const merged = new Map<number, string[]>();
+
+    if (chunks.length > 1) {
+      logger.info(
+        `Keyword request split into ${chunks.length} batch(es) ` +
+          `(max ${MAX_LINES_PER_KEYWORDS_REQUEST} lines each)`,
+      );
+    }
+
+    for (const chunk of chunks) {
+      const partial = await generate(chunk, context);
+      for (const [index, keywords] of partial) {
+        merged.set(index, keywords);
+      }
+    }
+
+    return merged;
+  }
+
   private async generateBatch(
     lines: { index: number; text: string }[],
     context: KeywordsPromptContext,
@@ -150,8 +172,10 @@ export class KeywordsService {
     const result = await this.openai.generateJSON(
       buildKeywordsPrompt(lines, context),
       'You are an English teacher curating subtitle highlights for podcast learners. ' +
+        'The #1 rule: if a learner reads only the highlights, the sentence meaning must not change. ' +
         'Prioritize multi-word phrases, idioms, and collocations over single words. ' +
-        'Aim for 2–4 phrase highlights per substantive line; skip pure greetings or empty reactions. ' +
+        'Use up to 4 meaning-carrying highlights per substantive line; fewer is fine when that preserves meaning. ' +
+        'Skip pure greetings or empty reactions. ' +
         'Respond only with valid JSON matching the requested structure exactly.',
       (data) => KeywordsBatchSchema.parse(data),
       { temperature: 0.3 },
@@ -167,7 +191,9 @@ export class KeywordsService {
     const result = await this.openai.generateJSON(
       buildKeywordsBoostPrompt(lines, context),
       'You add more subtitle highlights for English learners. ' +
+        'The #1 rule: if a learner reads only the highlights, the sentence meaning must not change. ' +
         'Return the full expanded keyword list (max 4). Prefer phrases and collocations over single words. ' +
+        'Do not add fragments just to reach 4 — keep the list unchanged if it already preserves meaning. ' +
         'Remove redundant single words already covered by a longer phrase. ' +
         'Respond only with valid JSON.',
       (data) => KeywordsBatchSchema.parse(data),
@@ -220,4 +246,16 @@ export function filterKeywordsForText(text: string, keywords: string[]): string[
   }
 
   return valid;
+}
+
+function chunkByMaxSize<T>(items: T[], maxSize: number): T[][] {
+  if (items.length <= maxSize) {
+    return [items];
+  }
+
+  const chunks: T[][] = [];
+  for (let offset = 0; offset < items.length; offset += maxSize) {
+    chunks.push(items.slice(offset, offset + maxSize));
+  }
+  return chunks;
 }

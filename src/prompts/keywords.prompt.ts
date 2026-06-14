@@ -22,6 +22,15 @@ export function buildKeywordsPrompt(
 Episode topic: "${context.topic}"
 Episode title: "${context.title}"
 
+MOST IMPORTANT RULE — SEMANTIC COHERENCE:
+If a learner reads ONLY the highlighted words/phrases (in the order they appear in the sentence), the core meaning of the line must stay the same as the full sentence.
+- Before adding any highlight, ask: "Does this set still tell the same story?"
+- Prefer fewer, meaning-carrying phrases over more fragments that look useful but change or obscure the message
+- Do NOT add isolated words or collocations just to reach a quota if they do not help preserve meaning
+- Bad: "We've all felt that way sometimes." → ["felt", "way", "sometimes"] (meaning lost)
+- Good: "Overthinking can stop us from speaking up." → ["Overthinking", "speaking up"] (meaning preserved)
+- Good: "Right! But most people are busy with their own lives." → ["most people", "busy with their own lives"]
+
 ALWAYS HIGHLIGHT (whenever the exact phrase appears in the line):
 - "${CHANNEL_NAME}"
 
@@ -30,7 +39,7 @@ ${topicTermsBlock}
 
 GOAL: help A2–B1 learners follow along quickly — highlight useful PHRASES and collocations they can reuse, not isolated vocabulary crumbs.
 
-DEFAULT: aim for 2–4 highlights per line, mostly multi-word phrases. Single-word reactions and pure greetings are the ONLY exceptions.
+DEFAULT: up to 4 highlights per line when they collectively preserve meaning — mostly multi-word phrases. Use fewer (even 1–2) when that is all that passes the semantic coherence test. Single-word reactions and pure greetings are the ONLY exceptions for zero highlights.
 
 PHRASE-FIRST (most important):
 - Prefer 2–4 word phrases over single words whenever the sentence contains them
@@ -53,8 +62,9 @@ Even short questions or transitions should get at least 1 phrase highlight if th
 
 RULES:
 - keywords must appear EXACTLY in the sentence (same words, ignoring case)
-- At least half the highlights on a line should be phrases (2+ words) when the sentence allows it
-- Up to 4 highlights per line — spend the budget on phrases, not redundant single words
+- Every highlight set MUST pass the semantic coherence test above — this overrides all other rules
+- Prefer phrases (2+ words) when they carry meaning; avoid single-word crumbs unless they are essential to the line's message
+- Up to 4 highlights per line — spend the budget on meaning-carrying phrases, not redundant single words
 - Skip speaker names ("Victor", "Lisa") — but ALWAYS include "${CHANNEL_NAME}" when it appears
 
 Examples:
@@ -97,9 +107,14 @@ export function buildKeywordsBoostPrompt(
 Episode topic: "${context.topic}"
 Episode title: "${context.title}"
 
-For each line, ADD 1–3 more PHRASES (keep existing ones, return the full combined list, max 4 total).
+MOST IMPORTANT RULE — SEMANTIC COHERENCE:
+If a learner reads ONLY the highlighted words/phrases, the core meaning must stay the same as the full sentence.
+Only add highlights that help preserve meaning — never add fragments just to fill slots.
+
+For each line, ADD 1–3 more PHRASES only when they improve meaning coverage (keep existing ones, return the full combined list, max 4 total).
 Look for: multi-word topic expressions, idioms, phrasal verbs, and collocations still not highlighted.
 Prefer adding phrases over single words. Remove redundant single words that are already covered by a longer phrase.
+If the current set already passes the semantic coherence test, return it unchanged even if it has fewer than 4 highlights.
 
 Only keep a sparse list for pure greetings/sign-offs.
 
