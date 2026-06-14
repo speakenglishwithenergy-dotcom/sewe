@@ -5,14 +5,16 @@ import { buildPodcastVideoPath, buildShortVideoPath } from '../utils/filename.ut
 import { logger } from '../utils/logger';
 import { FacebookPublisherService } from './facebook-publisher.service';
 import { isPublishConfigured, loadPublishEnvConfig } from './publish.env';
-import { PublishFormat, PublishResult, PublishStatus, PublishTarget } from './publish.types';
+import { PublishFormat, PublishResult, PublishedVideoRecord, PublishStatus, PublishTarget } from './publish.types';
 import {
   formatChannelDescription,
   formatChannelShortCaption,
   formatFacebookCaption,
   formatFacebookShortCaption,
+  formatTikTokShortCaption,
 } from './social-metadata.normalize';
 import { getPublishOutputDir } from './social-metadata.export';
+import { TikTokPublisherService } from './tiktok-publisher.service';
 import { YouTubePublisherService } from './youtube-publisher.service';
 
 const PUBLISH_STATUS_FILE = 'publish-status.json';
@@ -81,13 +83,26 @@ function recordResult(
   status: PublishStatus,
   result: PublishResult,
 ): void {
-  const bucket = result.platform === 'youtube' ? 'youtube' : 'facebook';
-  if (!status[bucket]) status[bucket] = {};
-  status[bucket]![result.format] = {
+  const record: PublishedVideoRecord = {
     id: result.videoId,
     url: result.url,
     publishedAt: new Date().toISOString(),
   };
+
+  if (result.platform === 'youtube') {
+    if (!status.youtube) status.youtube = {};
+    status.youtube[result.format] = record;
+    return;
+  }
+  if (result.platform === 'facebook') {
+    if (!status.facebook) status.facebook = {};
+    status.facebook[result.format] = record;
+    return;
+  }
+  if (result.platform === 'tiktok' && result.format === 'short') {
+    if (!status.tiktok) status.tiktok = {};
+    status.tiktok.short = record;
+  }
 }
 
 function isAlreadyPublished(
@@ -95,7 +110,13 @@ function isAlreadyPublished(
   platform: PublishTarget,
   format: PublishFormat,
 ): boolean {
-  return Boolean(status[platform]?.[format]?.id);
+  if (platform === 'tiktok') {
+    return format === 'short' && Boolean(status.tiktok?.short?.id);
+  }
+  if (platform === 'youtube') {
+    return Boolean(status.youtube?.[format]?.id);
+  }
+  return Boolean(status.facebook?.[format]?.id);
 }
 
 export class SocialPublisherService {
@@ -106,7 +127,7 @@ export class SocialPublisherService {
     options: PublishOptions = {},
     shortScript?: ShortScript,
   ): Promise<PublishResult[]> {
-    const targets = options.targets ?? ['youtube', 'facebook'];
+    const targets = options.targets ?? ['youtube', 'facebook', 'tiktok'];
     const formats = options.formats ?? (shortScript ? ['long', 'short'] : ['long']);
     const force = options.force ?? false;
 
@@ -123,6 +144,9 @@ export class SocialPublisherService {
       : null;
     const facebook = targets.includes('facebook')
       ? new FacebookPublisherService(config.facebook)
+      : null;
+    const tiktok = targets.includes('tiktok')
+      ? new TikTokPublisherService(config.tiktok)
       : null;
 
     const status = await loadPublishStatus(projectDir);
@@ -199,6 +223,19 @@ export class SocialPublisherService {
             caption: formatFacebookShortCaption(socialMeta.facebookShort),
             firstComment: socialMeta.facebookShort.firstComment,
             format: 'short',
+          });
+          results.push(result);
+          recordResult(status, result);
+        }
+      }
+
+      if (targets.includes('tiktok') && tiktok) {
+        if (!force && isAlreadyPublished(status, 'tiktok', 'short')) {
+          logger.info(`⏭  TikTok already published → ${status.tiktok!.short!.url}`);
+        } else {
+          const result = await tiktok.uploadVideo({
+            videoPath,
+            caption: formatTikTokShortCaption(socialMeta.youtubeShort),
           });
           results.push(result);
           recordResult(status, result);

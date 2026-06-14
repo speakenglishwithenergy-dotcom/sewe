@@ -22,6 +22,7 @@ import {
   FACEBOOK_LONG_FIRST_COMMENT,
   FACEBOOK_SHORT_CAPTION,
   FACEBOOK_SHORT_FIRST_COMMENT,
+  TIKTOK_SHORT_CAPTION,
   getPublishOutputDir,
   resolveSocialMetadataPath,
   YOUTUBE_LONG_DESCRIPTION,
@@ -291,7 +292,8 @@ function printSocialMetadataSummary(projectDir: string, hasShort: boolean): void
   YT Short Cap  : ${path.join(publishDir, YOUTUBE_SHORT_CAPTION)}
   YT Short Pin  : ${path.join(publishDir, YOUTUBE_SHORT_PINNED_COMMENT)}
   FB Short Cap  : ${path.join(publishDir, FACEBOOK_SHORT_CAPTION)}
-  FB Short Pin  : ${path.join(publishDir, FACEBOOK_SHORT_FIRST_COMMENT)}`);
+  FB Short Pin  : ${path.join(publishDir, FACEBOOK_SHORT_FIRST_COMMENT)}
+  TikTok Cap    : ${path.join(publishDir, TIKTOK_SHORT_CAPTION)}`);
   }
 }
 
@@ -305,7 +307,7 @@ async function maybePublishProject(
   if (!options.publish) return;
 
   logger.info('');
-  logger.info('Publishing to YouTube + Facebook...');
+  logger.info('Publishing to YouTube, Facebook, TikTok...');
   const publisher = new SocialPublisherService();
   const results = await publisher.publishProject(
     projectDir,

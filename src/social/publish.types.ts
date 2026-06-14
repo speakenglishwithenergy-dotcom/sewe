@@ -1,6 +1,12 @@
 export type PublishPrivacy = 'private' | 'unlisted' | 'public';
 
-export type PublishTarget = 'youtube' | 'facebook';
+export type TikTokPrivacy =
+  | 'PUBLIC_TO_EVERYONE'
+  | 'MUTUAL_FOLLOW_FRIENDS'
+  | 'FOLLOWER_OF_CREATOR'
+  | 'SELF_ONLY';
+
+export type PublishTarget = 'youtube' | 'facebook' | 'tiktok';
 
 export type PublishFormat = 'long' | 'short';
 
@@ -17,6 +23,9 @@ export interface PublishStatus {
   };
   facebook?: {
     long?: PublishedVideoRecord;
+    short?: PublishedVideoRecord;
+  };
+  tiktok?: {
     short?: PublishedVideoRecord;
   };
 }

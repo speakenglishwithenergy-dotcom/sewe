@@ -7,6 +7,7 @@ import {
   formatChannelShortCaption,
   formatFacebookCaption,
   formatFacebookShortCaption,
+  formatTikTokShortCaption,
   formatYouTubeTags,
 } from './social-metadata.normalize';
 
@@ -17,6 +18,7 @@ export const PUBLISH_YOUTUBE_LONG_DIR = path.join('youtube', 'long');
 export const PUBLISH_YOUTUBE_SHORT_DIR = path.join('youtube', 'short');
 export const PUBLISH_FACEBOOK_LONG_DIR = path.join('facebook', 'long');
 export const PUBLISH_FACEBOOK_SHORT_DIR = path.join('facebook', 'short');
+export const PUBLISH_TIKTOK_SHORT_DIR = path.join('tiktok', 'short');
 
 export const PUBLISH_TITLE_TXT = 'title.txt';
 export const PUBLISH_DESCRIPTION_TXT = 'description.txt';
@@ -36,6 +38,7 @@ export const FACEBOOK_LONG_CAPTION = path.join(PUBLISH_FACEBOOK_LONG_DIR, PUBLIS
 export const FACEBOOK_LONG_FIRST_COMMENT = path.join(PUBLISH_FACEBOOK_LONG_DIR, PUBLISH_FIRST_COMMENT_TXT);
 export const FACEBOOK_SHORT_CAPTION = path.join(PUBLISH_FACEBOOK_SHORT_DIR, PUBLISH_CAPTION_TXT);
 export const FACEBOOK_SHORT_FIRST_COMMENT = path.join(PUBLISH_FACEBOOK_SHORT_DIR, PUBLISH_FIRST_COMMENT_TXT);
+export const TIKTOK_SHORT_CAPTION = path.join(PUBLISH_TIKTOK_SHORT_DIR, PUBLISH_CAPTION_TXT);
 
 /** Previous flat export filenames — removed on re-export to avoid duplicates. */
 const LEGACY_PUBLISH_TXT_FILES = [
@@ -117,6 +120,7 @@ export function buildExportBundle(meta: SocialMetadata): Record<string, string> 
     files[YOUTUBE_SHORT_TITLE] = meta.youtubeShort.title;
     files[YOUTUBE_SHORT_CAPTION] = formatChannelShortCaption(meta.youtubeShort);
     files[YOUTUBE_SHORT_PINNED_COMMENT] = meta.youtubeShort.pinnedComment;
+    files[TIKTOK_SHORT_CAPTION] = formatTikTokShortCaption(meta.youtubeShort);
   }
 
   if (meta.facebook) {

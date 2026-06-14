@@ -2,6 +2,7 @@ import { CHANNEL_NAME } from '../prompts/script.prompt';
 
 export const PUBLISH_YOUTUBE_CHANNEL_URL = 'https://www.youtube.com/@SpeakEnglishWithEnergyy';
 export const PUBLISH_FACEBOOK_PAGE_URL = 'https://www.facebook.com/SpeakEnglishWithEnergy';
+export const PUBLISH_TIKTOK_CHANNEL_URL = 'https://www.tiktok.com/@speakenglishwithenergy';
 
 /** Tags always included on every podcast upload (episode-specific tags are appended). */
 export const PUBLISH_CORE_TAGS = [
@@ -63,6 +64,7 @@ export const PUBLISH_DESCRIPTION = {
   linksHeader: '🔗 Connect with us:',
   youtubeLinkLine: `YouTube: ${PUBLISH_YOUTUBE_CHANNEL_URL}`,
   facebookLinkLine: `Facebook: ${PUBLISH_FACEBOOK_PAGE_URL}`,
+  tiktokLinkLine: `TikTok: ${PUBLISH_TIKTOK_CHANNEL_URL}`,
 } as const;
 
 /** Fixed copy blocks for Facebook podcast posts. */
@@ -70,12 +72,14 @@ export const PUBLISH_FACEBOOK = {
   learnHeader: "📌 You'll learn:",
   followCta: `👍 Follow us on Facebook: ${PUBLISH_FACEBOOK_PAGE_URL}`,
   youtubeCta: `🎬 Full episodes on YouTube: ${PUBLISH_YOUTUBE_CHANNEL_URL}`,
+  tiktokCta: `🎵 Follow us on TikTok: ${PUBLISH_TIKTOK_CHANNEL_URL}`,
 } as const;
 
 /** Fixed link footer appended to short-form captions (YouTube Short + Facebook Reel). */
 export const PUBLISH_SHORT_LINKS = {
   youtubeLine: `🎬 YouTube: ${PUBLISH_YOUTUBE_CHANNEL_URL}`,
   facebookLine: `👍 Facebook: ${PUBLISH_FACEBOOK_PAGE_URL}`,
+  tiktokLine: `🎵 TikTok: ${PUBLISH_TIKTOK_CHANNEL_URL}`,
 } as const;
 
 export const PUBLISH_LIMITS = {

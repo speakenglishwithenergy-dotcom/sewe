@@ -29,6 +29,7 @@ function parsePublishArgs(): PublishCliArgs {
     logger.info('  npm run publish -- --project=20260614-180724');
     logger.info('  npm run publish -- --project=20260614-180724 --youtube-only');
     logger.info('  npm run publish -- --project=20260614-180724 --facebook-only');
+    logger.info('  npm run publish -- --project=20260614-180724 --tiktok-only');
     logger.info('  npm run publish -- --project=20260614-180724 --long-only');
     logger.info('  npm run publish -- --project=20260614-180724 --short-only');
     logger.info('  npm run publish -- --project=20260614-180724 --force');
@@ -43,8 +44,10 @@ function parsePublishArgs(): PublishCliArgs {
 
   const youtubeOnly = args.includes('--youtube-only');
   const facebookOnly = args.includes('--facebook-only');
-  if (youtubeOnly && facebookOnly) {
-    logger.error('--youtube-only and --facebook-only cannot be used together');
+  const tiktokOnly = args.includes('--tiktok-only');
+  const platformOnlyFlags = [youtubeOnly, facebookOnly, tiktokOnly].filter(Boolean).length;
+  if (platformOnlyFlags > 1) {
+    logger.error('Only one of --youtube-only, --facebook-only, --tiktok-only can be used');
     process.exit(1);
   }
 
@@ -55,9 +58,10 @@ function parsePublishArgs(): PublishCliArgs {
     process.exit(1);
   }
 
-  let targets: PublishTarget[] = ['youtube', 'facebook'];
+  let targets: PublishTarget[] = ['youtube', 'facebook', 'tiktok'];
   if (youtubeOnly) targets = ['youtube'];
   if (facebookOnly) targets = ['facebook'];
+  if (tiktokOnly) targets = ['tiktok'];
 
   let formats: PublishFormat[] = ['long', 'short'];
   if (longOnly) formats = ['long'];

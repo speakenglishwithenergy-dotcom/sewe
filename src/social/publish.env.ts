@@ -1,6 +1,12 @@
-import { PublishPrivacy, PublishTarget } from './publish.types';
+import { PublishPrivacy, PublishTarget, TikTokPrivacy } from './publish.types';
 
 const VALID_PRIVACY: PublishPrivacy[] = ['private', 'unlisted', 'public'];
+const VALID_TIKTOK_PRIVACY: TikTokPrivacy[] = [
+  'PUBLIC_TO_EVERYONE',
+  'MUTUAL_FOLLOW_FRIENDS',
+  'FOLLOWER_OF_CREATOR',
+  'SELF_ONLY',
+];
 
 export interface PublishEnvConfig {
   youtube: {
@@ -15,6 +21,13 @@ export interface PublishEnvConfig {
     accessToken: string;
     /** false = unpublished Page video / draft Reel (default, matches YouTube private) */
     published: boolean;
+  };
+  tiktok: {
+    clientKey: string;
+    clientSecret: string;
+    accessToken: string;
+    refreshToken: string;
+    privacy: TikTokPrivacy;
   };
 }
 
@@ -37,6 +50,17 @@ function parsePrivacy(value: string | undefined, fallback: PublishPrivacy): Publ
   );
 }
 
+function parseTikTokPrivacy(value: string | undefined, fallback: TikTokPrivacy): TikTokPrivacy {
+  const normalized = value?.trim().toUpperCase();
+  if (!normalized) return fallback;
+  if (VALID_TIKTOK_PRIVACY.includes(normalized as TikTokPrivacy)) {
+    return normalized as TikTokPrivacy;
+  }
+  throw new Error(
+    `Invalid TIKTOK_PUBLISH_PRIVACY "${value}" — use ${VALID_TIKTOK_PRIVACY.join(', ')}`,
+  );
+}
+
 export function isPublishConfigured(target: PublishTarget): boolean {
   if (target === 'youtube') {
     return Boolean(
@@ -45,8 +69,15 @@ export function isPublishConfigured(target: PublishTarget): boolean {
         && process.env.YOUTUBE_REFRESH_TOKEN?.trim(),
     );
   }
+  if (target === 'facebook') {
+    return Boolean(
+      process.env.FACEBOOK_PAGE_ID?.trim() && process.env.FACEBOOK_PAGE_ACCESS_TOKEN?.trim(),
+    );
+  }
   return Boolean(
-    process.env.FACEBOOK_PAGE_ID?.trim() && process.env.FACEBOOK_PAGE_ACCESS_TOKEN?.trim(),
+    process.env.TIKTOK_CLIENT_KEY?.trim()
+      && process.env.TIKTOK_CLIENT_SECRET?.trim()
+      && (process.env.TIKTOK_ACCESS_TOKEN?.trim() || process.env.TIKTOK_REFRESH_TOKEN?.trim()),
   );
 }
 
@@ -61,6 +92,7 @@ function parseBooleanEnv(value: string | undefined, fallback: boolean): boolean 
 export function loadPublishEnvConfig(targets: PublishTarget[]): PublishEnvConfig {
   const needsYouTube = targets.includes('youtube');
   const needsFacebook = targets.includes('facebook');
+  const needsTikTok = targets.includes('tiktok');
 
   return {
     youtube: {
@@ -74,6 +106,13 @@ export function loadPublishEnvConfig(targets: PublishTarget[]): PublishEnvConfig
       pageId: needsFacebook ? requireEnv('FACEBOOK_PAGE_ID') : '',
       accessToken: needsFacebook ? requireEnv('FACEBOOK_PAGE_ACCESS_TOKEN') : '',
       published: parseBooleanEnv(process.env.FACEBOOK_PUBLISH_LIVE, false),
+    },
+    tiktok: {
+      clientKey: needsTikTok ? requireEnv('TIKTOK_CLIENT_KEY') : '',
+      clientSecret: needsTikTok ? requireEnv('TIKTOK_CLIENT_SECRET') : '',
+      accessToken: needsTikTok ? (process.env.TIKTOK_ACCESS_TOKEN?.trim() || '') : '',
+      refreshToken: needsTikTok ? (process.env.TIKTOK_REFRESH_TOKEN?.trim() || '') : '',
+      privacy: parseTikTokPrivacy(process.env.TIKTOK_PUBLISH_PRIVACY, 'SELF_ONLY'),
     },
   };
 }

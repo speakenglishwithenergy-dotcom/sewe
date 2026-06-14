@@ -10,6 +10,7 @@ import {
   PUBLISH_FACEBOOK_PAGE_URL,
   PUBLISH_LIMITS,
   PUBLISH_SHORT_CORE_HASHTAGS,
+  PUBLISH_TIKTOK_CHANNEL_URL,
   PUBLISH_YOUTUBE_CHANNEL_URL,
   PUBLISH_YOUTUBE_TITLE_BASE_MAX,
   PUBLISH_YOUTUBE_TITLE_SUFFIX,
@@ -43,7 +44,7 @@ CHANNEL STANDARD (enforced automatically — do not duplicate in your output):
 - Description layout is rebuilt from your hook, bullets, and chapters — fixed sections:
   "${PUBLISH_DESCRIPTION.learnHeader}", "${PUBLISH_DESCRIPTION.chaptersHeader}",
   "${PUBLISH_DESCRIPTION.subscribeCta}", "${PUBLISH_DESCRIPTION.shortCta}",
-  "${PUBLISH_DESCRIPTION.linksHeader}" with YouTube (${PUBLISH_YOUTUBE_CHANNEL_URL}) and Facebook (${PUBLISH_FACEBOOK_PAGE_URL}) links
+  "${PUBLISH_DESCRIPTION.linksHeader}" with YouTube (${PUBLISH_YOUTUBE_CHANNEL_URL}), Facebook (${PUBLISH_FACEBOOK_PAGE_URL}), and TikTok (${PUBLISH_TIKTOK_CHANNEL_URL}) links
 
 DESCRIPTION CONTENT (use \\n for line breaks inside the JSON string):
 1. HOOK — first 1–2 lines, ≤${PUBLISH_LIMITS.hookMaxChars} characters, front-load main keyword (e.g. "learn English", "English fluency")
@@ -96,7 +97,7 @@ AUDIENCE: English learners scrolling Shorts — need instant hook + value.
 
 CHANNEL STANDARD (enforced automatically):
 - Core Short hashtags always prepended: ${PUBLISH_SHORT_CORE_HASHTAGS.join(', ')}
-- YouTube (${PUBLISH_YOUTUBE_CHANNEL_URL}) and Facebook (${PUBLISH_FACEBOOK_PAGE_URL}) links appended to the exported caption automatically
+- YouTube (${PUBLISH_YOUTUBE_CHANNEL_URL}), Facebook (${PUBLISH_FACEBOOK_PAGE_URL}), and TikTok (${PUBLISH_TIKTOK_CHANNEL_URL}) links appended to the exported caption automatically
 
 RULES:
 - "title": scroll-stopping, max ${PUBLISH_LIMITS.youtubeShortTitleMax} characters, different angle from podcast title
@@ -131,7 +132,7 @@ AUDIENCE: English learners (A2–B1), self-improvement fans, people who want pra
 CHANNEL STANDARD (enforced automatically — do not duplicate in your output):
 - Core hashtags always prepended: ${PUBLISH_FACEBOOK_CORE_HASHTAGS.join(', ')}
 - Post layout is rebuilt from your hook and bullets — fixed sections:
-  "${PUBLISH_FACEBOOK.learnHeader}", "${PUBLISH_FACEBOOK.followCta}", "${PUBLISH_FACEBOOK.youtubeCta}"
+  "${PUBLISH_FACEBOOK.learnHeader}", "${PUBLISH_FACEBOOK.followCta}", "${PUBLISH_FACEBOOK.youtubeCta}", "${PUBLISH_FACEBOOK.tiktokCta}"
 - No chapters block — Facebook posts do not use timestamps
 
 CAPTION CONTENT (use \\n for line breaks inside the JSON string):
@@ -178,7 +179,7 @@ AUDIENCE: English learners scrolling Reels — need instant hook + value.
 
 CHANNEL STANDARD (enforced automatically):
 - Core Reel hashtags always prepended: #LearnEnglish, #Reels
-- YouTube (${PUBLISH_YOUTUBE_CHANNEL_URL}) link appended to the exported caption automatically
+- YouTube (${PUBLISH_YOUTUBE_CHANNEL_URL}), Facebook (${PUBLISH_FACEBOOK_PAGE_URL}), and TikTok (${PUBLISH_TIKTOK_CHANNEL_URL}) links appended to the exported caption automatically
 
 RULES:
 - "caption": 1–2 sentences (≤${PUBLISH_LIMITS.facebookShortCaptionMaxChars} chars) — hook + one concrete takeaway, NO hashtags inside

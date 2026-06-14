@@ -7,6 +7,7 @@
     "generate": "tsx src/index.ts",
     "publish": "tsx src/publish.ts",
     "youtube:auth": "tsx scripts/youtube-oauth.ts",
+    "tiktok:auth": "tsx scripts/tiktok-oauth.ts",
     "generate:conversations-audio": "tsx src/conversations-audio.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit"

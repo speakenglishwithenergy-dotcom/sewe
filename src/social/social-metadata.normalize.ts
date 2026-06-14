@@ -145,7 +145,11 @@ export function formatYouTubeTags(tags: string[]): string {
 }
 
 function formatShortLinksFooter(): string {
-  return [PUBLISH_SHORT_LINKS.youtubeLine, PUBLISH_SHORT_LINKS.facebookLine].join('\n');
+  return [
+    PUBLISH_SHORT_LINKS.youtubeLine,
+    PUBLISH_SHORT_LINKS.facebookLine,
+    PUBLISH_SHORT_LINKS.tiktokLine,
+  ].join('\n');
 }
 
 /** Build the canonical channel description layout from structured metadata. */
@@ -177,6 +181,7 @@ export function formatChannelDescription(meta: YouTubeMetadata): string {
     PUBLISH_DESCRIPTION.linksHeader,
     PUBLISH_DESCRIPTION.youtubeLinkLine,
     PUBLISH_DESCRIPTION.facebookLinkLine,
+    PUBLISH_DESCRIPTION.tiktokLinkLine,
     '',
     hashtags.join(' '),
   ]
@@ -193,6 +198,18 @@ export function formatChannelShortCaption(meta: YouTubeShortMetadata): string {
   );
 
   return [caption, '', hashtags.join(' '), '', formatShortLinksFooter()].join('\n').trim();
+}
+
+/** TikTok caption — hook + hashtags only (no cross-platform link footer). */
+export function formatTikTokShortCaption(meta: YouTubeShortMetadata): string {
+  const caption = truncateAtWord(meta.caption.trim(), PUBLISH_LIMITS.shortCaptionMaxChars);
+  const hashtags = mergeUniqueHashtags(
+    PUBLISH_SHORT_CORE_HASHTAGS,
+    meta.hashtags,
+    PUBLISH_LIMITS.shortHashtagsMax,
+  );
+
+  return [caption, '', hashtags.join(' ')].join('\n').trim();
 }
 
 /** Build the canonical Facebook podcast post caption from structured metadata. */
@@ -214,6 +231,7 @@ export function formatFacebookCaption(meta: FacebookMetadata): string {
     '',
     PUBLISH_FACEBOOK.followCta,
     PUBLISH_FACEBOOK.youtubeCta,
+    PUBLISH_FACEBOOK.tiktokCta,
     '',
     hashtags.join(' '),
   ]
@@ -229,7 +247,7 @@ export function formatFacebookShortCaption(meta: FacebookShortMetadata): string 
     PUBLISH_LIMITS.facebookShortHashtagsMax,
   );
 
-  return [caption, '', hashtags.join(' '), '', PUBLISH_SHORT_LINKS.youtubeLine].join('\n').trim();
+  return [caption, '', hashtags.join(' '), '', formatShortLinksFooter()].join('\n').trim();
 }
 
 function normalizeYouTubeMetadata(meta: YouTubeMetadata): YouTubeMetadata {
