@@ -5,6 +5,9 @@ import {
 } from './subtitle-style';
 import { buildKeywordRegex } from '../ai/keywords.util';
 
+/** Set to true to burn orange keyword highlights into subtitle ASS output. */
+export const KEYWORD_HIGHLIGHTS_ENABLED = false;
+
 interface TextRange {
   start: number;
   end: number;
@@ -71,6 +74,10 @@ export function highlightWrappedSubtitleText(
   keywords: string[] | undefined,
   colour = SUBTITLE_KEYWORD_COLOUR,
 ): string {
+  if (!KEYWORD_HIGHLIGHTS_ENABLED) {
+    return wrappedText;
+  }
+
   return wrappedText
     .split('\n')
     .map((line) => highlightKeywordsInText(line, keywords, colour))

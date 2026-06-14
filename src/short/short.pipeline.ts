@@ -5,6 +5,7 @@ import { KeywordsService, KEYWORDS_GENERATOR_VERSION } from '../ai/keywords.serv
 import { ThumbnailService } from '../ai/thumbnail.service';
 import { TTSService } from '../audio/tts.service';
 import { SubtitleService } from '../subtitles/subtitle.service';
+import { KEYWORD_HIGHLIGHTS_ENABLED } from '../subtitles/subtitle-highlight.util';
 import { FFmpegService } from '../ffmpeg/ffmpeg.service';
 import { VideoService } from '../video/video.service';
 import {
@@ -81,7 +82,10 @@ export async function runShortPipeline(
     logger.info(`Short script saved → ${paths.shortScriptPath}`);
   }
 
-  if (services.keywordsService.needsEnrichment(shortScript.script, shortScript.keywordsVersion)) {
+  if (
+    KEYWORD_HIGHLIGHTS_ENABLED &&
+    services.keywordsService.needsEnrichment(shortScript.script, shortScript.keywordsVersion)
+  ) {
     const regenerateAll = shortScript.keywordsVersion !== KEYWORDS_GENERATOR_VERSION;
     shortScript.script = await services.keywordsService.enrichScript(
       shortScript.script,

@@ -11,6 +11,7 @@ import { ThumbnailService } from './ai/thumbnail.service';
 import { TTSService } from './audio/tts.service';
 import { SupertonicService } from './audio/supertonic.service';
 import { SubtitleService } from './subtitles/subtitle.service';
+import { KEYWORD_HIGHLIGHTS_ENABLED } from './subtitles/subtitle-highlight.util';
 import { FFmpegService } from './ffmpeg/ffmpeg.service';
 import { VideoService } from './video/video.service';
 import { ProjectService } from './project/project.service';
@@ -389,7 +390,10 @@ async function main(): Promise<void> {
     logger.info(`IPA saved → ${SCRIPT_PATH}`);
   }
 
-  if (keywordsService.needsEnrichment(podcastScript.script, podcastScript.keywordsVersion)) {
+  if (
+    KEYWORD_HIGHLIGHTS_ENABLED &&
+    keywordsService.needsEnrichment(podcastScript.script, podcastScript.keywordsVersion)
+  ) {
     const regenerateAll = podcastScript.keywordsVersion !== KEYWORDS_GENERATOR_VERSION;
     podcastScript.script = await keywordsService.enrichScript(
       podcastScript.script,
@@ -410,6 +414,10 @@ async function main(): Promise<void> {
 
   // ── Step 4: Subtitles ─────────────────────────────────────────────────────
   logger.step(4, totalSteps, 'Generating subtitle file...');
+  if (!KEYWORD_HIGHLIGHTS_ENABLED && await fileExists(SUBTITLES_PATH)) {
+    await fs.unlink(SUBTITLES_PATH);
+    logger.info('Removed cached subtitles — highlights disabled, will regenerate plain text');
+  }
   if (await fileExists(SUBTITLES_PATH)) {
     logger.info(`⏭  Subtitles already exist — skipping`);
   } else {
