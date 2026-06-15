@@ -1,3 +1,5 @@
+See [docs/commands.md](docs/commands.md) for all CLI commands and arguments.
+
 ## Get Page Access Token
 
 https://developers.facebook.com/tools/explorer/1031329456250001/
