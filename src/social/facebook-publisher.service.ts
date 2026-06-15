@@ -44,7 +44,6 @@ export class FacebookPublisherService {
     logger.info(`Uploading Facebook video (${visibility}) → ${input.videoPath}`);
 
     const form = new FormData();
-    form.append('access_token', this.config.accessToken);
     form.append('description', input.caption);
     form.append('published', this.publishLive ? 'true' : 'false');
     form.append('source', fs.createReadStream(input.videoPath));
@@ -147,7 +146,6 @@ export class FacebookPublisherService {
     logger.info(`Setting Facebook video thumbnail → ${thumbnailPath}`);
 
     const form = new FormData();
-    form.append('access_token', this.config.accessToken);
     form.append('is_preferred', 'true');
     form.append('source', fs.createReadStream(thumbnailPath));
 
@@ -202,22 +200,46 @@ export class FacebookPublisherService {
     return data;
   }
 
-  private async postMultipart(url: string, form: FormData): Promise<{ id?: string }> {
-    const response = await fetch(url, {
-      method: 'POST',
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      body: form as any,
-      headers: form.getHeaders(),
+  /** form-data + Node fetch drops body fields and streams; use query param + form.submit(). */
+  private withAccessToken(url: string): string {
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}access_token=${encodeURIComponent(this.config.accessToken)}`;
+  }
+
+  private postMultipart(url: string, form: FormData): Promise<{ id?: string }> {
+    return new Promise((resolve, reject) => {
+      form.submit(this.withAccessToken(url), (err, res) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        let body = '';
+        res.on('data', (chunk: Buffer | string) => {
+          body += chunk;
+        });
+        res.on('error', reject);
+        res.on('end', () => {
+          try {
+            const data = JSON.parse(body) as { id?: string } & GraphErrorBody;
+            if (res.statusCode && res.statusCode >= 400) {
+              reject(
+                new Error(
+                  `Facebook API error (${res.statusCode}): ${data.error?.message ?? body}`,
+                ),
+              );
+              return;
+            }
+            if (data.error?.message) {
+              reject(new Error(`Facebook API error: ${data.error.message}`));
+              return;
+            }
+            resolve(data);
+          } catch (parseErr) {
+            reject(parseErr);
+          }
+        });
+      });
     });
-    const data = (await response.json()) as { id?: string } & GraphErrorBody;
-    if (!response.ok) {
-      throw new Error(
-        `Facebook API error (${response.status}): ${data.error?.message ?? JSON.stringify(data)}`,
-      );
-    }
-    if (data.error?.message) {
-      throw new Error(`Facebook API error: ${data.error.message}`);
-    }
-    return data;
   }
 }
