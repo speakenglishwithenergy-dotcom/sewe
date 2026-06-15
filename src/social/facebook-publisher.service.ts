@@ -43,25 +43,15 @@ export class FacebookPublisherService {
     const visibility = this.publishLive ? 'public' : 'unpublished (private)';
     logger.info(`Uploading Facebook video (${visibility}) → ${input.videoPath}`);
 
-    const form = new FormData();
-    form.append('description', input.caption);
-    form.append('published', this.publishLive ? 'true' : 'false');
-    form.append('source', fs.createReadStream(input.videoPath));
-    if (input.thumbnailPath) {
-      form.append('thumb', fs.createReadStream(input.thumbnailPath));
-    }
-
-    const response = await this.postMultipart(
-      `${GRAPH_VIDEO_BASE}/${this.config.pageId}/videos`,
-      form,
-    );
-    const videoId = response.id as string | undefined;
-    if (!videoId) {
-      throw new Error('Facebook upload succeeded but no video ID was returned');
-    }
+    const fileSize = (await fs.promises.stat(input.videoPath)).size;
+    const { videoId, sessionId, startOffset, endOffset } = await this.startResumableUpload(fileSize);
+    await this.transferResumableVideo(input.videoPath, fileSize, sessionId, startOffset, endOffset);
+    await this.finishResumableUpload(sessionId, input.caption);
 
     const url = `https://www.facebook.com/${videoId}`;
     logger.success(`Facebook video uploaded (${visibility}) → ${url}`);
+
+    await this.setVideoThumbnail(videoId, input.thumbnailPath);
 
     const commentPosted = await this.maybePostFirstComment(videoId, input.firstComment);
 
@@ -72,6 +62,114 @@ export class FacebookPublisherService {
       url,
       commentPosted,
     };
+  }
+
+  private async startResumableUpload(
+    fileSize: number,
+  ): Promise<{ videoId: string; sessionId: string; startOffset: number; endOffset: number }> {
+    const params = new URLSearchParams({
+      access_token: this.config.accessToken,
+      upload_phase: 'start',
+      file_size: String(fileSize),
+    });
+    const data = await this.postUrlEncoded<{ video_id: string; upload_session_id: string; start_offset: string; end_offset: string }>(
+      `${GRAPH_VIDEO_BASE}/${this.config.pageId}/videos?${params.toString()}`,
+    );
+    if (!data.video_id || !data.upload_session_id) {
+      throw new Error('Facebook resumable upload start failed — missing video_id or upload_session_id');
+    }
+    return {
+      videoId: data.video_id,
+      sessionId: data.upload_session_id,
+      startOffset: Number(data.start_offset),
+      endOffset: Number(data.end_offset),
+    };
+  }
+
+  private async transferResumableVideo(
+    videoPath: string,
+    fileSize: number,
+    sessionId: string,
+    startOffset: number,
+    endOffset: number,
+  ): Promise<void> {
+    const fd = await fs.promises.open(videoPath, 'r');
+    try {
+      let offset = startOffset;
+      let chunkEnd = endOffset;
+      let lastLoggedMb = 0;
+
+      while (offset !== chunkEnd) {
+        const chunkLength = chunkEnd - offset;
+        const chunk = Buffer.alloc(chunkLength);
+        await fd.read(chunk, 0, chunkLength, offset);
+
+        const form = new globalThis.FormData();
+        form.append('access_token', this.config.accessToken);
+        form.append('upload_phase', 'transfer');
+        form.append('upload_session_id', sessionId);
+        form.append('start_offset', String(offset));
+        form.append('video_file_chunk', new Blob([chunk]), 'chunk');
+
+        const response = await fetch(`${GRAPH_VIDEO_BASE}/${this.config.pageId}/videos`, {
+          method: 'POST',
+          body: form,
+        });
+        const data = (await response.json()) as {
+          start_offset: string;
+          end_offset: string;
+        } & GraphErrorBody;
+        if (!response.ok || data.error?.message) {
+          throw new Error(
+            `Facebook resumable transfer failed (${response.status}): ${data.error?.message ?? JSON.stringify(data)}`,
+          );
+        }
+
+        offset = Number(data.start_offset);
+        chunkEnd = Number(data.end_offset);
+
+        const uploadedMb = Math.floor(offset / (1024 * 1024));
+        if (uploadedMb >= lastLoggedMb + 10 || offset === fileSize) {
+          lastLoggedMb = uploadedMb;
+          logger.info(`Facebook upload progress: ${Math.round((offset / fileSize) * 100)}% (${uploadedMb} MB / ${Math.ceil(fileSize / (1024 * 1024))} MB)`);
+        }
+      }
+    } finally {
+      await fd.close();
+    }
+  }
+
+  private async finishResumableUpload(sessionId: string, caption: string): Promise<void> {
+    const params = new URLSearchParams({
+      access_token: this.config.accessToken,
+      upload_phase: 'finish',
+      upload_session_id: sessionId,
+      description: caption,
+      published: this.publishLive ? 'true' : 'false',
+    });
+    await this.postUrlEncoded(`${GRAPH_VIDEO_BASE}/${this.config.pageId}/videos?${params.toString()}`);
+  }
+
+  private async postUrlEncoded<T = { success?: boolean }>(url: string): Promise<T> {
+    const response = await fetch(url, { method: 'POST' });
+    const text = await response.text();
+    let data: T & GraphErrorBody;
+    try {
+      data = (text ? JSON.parse(text) : {}) as T & GraphErrorBody;
+    } catch {
+      throw new Error(
+        `Facebook API error (${response.status}): ${text || 'empty response body'}`,
+      );
+    }
+    if (!response.ok) {
+      throw new Error(
+        `Facebook API error (${response.status}): ${data.error?.message ?? text}`,
+      );
+    }
+    if (data.error?.message) {
+      throw new Error(`Facebook API error: ${data.error.message}`);
+    }
+    return data;
   }
 
   private async uploadReel(input: FacebookUploadInput): Promise<PublishResult> {
@@ -220,6 +318,14 @@ export class FacebookPublisherService {
         });
         res.on('error', reject);
         res.on('end', () => {
+          if (!body.trim()) {
+            reject(
+              new Error(
+                `Facebook API error (${res.statusCode ?? 'unknown'}): empty response body`,
+              ),
+            );
+            return;
+          }
           try {
             const data = JSON.parse(body) as { id?: string } & GraphErrorBody;
             if (res.statusCode && res.statusCode >= 400) {
