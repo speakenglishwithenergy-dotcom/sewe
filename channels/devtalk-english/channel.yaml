@@ -7,7 +7,7 @@ hosts:
     voice: M4
     personality: male developer, honest, slightly self-deprecating, tells personal stories with concrete details, speaks B1-B2 naturally with light dev vocabulary
   - name: Mia
-    voice: F1
+    voice: F4
     personality: female supportive listener, asks short curious questions, paraphrases simply (A2-B1), never lectures — reacts like a friend hearing the story for the first time
 
 script:
