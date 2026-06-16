@@ -4,7 +4,7 @@ niche: English shadowing material for developers — real dev stories in natural
 
 hosts:
   - name: Alex
-    voice: M1
+    voice: M4
     personality: male developer, honest, slightly self-deprecating, tells personal stories with concrete details, speaks B1-B2 naturally with light dev vocabulary
   - name: Mia
     voice: F1
@@ -71,6 +71,8 @@ short:
   minLines: 5
   maxLines: 12
 
+perEpisodeBackground: true
+
 branding:
   subtitleColors:
     highlight: "#FF7A00"
@@ -78,20 +80,35 @@ branding:
     ipa: "#2ba6e1"
     background: "#0D1B3D"
   thumbnail:
-    brandColors: "Dark Navy #0D1B3D, Royal Blue #1E3A8A, Bright Orange #FF7A00, Off-white #F2F4F7"
+    templateType: overlay-template
+    brandColors: "Dark Teal #0a2e2e, Cyan Teal #14B8A6, White #FFFFFF, Dark Navy #0D1B3D, Yellow accent for emphasis"
     charactersBlock: |
-      - Alex: male developer, short dark hair, light stubble, navy blue #1E3A8A hoodie, black headphones, laptop mug labeled "Alex"
-      - Mia: female, shoulder-length brown hair, teal #14B8A6 sweater, black headphones, coffee mug labeled "Mia"
+      - Alex (thumbnail only): young Asian male developer, glasses, black hoodie, positioned on RIGHT ~35% of frame
     logoLockRules: "LOGO AND BADGE ARE LOCKED ASSETS: copy them pixel-for-pixel from the reference image. Never redraw, regenerate, or reinterpret any logo icon or badge icon."
     logoUnchanged: |
-      TOP RIGHT — logo block (ABSOLUTELY UNTOUCHED — copy verbatim from reference):
-      - CRITICAL: Do NOT generate, redraw, reinterpret, restyle, or "fix" ANY part of this logo block
-      - Copy the exact logo graphic from the reference image — same icons, wordmark, colors, spacing
-      - Same size, position, spacing, colors, fonts, and icon shapes as reference — ZERO changes
-    badgeUnchanged: |
-      BOTTOM LEFT — badge block (ABSOLUTELY UNTOUCHED — copy verbatim from reference):
-      - CRITICAL: Do NOT regenerate any badge icons — use the reference graphic exactly
+      BOTTOM LEFT — DevTalk logo block (ABSOLUTELY UNTOUCHED — copy verbatim from reference):
+      - CRITICAL: Do NOT generate, redraw, reinterpret, or replace the speech-bubble logo icon
+      - Speech bubble with </> code symbol and sound wave
+      - "DevTalk" wordmark in white bold sans-serif
+      - "— ENGLISH —" subtitle in teal
       - Same size, position, spacing, colors, and fonts as reference — ZERO changes
+    badgeUnchanged: |
+      BOTTOM CENTER — category badge row (ABSOLUTELY UNTOUCHED — copy verbatim from reference):
+      - CRITICAL: Do NOT regenerate any badge icons — use the reference graphic exactly
+      - Four white icons with labels: PROGRAMMING (</>), ENGLISH PRACTICE (mic), CAREER GROWTH (cloud), BUILDING MY FUTURE (rocket)
+      - Thin white vertical dividers between icons
+      - Same size, position, spacing, colors, and fonts as reference — ZERO changes
+    backgroundUnchanged: |
+      TOP LEFT — logo + episode tag block (ABSOLUTELY UNTOUCHED — copy verbatim from reference):
+      - DevTalk logo (speech bubble with </> and sound wave, wordmark, — ENGLISH —)
+      - Teal brush-stroke "EPISODE N" tag with hand-drawn white arrow and action lines
+      BOTTOM LEFT — category badge row (same four icons as thumbnail)
+      BOTTOM — semi-transparent dark rounded bar with centered placeholder dots
+    titleChangeBlock: |
+      TOP RIGHT — teal brush-stroke title banner (CHANGE text only):
+      - Keep exact brush-stroke shape, glow, and dark sans-serif typography from reference
+      - Replace only the title text with the episode title
+      - Parenthetical emphasis may use yellow-green accent like the reference
     shortLogoUnchanged: |
       TOP — logo block (ABSOLUTELY UNTOUCHED — copy verbatim from reference):
       - CRITICAL: Do NOT generate, redraw, reinterpret, or replace ANY logo icons
@@ -100,25 +117,22 @@ branding:
       BOTTOM — badge block (ABSOLUTELY UNTOUCHED — copy verbatim from reference):
       - CRITICAL: Do NOT regenerate badge icons — use the reference graphic exactly
       - Same size, position, spacing, colors, and fonts as reference — ZERO changes
-    artStyle: "modern clean digital illustration, warm beige studio, soft shading, not photorealistic"
-    characterColorReference: |
-      CHARACTER COLORS — must match the landscape podcast thumbnail reference exactly:
-      - Alex hoodie: royal blue #1E3A8A — NEVER black or dark gray
-      - Mia sweater: teal #14B8A6
+    artStyle: "blurred photorealistic dev workspace, moody teal/navy lighting, shallow depth of field (bokeh), graphic overlays on photo"
     topicRelevance: |
       TOPIC RELEVANCE — REQUIRED for every change you make:
-      - Episode topic drives ALL creative choices — expressions, gestures, props, visual metaphors
-      - Dev/tech props when relevant (laptop, code on screen, microphone, notebook)
-      - Pick expressions that fit THIS episode's specific problem or insight
-      - AVOID: random props, generic emotions, decorative objects with no link to the topic
+      - Episode topic drives the blurred workspace photo — desk setup, monitors, props, lighting
+      - Pick a specific dev scene tied to the topic (code on screen, notebook, whiteboard, late-night coding, etc.)
+      - Keep heavy background blur so overlays and subtitles stay readable
+      - Teal/navy color grade consistent across episodes
+      - AVOID: random props or generic office photos with no link to the topic
     expressionModeration: |
       EXPRESSION INTENSITY — warm and clear at thumbnail size, but natural and moderate:
-      - Subtle-to-medium expressiveness — like a real podcast moment, not a cartoon reaction shot
+      - Subtle-to-medium expressiveness — like a real dev vlog moment, not a cartoon reaction shot
       - NOT over-the-top, NOT exaggerated YouTube-face, NOT clownish or melodramatic
     charactersExpressionGuidance: |
-      Alex's expression — pick ONE clear, moderate reaction that fits THIS episode's topic and hook.
-      Mia's expression — pick ONE clear, moderate supportive reaction that pairs with Alex's topic moment.
-      AVOID: exaggerated shock, jaw-drop, always pointing at Alex, passive listener pose.
+      Alex (thumbnail only) — pick ONE clear, moderate expression/pose that fits THIS episode's topic and hook.
+      Examples: hand-on-chin thinking, looking up while explaining, confident presenter glance.
+      AVOID: exaggerated shock, jaw-drop, or passive blank stare.
 
 assets:
   intro: assets/intro.mp4
