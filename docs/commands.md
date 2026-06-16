@@ -33,6 +33,9 @@ npm run generate -- --list-channels
 # New project (channel required)
 npm run generate -- --channel=speak-english-with-energy --topic="Why Smart People Stay Stuck"
 
+# New project with a custom script draft (AI uses it as reference)
+npm run generate -- --channel=devtalk-english --topic="Why I started a programming channel" --script-file=./my-draft.txt
+
 # Resume existing project (channel loaded from project.json)
 npm run generate -- --project=20260614-185052
 
@@ -171,6 +174,7 @@ Projects are stored under `output/projects/<project-id>/`:
 
 ```
 output/projects/<id>/
+  script-draft.txt         # Optional author draft (reference for script generation)
   script.json              # Podcast script
   short-script.json        # Short script (when generated)
   audio/                   # Per-line WAV segments

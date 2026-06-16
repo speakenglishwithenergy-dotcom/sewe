@@ -52,6 +52,8 @@ const SUPERTONIC_DIR = path.join(ROOT_DIR, 'assets', 'supertonic-3');
 const SUPERTONIC_ONNX_DIR = process.env.SUPERTONIC_ONNX_DIR ?? path.join(SUPERTONIC_DIR, 'onnx');
 const SUPERTONIC_VOICES_DIR = process.env.SUPERTONIC_VOICES_DIR ?? path.join(SUPERTONIC_DIR, 'voice_styles');
 
+const SCRIPT_DRAFT_FILE = 'script-draft.txt';
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 async function fileExists(filePath: string): Promise<boolean> {
@@ -61,6 +63,31 @@ async function fileExists(filePath: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+async function loadScriptDraft(projectDir: string): Promise<string | undefined> {
+  const draftPath = path.join(projectDir, SCRIPT_DRAFT_FILE);
+  if (!(await fileExists(draftPath))) return undefined;
+  const content = await fs.readFile(draftPath, 'utf-8').then((s) => s.trim());
+  return content || undefined;
+}
+
+async function saveScriptDraft(projectDir: string, sourcePath: string): Promise<void> {
+  const resolved = path.resolve(sourcePath);
+  if (!(await fileExists(resolved))) {
+    logger.error(`Script draft file not found: ${resolved}`);
+    process.exit(1);
+  }
+
+  const content = await fs.readFile(resolved, 'utf-8');
+  if (!content.trim()) {
+    logger.error(`Script draft file is empty: ${resolved}`);
+    process.exit(1);
+  }
+
+  const draftPath = path.join(projectDir, SCRIPT_DRAFT_FILE);
+  await fs.writeFile(draftPath, content, 'utf-8');
+  logger.info(`Custom script draft saved → ${draftPath}`);
 }
 
 // ─── CLI arg parsing ──────────────────────────────────────────────────────────
@@ -75,6 +102,7 @@ type CliArgs =
       mode: 'new';
       channelId: string;
       topic: string;
+      scriptFile?: string;
       test: boolean;
       short: boolean;
       podcast: boolean;
@@ -245,7 +273,7 @@ function parseArgs(): CliArgs {
   if (!topicArg) {
     logger.error('Missing required argument: --channel + --topic, --project, --list, or --list-channels');
     logger.info('Usage:');
-    logger.info('  npm run generate -- --channel=speak-english-with-energy --topic="..."');
+    logger.info('  npm run generate -- --channel=speak-english-with-energy --topic="..." [--script-file=./draft.txt]');
     logger.info('  npm run generate -- --list-channels');
     logger.info('  npm run generate -- --list [--channel=ID]');
     logger.info('  npm run generate -- --project=20260612-143022');
@@ -269,6 +297,14 @@ function parseArgs(): CliArgs {
     logger.error('--topic value cannot be empty');
     process.exit(1);
   }
+
+  const scriptFileArg = args.find((a) => a.startsWith('--script-file='));
+  const scriptFile = scriptFileArg?.replace('--script-file=', '').replace(/^["']|["']$/g, '').trim();
+  if (scriptFileArg && !scriptFile) {
+    logger.error('--script-file value cannot be empty');
+    process.exit(1);
+  }
+
   if (force) {
     logger.error('--force requires --project (use it to re-run an existing project)');
     process.exit(1);
@@ -277,7 +313,7 @@ function parseArgs(): CliArgs {
     logger.error('--regenerate-metadata requires --project');
     process.exit(1);
   }
-  return { mode: 'new', channelId, topic, test, short, podcast, force, publish, forcePublish };
+  return { mode: 'new', channelId, topic, scriptFile, test, short, podcast, force, publish, forcePublish };
 }
 
 async function resolveMetadataRegenerate(
@@ -437,6 +473,9 @@ async function main(): Promise<void> {
       process.exit(1);
     }
     project = await projectService.create(args.topic, args.channelId);
+    if (args.scriptFile) {
+      await saveScriptDraft(projectService.getDir(project), args.scriptFile);
+    }
   }
 
   let channelCtx: ChannelContext;
@@ -513,13 +552,17 @@ async function main(): Promise<void> {
 
   // ── Step 1: Script ────────────────────────────────────────────────────────
   logger.step(1, args.test ? 1 : 6, 'Generating podcast script...');
+  const customScript = await loadScriptDraft(PROJECT_DIR);
+  if (customScript) {
+    logger.info('Using custom script draft as reference');
+  }
   let podcastScript: PodcastScript;
   if (await fileExists(SCRIPT_PATH)) {
     logger.info(`⏭  Script already exists — loading from cache`);
     const raw = await fs.readFile(SCRIPT_PATH, 'utf-8');
     podcastScript = JSON.parse(raw);
   } else {
-    podcastScript = await scriptService.generate(project.topic, args.test);
+    podcastScript = await scriptService.generate(project.topic, args.test, customScript);
     await fs.writeFile(SCRIPT_PATH, JSON.stringify(podcastScript, null, 2), 'utf-8');
     logger.info(`Script saved → ${SCRIPT_PATH}`);
   }

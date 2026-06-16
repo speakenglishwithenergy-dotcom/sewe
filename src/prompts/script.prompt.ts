@@ -46,6 +46,18 @@ export function countScriptWords(script: DialogueLine[]): number {
   );
 }
 
+function formatCustomScriptBlock(customScript?: string): string {
+  const trimmed = customScript?.trim();
+  if (!trimmed) return '';
+
+  return `
+AUTHOR'S DRAFT SCRIPT (reference only — preserve key ideas, facts, structure, and tone; rewrite as natural host dialogue):
+---
+${trimmed}
+---
+`;
+}
+
 function formatRecentContext(lines: DialogueLine[], count = 6): string {
   if (lines.length === 0) {
     return '(Episode starts here — no prior dialogue.)';
@@ -62,9 +74,14 @@ function exampleSpeakerLine(ctx: ChannelContext, index: number): string {
   return `{ "speaker": "${speaker}", "text": "..." }`;
 }
 
-export function buildMetadataPrompt(ctx: ChannelContext, topic: string): string {
+export function buildMetadataPrompt(
+  ctx: ChannelContext,
+  topic: string,
+  customScript?: string,
+): string {
   const { name, niche } = ctx.config;
   const hostsBlock = buildHostsBlock(ctx.config.hosts);
+  const draftBlock = formatCustomScriptBlock(customScript);
 
   return `You are a professional podcast script writer for the YouTube channel "${name}".
 Channel niche: ${niche}
@@ -72,6 +89,7 @@ Channel niche: ${niche}
 ${hostsBlock}
 
 Create episode metadata for a podcast on this topic: "${topic}"
+${draftBlock}
 
 Return ONLY a valid JSON object (no markdown):
 {
@@ -89,11 +107,13 @@ export function buildSectionPrompt(
   previousLines: DialogueLine[],
   episodeTitle: string,
   shortfall?: number,
+  customScript?: string,
 ): string {
   const { name } = ctx.config;
   const hostsBlock = buildHostsBlock(ctx.config.hosts);
   const dialogueRules = getDialogueRules(ctx);
   const dialogueFlow = getDialogueFlowExample(ctx);
+  const draftBlock = formatCustomScriptBlock(customScript);
 
   const retryNote = shortfall
     ? `\nCRITICAL: Your last attempt had too few lines. You MUST write EXACTLY ${section.lineCount} dialogue lines this time.\n`
@@ -114,7 +134,7 @@ Episode topic: "${topic}"
 Episode title: "${episodeTitle}"
 
 ${hostsBlock}
-
+${draftBlock}
 SECTION TO WRITE: ${section.label}
 ${section.brief}
 ${retryNote}${closingNote}
@@ -144,9 +164,11 @@ export function buildExpansionPrompt(
   episodeTitle: string,
   previousLines: DialogueLine[],
   linesNeeded: number,
+  customScript?: string,
 ): string {
   const { name } = ctx.config;
   const hostsBlock = buildHostsBlock(ctx.config.hosts);
+  const draftBlock = formatCustomScriptBlock(customScript);
 
   return `You are continuing a podcast script for "${name}".
 
@@ -154,7 +176,7 @@ Episode topic: "${topic}"
 Episode title: "${episodeTitle}"
 
 ${hostsBlock}
-
+${draftBlock}
 The episode is still too short. Add MORE dialogue before the closing.
 
 ${getDialogueRules(ctx)}
@@ -176,14 +198,20 @@ Return ONLY a valid JSON object:
 }`;
 }
 
-export function buildScriptPrompt(ctx: ChannelContext, topic: string, test = false): string {
+export function buildScriptPrompt(
+  ctx: ChannelContext,
+  topic: string,
+  test = false,
+  customScript?: string,
+): string {
   const hostList = ctx.speakers.join(' and ');
+  const draftBlock = formatCustomScriptBlock(customScript);
 
   if (test) {
     return `You are a professional podcast script writer.
 
 Write a very short podcast script (TEST MODE) on this topic: "${topic}"
-
+${draftBlock}
 Hosts: ${hostList}.
 
 Requirements:

@@ -32,13 +32,16 @@ export class ScriptService {
     this.speakers = asSpeakerTuple(ctx.speakers);
   }
 
-  async generate(topic: string, test = false): Promise<PodcastScript> {
+  async generate(topic: string, test = false, customScript?: string): Promise<PodcastScript> {
     const { script: scriptConfig } = this.ctx.config;
-    logger.info(`Generating podcast script for topic: "${topic}"${test ? ' [TEST MODE]' : ''}`);
+    const draftNote = customScript?.trim() ? ' (with custom draft)' : '';
+    logger.info(
+      `Generating podcast script for topic: "${topic}"${test ? ' [TEST MODE]' : ''}${draftNote}`,
+    );
 
     if (test) {
       const script = await this.openai.generateJSON(
-        buildScriptPrompt(this.ctx, topic, true),
+        buildScriptPrompt(this.ctx, topic, true, customScript),
         SYSTEM_PROMPT,
         (data) => buildPodcastScriptSchema(this.speakers, 10).parse(data),
       );
@@ -49,7 +52,7 @@ export class ScriptService {
     }
 
     const metadata = await this.openai.generateJSON(
-      buildMetadataPrompt(this.ctx, topic),
+      buildMetadataPrompt(this.ctx, topic, customScript),
       SYSTEM_PROMPT,
       (data) => PodcastMetadataSchema.parse(data),
     );
@@ -58,7 +61,13 @@ export class ScriptService {
 
     for (const section of scriptConfig.sections) {
       logger.info(`Writing section "${section.label}" (${section.lineCount} lines)...`);
-      const sectionLines = await this.generateSection(topic, section, allLines, metadata.title);
+      const sectionLines = await this.generateSection(
+        topic,
+        section,
+        allLines,
+        metadata.title,
+        customScript,
+      );
       allLines.push(...sectionLines);
       logger.info(
         `  → ${sectionLines.length} lines (${countScriptWords(allLines)} words so far)`,
@@ -66,7 +75,7 @@ export class ScriptService {
     }
 
     let script: PodcastScript = { ...metadata, script: allLines };
-    script = await this.expandIfNeeded(topic, script);
+    script = await this.expandIfNeeded(topic, script, customScript);
     script = {
       ...script,
       script: appendChannelClosing(this.ctx, script.script),
@@ -85,6 +94,7 @@ export class ScriptService {
     section: (typeof this.ctx.config.script.sections)[number],
     previousLines: DialogueLine[],
     episodeTitle: string,
+    customScript?: string,
   ): Promise<DialogueLine[]> {
     let lastCount = 0;
     let lastLines: DialogueLine[] = [];
@@ -99,6 +109,7 @@ export class ScriptService {
           previousLines,
           episodeTitle,
           attempt > 1 ? lastCount : undefined,
+          customScript,
         ),
         SYSTEM_PROMPT,
         (data) => sectionSchema.parse(data),
@@ -123,7 +134,11 @@ export class ScriptService {
     return lastLines;
   }
 
-  private async expandIfNeeded(topic: string, script: PodcastScript): Promise<PodcastScript> {
+  private async expandIfNeeded(
+    topic: string,
+    script: PodcastScript,
+    customScript?: string,
+  ): Promise<PodcastScript> {
     const { targetMinWords, targetMinLines } = this.ctx.config.script;
     let lines = [...script.script];
     let words = countScriptWords(lines);
@@ -138,7 +153,7 @@ export class ScriptService {
     );
 
     const expansion = await this.openai.generateJSON(
-      buildExpansionPrompt(this.ctx, topic, script.title, lines, linesNeeded),
+      buildExpansionPrompt(this.ctx, topic, script.title, lines, linesNeeded, customScript),
       SYSTEM_PROMPT,
       (data) => buildScriptSectionResultSchema(this.speakers).parse(data),
     );
