@@ -24,12 +24,19 @@ IPA RULES:
 - Wrap in forward slashes, e.g. /həˈloʊ ˈɛvriwʌn/
 - Match spoken form: contractions, reduced vowels, natural connected speech
 
+PAUSE RULES (continuesStory — controls silence between TTS lines):
+- Every line MUST include "continuesStory" (boolean)
+- continuesStory: true — this line continues the SAME story, anecdote, or thought from the previous line (still mid-flow, not a new beat)
+- continuesStory: false — new beat: hook, intro, section transition, rhetorical pause, new topic, or a complete thought that deserves a breath before the next idea
+- First line of the script: always continuesStory: false
+
 Return ONLY a valid JSON object (no markdown):
 {
   "title": "<catchy title for the rewritten script>",
   "description": "<one-sentence description for the episode>",
   "script": [
-    { "speaker": "${speaker}", "text": "...", "ipa": "/.../" }
+    { "speaker": "${speaker}", "text": "...", "ipa": "/.../", "continuesStory": false },
+    { "speaker": "${speaker}", "text": "...", "ipa": "/.../", "continuesStory": true }
   ]
 }`;
 }
