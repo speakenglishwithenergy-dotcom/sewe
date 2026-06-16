@@ -28,9 +28,12 @@ const SUPERTONIC_DIR = path.join(ROOT_DIR, 'assets', 'supertonic-3');
 const SUPERTONIC_ONNX_DIR = process.env.SUPERTONIC_ONNX_DIR ?? path.join(SUPERTONIC_DIR, 'onnx');
 const SUPERTONIC_VOICES_DIR = process.env.SUPERTONIC_VOICES_DIR ?? path.join(SUPERTONIC_DIR, 'voice_styles');
 
+export type MediaRegenMode = 'none' | 'audio' | 'subtitles' | 'all';
+
 export interface ShadowingRunOptions {
   test?: boolean;
   force?: boolean;
+  mediaRegen?: MediaRegenMode;
   title?: string;
 }
 
@@ -110,17 +113,26 @@ export class ShadowingService {
       return;
     }
 
-    await this.generateMedia(workspace, ctx, script, options.force ?? false);
+    const mediaRegen: MediaRegenMode =
+      (options.force ?? false) ? 'all' : (options.mediaRegen ?? 'none');
+    const result = await this.generateMedia(workspace, ctx, script, mediaRegen);
 
     logger.info('');
     logger.divider('═');
-    logger.success('Shadowing video ready.');
+    if (result.video) {
+      logger.success('Shadowing video ready.');
+    } else if (result.audio) {
+      logger.success('Podcast audio ready.');
+    } else if (result.subtitles) {
+      logger.success('Subtitles ready.');
+    } else {
+      logger.success('Shadowing pipeline complete.');
+    }
     logger.divider('═');
     console.log(`
   Workspace : ${workspace.id}
   Title     : ${script.title}
-  Lines     : ${script.script.length}
-  Video     : ${this.getVideoPath(workspace)}
+  Lines     : ${script.script.length}${result.video ? `\n  Video     : ${this.getVideoPath(workspace)}` : ''}${result.audio ? `\n  Audio     : ${path.join(this.workspaceService.getShadowingDir(workspace), PODCAST_AUDIO_FILE)}` : ''}${result.subtitles ? `\n  Subtitles : ${path.join(this.workspaceService.getShadowingDir(workspace), SUBTITLES_FILE)}` : ''}
 `);
     console.timeEnd('Shadowing pipeline');
   }
@@ -196,8 +208,12 @@ export class ShadowingService {
     workspace: ShadowingWorkspace,
     ctx: ShadowingContext,
     script: PodcastScript,
-    force: boolean,
-  ): Promise<void> {
+    mode: MediaRegenMode,
+  ): Promise<{ audio: boolean; subtitles: boolean; video: boolean }> {
+    const regenAudio = mode === 'all' || mode === 'audio';
+    const regenSubtitles = mode === 'all' || mode === 'subtitles';
+    const regenVideo = mode === 'all' || mode === 'subtitles';
+
     const shadowingDir = this.workspaceService.getShadowingDir(workspace);
     const audioDir = path.join(shadowingDir, AUDIO_DIR_NAME);
     const podcastPath = path.join(shadowingDir, PODCAST_AUDIO_FILE);
@@ -232,43 +248,63 @@ export class ShadowingService {
       logger.step(2, 4, 'IPA already present — skipping');
     }
 
-    logger.step(3, 4, 'Generating voice audio...');
-    if (force) {
-      await this.clearAudioCache(audioDir, podcastPath, subtitlesPath, videoPath);
+    if (regenAudio) {
+      logger.step(3, 4, 'Generating voice audio...');
+      await this.clearAudioCache(audioDir, podcastPath);
+    } else {
+      logger.step(3, 4, 'Loading voice audio...');
+    }
+
+    if (regenSubtitles) {
+      await this.unlinkIfExists(subtitlesPath);
+      await this.unlinkIfExists(videoPath);
     }
 
     const segments = await ttsService.generateSegments(script.script, audioDir);
 
-    if (!(await this.fileExists(subtitlesPath)) || force) {
-      await subtitleService.generate(segments, subtitlesPath);
-    } else {
-      logger.info(`⏭  Subtitles already exist — skipping`);
-    }
-
-    if (!(await this.fileExists(podcastPath)) || force) {
+    let didAudio = false;
+    if (!(await this.fileExists(podcastPath)) || regenAudio) {
       const audioFiles = segments.map((s) => s.filePath);
       const pauses = segments.slice(0, -1).map((s) => s.pauseAfter);
       await ffmpegService.mergeAudioFiles(audioFiles, podcastPath, pauses);
       logger.success(`Audio saved → ${podcastPath}`);
+      didAudio = true;
     } else {
       logger.info(`⏭  Merged audio already exists — skipping`);
     }
 
-    logger.step(4, 4, 'Rendering shadowing video...');
-    if ((await this.fileExists(videoPath)) && force) {
-      await fs.unlink(videoPath);
+    let didSubtitles = false;
+    if (!(await this.fileExists(subtitlesPath)) || regenSubtitles) {
+      await subtitleService.generateShadowing(segments, subtitlesPath, script.title);
+      logger.success(`Subtitles saved → ${subtitlesPath}`);
+      didSubtitles = true;
+    } else {
+      logger.info(`⏭  Subtitles already exist — skipping`);
     }
 
-    if (await this.fileExists(videoPath)) {
-      logger.info(`⏭  Video already exists — skipping`);
+    let didVideo = false;
+    if (regenVideo || !(await this.fileExists(videoPath))) {
+      logger.step(4, 4, 'Rendering shadowing video...');
+      if (regenVideo && (await this.fileExists(videoPath))) {
+        await this.unlinkIfExists(videoPath);
+      }
+      if (!(await this.fileExists(videoPath))) {
+        await videoService.generatePodcastVideo(
+          podcastPath,
+          subtitlesPath,
+          ctx.backgroundPath,
+          videoPath,
+        );
+        didVideo = true;
+      } else {
+        logger.info(`⏭  Video already exists — skipping`);
+      }
     } else {
-      await videoService.generatePodcastVideo(
-        podcastPath,
-        subtitlesPath,
-        ctx.backgroundPath,
-        videoPath,
-      );
+      logger.step(4, 4, 'Video');
+      logger.info(`⏭  Video already exists — skipping`);
     }
+
+    return { audio: didAudio, subtitles: didSubtitles, video: didVideo };
   }
 
   private getVideoPath(workspace: ShadowingWorkspace): string {
@@ -308,19 +344,8 @@ export class ShadowingService {
     script.script.slice(0, 3).forEach((line) => console.log(`  ${line.speaker}: ${line.text}`));
   }
 
-  private async clearAudioCache(
-    audioDir: string,
-    podcastPath: string,
-    subtitlesPath: string,
-    videoPath: string,
-  ): Promise<void> {
-    for (const filePath of [podcastPath, subtitlesPath, videoPath]) {
-      try {
-        await fs.unlink(filePath);
-      } catch {
-        // missing
-      }
-    }
+  private async clearAudioCache(audioDir: string, podcastPath: string): Promise<void> {
+    await this.unlinkIfExists(podcastPath);
 
     try {
       const files = await fs.readdir(audioDir);
@@ -329,6 +354,14 @@ export class ShadowingService {
       );
     } catch {
       // no audio dir
+    }
+  }
+
+  private async unlinkIfExists(filePath: string): Promise<void> {
+    try {
+      await fs.unlink(filePath);
+    } catch {
+      // missing
     }
   }
 

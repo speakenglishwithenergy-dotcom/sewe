@@ -1,12 +1,14 @@
 import fs from 'fs/promises';
 import { AudioSegment } from '../types';
 import { logger } from '../utils/logger';
-import { buildPodcastAssDocument, buildShortAssDocument } from './subtitle-ass.util';
+import { buildPodcastAssDocument, buildShortAssDocument, PodcastAssDialogueLine } from './subtitle-ass.util';
 import { ResolvedSubtitleStyle } from './subtitle-config.util';
 import {
   highlightWrappedSubtitleText,
 } from './subtitle-highlight.util';
 import { formatIpaSubtitleText } from './subtitle-style';
+
+const SHADOWING_TITLE_LINE_WIDTH = 32;
 
 export class SubtitleService {
   constructor(
@@ -25,12 +27,58 @@ export class SubtitleService {
     segments: AudioSegment[],
     outputPath: string,
   ): Promise<void> {
+    await this.writePodcastAss(segments, outputPath);
+  }
+
+  /**
+   * Generate ASS subtitles for shadowing video with a persistent title badge at top right.
+   */
+  async generateShadowing(
+    segments: AudioSegment[],
+    outputPath: string,
+    title: string,
+  ): Promise<void> {
+    logger.info('Generating ASS subtitle file (with title overlay)...');
+
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      await this.writePodcastAss(segments, outputPath);
+      return;
+    }
+
+    const dialogues = this.buildPodcastDialogues(segments);
+    const last = segments[segments.length - 1];
+    const totalDuration = last.startTime + last.duration + last.pauseAfter;
+    const wrappedTitle = wrapSubtitleText(trimmedTitle, SHADOWING_TITLE_LINE_WIDTH, this.nonBreakingPhrases);
+
+    const assContent = buildPodcastAssDocument(dialogues, this.style, {
+      text: wrappedTitle,
+      startSeconds: 0,
+      endSeconds: totalDuration,
+    });
+    await fs.writeFile(outputPath, assContent, 'utf-8');
+
+    logger.success(`Subtitles saved → ${outputPath}`);
+  }
+
+  private async writePodcastAss(
+    segments: AudioSegment[],
+    outputPath: string,
+  ): Promise<void> {
     logger.info('Generating ASS subtitle file...');
 
+    const dialogues = this.buildPodcastDialogues(segments);
+    const assContent = buildPodcastAssDocument(dialogues, this.style);
+    await fs.writeFile(outputPath, assContent, 'utf-8');
+
+    logger.success(`Subtitles saved → ${outputPath}`);
+  }
+
+  private buildPodcastDialogues(segments: AudioSegment[]): PodcastAssDialogueLine[] {
     const SUBTITLE_LINE_WIDTH = this.style.lineWidth;
     const includeIpa = this.style.podcast.includeIpa;
 
-    const dialogues = segments.map((segment) => {
+    return segments.map((segment) => {
       const wrapped = wrapSubtitleText(segment.text, SUBTITLE_LINE_WIDTH, this.nonBreakingPhrases);
       const english = highlightWrappedSubtitleText(
         wrapped,
@@ -50,11 +98,6 @@ export class SubtitleService {
         text,
       };
     });
-
-    const assContent = buildPodcastAssDocument(dialogues, this.style);
-    await fs.writeFile(outputPath, assContent, 'utf-8');
-
-    logger.success(`Subtitles saved → ${outputPath}`);
   }
 
   /**

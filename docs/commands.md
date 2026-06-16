@@ -353,8 +353,13 @@ npm run shadowing -- --workspace=<id> --test
 | `--review` | No | Regenerate `script.md` from `draft.txt` (use with `--workspace`). |
 | `--title=TEXT` | No | Override episode title. |
 | `--test` | No | Format `script.json` only — no IPA, audio, or video. |
-| `--force` | No | Regenerate `script.json` and/or audio/video (resume), or `script.md` with `--review`. |
+| `--force` | No | Regenerate `script.json` and all media, or `script.md` with `--review`. |
+| `--force-audio` | No | Regenerate TTS + `podcast.mp3` only — keeps `script.json`, subtitles, and video. |
+| `--force-subtitles` | No | Regenerate `subtitles.ass` + `shadowing.mp4` only — keeps `script.json` and audio. |
+| `--force-media` | No | Regenerate all media (audio + subtitles + video) — keeps `script.json`. |
 | `--list` | — | List shadowing workspaces. |
+
+Pick one regen flag at a time (`--force-audio`, `--force-subtitles`, or `--force-media`). Mutually exclusive with `--force`, `--test`, and `--review`.
 
 ### Examples
 
@@ -371,8 +376,14 @@ npm run shadowing -- --workspace=20260616-230137
 # Regenerate script.md from draft after you change draft.txt
 npm run shadowing -- --workspace=20260616-230137 --review --force
 
-# Force regenerate audio + video
-npm run shadowing -- --workspace=20260616-230137 --force
+# Regenerate TTS + podcast.mp3 only (keeps existing subtitles and video)
+npm run shadowing -- --workspace=20260617-001341 --force-audio
+
+# Regenerate subtitles + video only (e.g. after subtitle styling fix)
+npm run shadowing -- --workspace=20260617-001341 --force-subtitles
+
+# Regenerate all media (audio + subtitles + video)
+npm run shadowing -- --workspace=20260617-001341 --force-media
 ```
 
 ### Output layout

@@ -20,6 +20,15 @@ const SHORT_HOOK_FONT_SIZE = 100;
 const SHORT_DEFAULT_BOX_PADDING = 18;
 const SHORT_HOOK_BOX_PADDING = 22;
 
+/** Top-right title badge on shadowing / podcast video. */
+const SHADOWING_TITLE_ALIGNMENT = 9;
+const SHADOWING_TITLE_MARGIN_LR = 12;
+const SHADOWING_TITLE_MARGIN_V = 12;
+const SHADOWING_TITLE_FONT_SIZE = 16;
+const SHADOWING_TITLE_BOX_PADDING = 8;
+/** Semi-transparent dark box behind title text (ASS BGR + alpha). */
+const SHADOWING_TITLE_BACK_COLOUR = '&HC0000000';
+
 export interface AssDialogueLine {
   startSeconds: number;
   endSeconds: number;
@@ -31,6 +40,12 @@ export interface PodcastAssDialogueLine {
   startSeconds: number;
   endSeconds: number;
   text: string;
+}
+
+export interface PodcastTitleOverlay {
+  text: string;
+  startSeconds: number;
+  endSeconds: number;
 }
 
 /** Convert seconds to ASS timestamp (H:MM:SS.cc). */
@@ -62,6 +77,26 @@ export function escapeAssDialogueText(text: string): string {
   }).join('');
 }
 
+function buildShadowingTitleAssStyleLine(style: ResolvedSubtitleStyle): string {
+  const podcast = style.podcast;
+  return [
+    'Style: Title',
+    podcast.fontName,
+    String(SHADOWING_TITLE_FONT_SIZE),
+    podcast.primaryColour,
+    podcast.secondaryColour,
+    style.hookOutlineColour,
+    SHADOWING_TITLE_BACK_COLOUR,
+    '1', '0', '0', '0', '100', '100', '0', '0',
+    '3', String(SHADOWING_TITLE_BOX_PADDING), '0',
+    String(SHADOWING_TITLE_ALIGNMENT),
+    String(SHADOWING_TITLE_MARGIN_LR),
+    String(SHADOWING_TITLE_MARGIN_LR),
+    String(SHADOWING_TITLE_MARGIN_V),
+    String(podcast.encoding),
+  ].join(',');
+}
+
 /**
  * Build a full ASS subtitle document for podcast video.
  * English text uses the Default style; IPA lines use inline colour overrides.
@@ -70,8 +105,10 @@ export function escapeAssDialogueText(text: string): string {
 export function buildPodcastAssDocument(
   dialogues: PodcastAssDialogueLine[],
   style: ResolvedSubtitleStyle,
+  titleOverlay?: PodcastTitleOverlay,
 ): string {
   const defaultStyle = buildPodcastAssStyleLine(style.podcast);
+  const titleStyle = titleOverlay ? buildShadowingTitleAssStyleLine(style) : undefined;
 
   const events = dialogues.map((line) => {
     const start = formatAssTime(line.startSeconds);
@@ -79,6 +116,18 @@ export function buildPodcastAssDocument(
     const text = escapeAssDialogueText(line.text);
     return `Dialogue: 0,${start},${end},Default,,0,0,0,,${text}`;
   });
+
+  if (titleOverlay) {
+    const start = formatAssTime(titleOverlay.startSeconds);
+    const end = formatAssTime(titleOverlay.endSeconds);
+    const text = escapeAssDialogueText(titleOverlay.text);
+    events.unshift(`Dialogue: 1,${start},${end},Title,,0,0,0,,${text}`);
+  }
+
+  const styleLines = [defaultStyle];
+  if (titleStyle) {
+    styleLines.push(titleStyle);
+  }
 
   return `[Script Info]
 Title: Podcast Subtitles
@@ -90,7 +139,7 @@ WrapStyle: 0
 
 [V4+ Styles]
 ${ASS_STYLE_FORMAT}
-${defaultStyle}
+${styleLines.join('\n')}
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
