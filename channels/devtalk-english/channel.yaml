@@ -1,0 +1,187 @@
+id: devtalk-english
+name: Dev Talk English
+niche: English learning podcast for developers and tech professionals
+
+hosts:
+  - name: Victor
+    voice: M1
+    personality: male, friendly, helpful, knowledgeable, encouraging
+  - name: Laura
+    voice: F1
+    personality: female, friendly, helpful, knowledgeable, encouraging
+
+script:
+  targetMinWords: 1100
+  targetMinLines: 62
+  languageLevel: A2-B1
+  closingTemplate: "Thanks for listening — see you next time on {channelName}!"
+  dialogueRules: |
+    - English level: A2-B1 (clear vocabulary, common expressions)
+    - Only configured hosts speak — no narrator
+    - Natural spoken English — sound like friends on a real podcast, not a scripted interview
+    - Each line: 1–2 sentences (~14–20 words per line) — conversational, not one-liners
+    - Keep momentum: every line should move the conversation forward
+    - Turn-taking is flexible: the same host MAY speak 2–4 consecutive lines when finishing a story
+    - When telling a story, let the storyteller finish it across consecutive lines
+    - Do NOT end a line with a dangling hook just to hand off the turn
+    - Questions should react to what was actually said, not mechanically prompt the next beat
+    - Avoid stiff ping-pong Q&A; mix reactions, follow-ups, and back-and-forth naturally
+    - Sound human, not AI: use specific details — avoid generic motivational phrases
+    - Do NOT include IPA — text only
+  dialogueFlowExample: |
+    Story flow — BAD (forced hand-off):
+    Victor: "Well, I remember a time in school where I spoke up in class, right?"
+    Lisa: "And did something happen that made you feel embarrassed?"
+    Victor: "Yeah, a few classmates laughed, and it really got to me."
+
+    Story flow — GOOD (storyteller continues naturally):
+    Victor: "Well, I remember a time in school where I spoke up in class."
+    Victor: "A few classmates laughed, and honestly, it really got to me."
+    Lisa: "Oh, that hurts — did it change how you spoke up after that?"
+  sections:
+    - id: intro
+      label: Intro & hook
+      lineCount: 11
+      brief: Warm greeting, introduce the topic, paint a quick everyday scene listeners recognize, explain why it matters to English learners today.
+    - id: main1
+      label: Main idea 1
+      lineCount: 14
+      brief: Core concept of the topic. Victor tells a personal story with concrete details — he may speak 2–4 lines in a row to finish it before Lisa reacts.
+    - id: main2
+      label: Main idea 2
+      lineCount: 14
+      brief: Second angle with a specific everyday example. Name one misconception, correct it, and let the hosts react with a follow-up or "what if" moment.
+    - id: main3
+      label: Main idea 3
+      lineCount: 14
+      brief: Practical tips and one common mistake — what listeners can try this week. Walk through one tip step by step; stay actionable, not repetitive.
+    - id: closing
+      label: Closing
+      lineCount: 11
+      brief: Finish the conversation first — recap the three main points in your own words, land one clear actionable tip, and let Victor and Lisa react naturally. Only after that wrap-up, end with a brief warm goodbye and "see you next time" — do NOT ask viewers to like, share, or subscribe.
+
+short:
+  enabled: true
+  hookSpeaker: Victor
+  bodySpeaker: Lisa
+  minLines: 5
+  maxLines: 12
+
+branding:
+  subtitleColors:
+    highlight: "#FF7A00"
+    keyword: "#FF7A00"
+    ipa: "#2ba6e1"
+    background: "#0D1B3D"
+  thumbnail:
+    brandColors: "Dark Navy #0D1B3D, Royal Blue #1E3A8A, Bright Orange #FF7A00, Off-white #F2F4F7"
+    charactersBlock: |
+      - Victor: male, brown hair, beard, forest green / olive green sweater (NOT navy, NOT black, NOT dark blue), black headphones, navy mug labeled "Victor"
+      - Lisa: female, long wavy brown hair, bright orange #FF7A00 sweater, black headphones, orange mug labeled "Lisa"
+    logoLockRules: "LOGO AND BADGE ARE LOCKED ASSETS: copy them pixel-for-pixel from the reference image. Never redraw, regenerate, or reinterpret any logo icon (microphone, book) or badge icon."
+    logoUnchanged: |
+      TOP RIGHT — logo block (ABSOLUTELY UNTOUCHED — copy verbatim from reference):
+      - CRITICAL: Do NOT generate, redraw, reinterpret, restyle, or "fix" ANY part of this logo block
+      - CRITICAL: The microphone icon above the wordmark MUST be the exact same graphic from the reference
+      - "Speak" and "ENGLISH" in dark navy #0D1B3D bold sans-serif — same glyphs and layout as reference
+      - Orange #FF7A00 "WITH ENERGY" banner treatment — same shape and placement as reference
+      - Open book icon below — exact same icon from reference; do NOT redraw or regenerate
+      - Same size, position, spacing, colors, fonts, and icon shapes as reference — ZERO changes
+    badgeUnchanged: |
+      BOTTOM LEFT — badge block (ABSOLUTELY UNTOUCHED — copy verbatim from reference):
+      - CRITICAL: Do NOT regenerate the circular microphone icon inside the badge — use the reference graphic exactly
+      - Circular teal/green icon with white microphone
+      - Green rounded pill with white "ENGLISH PODCAST" in bold caps
+      - "FOR LEARNING ENGLISH" subtitle below in dark navy
+      - Same size, position, spacing, colors, and fonts as reference — ZERO changes
+    shortLogoUnchanged: |
+      TOP — "Speak ENGLISH WITH ENERGY" logo block (ABSOLUTELY UNTOUCHED — copy verbatim from reference):
+      - CRITICAL: Do NOT generate, redraw, reinterpret, or replace ANY logo icons
+      - Microphone icon and open book icon MUST match the reference exactly
+      - Same wordmark layout, colors, spacing, and compact vertical sizing as reference — ZERO changes
+    shortBadgeUnchanged: |
+      BOTTOM — green rounded badge block (ABSOLUTELY UNTOUCHED — copy verbatim from reference):
+      - CRITICAL: Do NOT regenerate the microphone icon inside the badge — use the reference graphic exactly
+      - Green rounded badge with microphone icon — "ENGLISH PODCAST" and "FOR LEARNING ENGLISH"
+      - Same size, position, spacing, colors, and fonts as reference — ZERO changes
+    artStyle: "modern clean digital illustration, warm beige studio, soft shading, not photorealistic"
+    characterColorReference: |
+      CHARACTER COLORS — must match the landscape podcast thumbnail reference exactly:
+      - Victor sweater: forest green / olive green — NEVER navy, black, or dark blue
+      - Lisa sweater: bright orange #FF7A00
+    topicRelevance: |
+      TOPIC RELEVANCE — REQUIRED for every change you make:
+      - Episode topic drives ALL creative choices — expressions, gestures, props, visual metaphors, book spines
+      - Pick expressions that fit THIS episode's specific problem or insight
+      - Props and desk objects must clearly symbolize the topic
+      - AVOID: random props, generic emotions, decorative objects with no link to the topic
+    expressionModeration: |
+      EXPRESSION INTENSITY — warm and clear at thumbnail size, but natural and moderate:
+      - Subtle-to-medium expressiveness — like a real podcast moment, not a cartoon reaction shot
+      - NOT over-the-top, NOT exaggerated YouTube-face, NOT clownish or melodramatic
+    charactersExpressionGuidance: |
+      Victor's expression — pick ONE clear, moderate reaction that fits THIS episode's topic and hook.
+      Lisa's expression — pick ONE clear, moderate coaching reaction that pairs with Victor's topic moment.
+      AVOID: exaggerated shock, jaw-drop, always pointing at Victor, passive listener pose.
+
+assets:
+  intro: assets/intro.mp4
+  outro: assets/outro.mp4
+  background: assets/background.png
+  shortBackground: assets/short-background.png
+  demoThumbnail: assets/demo-thumbnail.png
+  demoShortThumbnail: assets/demo-short-thumbnail.png
+  logo: assets/sewe-logo.png
+  backgroundMusic: assets/background-music.mp3
+
+publish:
+  youtubeChannelUrl: https://www.youtube.com/@SpeakEnglishWithEnergyy
+  facebookPageUrl: https://www.facebook.com/SpeakEnglishWithEnergy
+  tiktokChannelUrl: https://www.tiktok.com/@speakenglishwithenergy
+  youtubeLongPlaylistId: PL2oWjiR82NaiofKkP5jO6ahmMGYG3
+  youtubeShortPlaylistId: PL2oWjiR82Nai5yg3d5E27T4e9OnnN_MhS
+  titleSuffix: " | English Podcast for Learning"
+  coreTags:
+    - learn english
+    - english podcast
+    - speak english with energy
+    - english speaking
+    - english fluency
+  coreHashtags:
+    - "#LearnEnglish"
+    - "#SpeakEnglishWithEnergy"
+  shortCoreHashtags:
+    - "#LearnEnglish"
+    - "#SpeakEnglishWithEnergy"
+    - "#Shorts"
+  facebookCoreHashtags:
+    - "#LearnEnglish"
+    - "#SpeakEnglishWithEnergy"
+  facebookShortCoreHashtags:
+    - "#LearnEnglish"
+    - "#SpeakEnglishWithEnergy"
+    - "#Reels"
+  chapterLabels:
+    - Intro
+    - Main idea 1
+    - Main idea 2
+    - Main idea 3
+    - Closing
+  defaultBullets:
+    - Practical English tips you can use today
+    - Clear examples you can repeat out loud
+    - Confidence-building phrases for real conversations
+  description:
+    learnHeader: "📌 In this episode you'll learn:"
+    chaptersHeader: "⏱ Chapters:"
+    subscribeCta: "🔔 Subscribe for more English tips with energy!"
+    shortCta: "🎧 Watch the Short version for a quick recap."
+    linksHeader: "🔗 Connect with us:"
+  facebook:
+    learnHeader: "📌 You'll learn:"
+    followCta: "👍 Follow us on Facebook: https://www.facebook.com/SpeakEnglishWithEnergy"
+    youtubeCta: "🎬 Full episodes on YouTube: https://www.youtube.com/@SpeakEnglishWithEnergyy"
+    tiktokCta: "🎵 Follow us on TikTok: https://www.tiktok.com/@speakenglishwithenergy"
+
+env:
+  prefix: SEWE
