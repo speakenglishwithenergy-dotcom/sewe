@@ -1,10 +1,8 @@
 import { SHORT_THUMB_HEIGHT, SHORT_THUMB_WIDTH } from '../ai/thumbnail-image.util';
+import { ResolvedSubtitleStyle } from './subtitle-config.util';
 import {
   buildPodcastAssStyleLine,
-  PODCAST_SUBTITLE_STYLE,
   SUBTITLE_PRIMARY_COLOUR,
-  SUBTITLE_SHORT_HOOK_BACK_COLOUR,
-  SUBTITLE_SHORT_HOOK_OUTLINE_COLOUR,
 } from './subtitle-style';
 
 const ASS_STYLE_FORMAT =
@@ -69,8 +67,11 @@ export function escapeAssDialogueText(text: string): string {
  * English text uses the Default style; IPA lines use inline colour overrides.
  * Style values mirror the former SRT + FFmpeg force_style settings.
  */
-export function buildPodcastAssDocument(dialogues: PodcastAssDialogueLine[]): string {
-  const defaultStyle = buildPodcastAssStyleLine();
+export function buildPodcastAssDocument(
+  dialogues: PodcastAssDialogueLine[],
+  style: ResolvedSubtitleStyle,
+): string {
+  const defaultStyle = buildPodcastAssStyleLine(style.podcast);
 
   const events = dialogues.map((line) => {
     const start = formatAssTime(line.startSeconds);
@@ -82,8 +83,8 @@ export function buildPodcastAssDocument(dialogues: PodcastAssDialogueLine[]): st
   return `[Script Info]
 Title: Podcast Subtitles
 ScriptType: v4.00+
-PlayResX: ${PODCAST_SUBTITLE_STYLE.playResX}
-PlayResY: ${PODCAST_SUBTITLE_STYLE.playResY}
+PlayResX: ${style.podcast.playResX}
+PlayResY: ${style.podcast.playResY}
 ScaledBorderAndShadow: yes
 WrapStyle: 0
 
@@ -102,7 +103,10 @@ ${events.join('\n')}
  * Hook style: larger bold text, brand-orange box, same bottom placement as default.
  * Default style: bottom captions on a dark semi-transparent box.
  */
-export function buildShortAssDocument(dialogues: AssDialogueLine[]): string {
+export function buildShortAssDocument(
+  dialogues: AssDialogueLine[],
+  style: ResolvedSubtitleStyle,
+): string {
   const defaultStyle = [
     'Style: Default',
     'Arial',
@@ -126,8 +130,8 @@ export function buildShortAssDocument(dialogues: AssDialogueLine[]): string {
     String(SHORT_HOOK_FONT_SIZE),
     SUBTITLE_PRIMARY_COLOUR,
     '&H000000FF',
-    SUBTITLE_SHORT_HOOK_OUTLINE_COLOUR,
-    SUBTITLE_SHORT_HOOK_BACK_COLOUR,
+    style.hookOutlineColour,
+    style.hookBackgroundColour,
     '-1', '0', '0', '0', '100', '100', '0', '0',
     '4', String(SHORT_HOOK_BOX_PADDING), '0',
     String(SHORT_SUBTITLE_ALIGNMENT),

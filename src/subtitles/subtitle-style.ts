@@ -49,9 +49,36 @@ export const PODCAST_SUBTITLE_STYLE = {
   encoding: 1,
 } as const;
 
+export interface PodcastAssStyleLineInput {
+  fontName: string;
+  fontSize: number;
+  primaryColour: string;
+  secondaryColour: string;
+  outlineColour: string;
+  backColour: string;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  strikeOut: boolean;
+  scaleX: number;
+  scaleY: number;
+  spacing: number;
+  angle: number;
+  borderStyle: number;
+  outline: number;
+  shadow: number;
+  alignment: number;
+  marginL: number;
+  marginR: number;
+  marginV: number;
+  encoding: number;
+}
+
 /** Build the ASS `Style: Default,...` line for podcast subtitles. */
-export function buildPodcastAssStyleLine(): string {
-  const s = PODCAST_SUBTITLE_STYLE;
+export function buildPodcastAssStyleLine(
+  style: PodcastAssStyleLineInput = PODCAST_SUBTITLE_STYLE,
+): string {
+  const s = style;
   return [
     'Style: Default',
     s.fontName,
@@ -80,8 +107,8 @@ export function buildPodcastAssStyleLine(): string {
 }
 
 /** Wrap IPA lines with an ASS colour override. */
-export function formatIpaSubtitleText(ipa: string): string {
-  return `{\\c${SUBTITLE_IPA_COLOUR}&}${ipa}`;
+export function formatIpaSubtitleText(ipa: string, colour = SUBTITLE_IPA_COLOUR): string {
+  return `{\\c${colour}&}${ipa}`;
 }
 
 /** Wrap a keyword with ASS colour + bold overrides, resetting style afterward. */

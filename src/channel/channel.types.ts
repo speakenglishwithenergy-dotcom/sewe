@@ -43,6 +43,40 @@ export const SubtitleColorsSchema = z.object({
   background: z.string().min(1),
 });
 
+/** Optional podcast subtitle layout and typography overrides (ASS style fields). */
+export const SubtitleStyleSchema = z.object({
+  fontName: z.string().min(1).optional(),
+  fontSize: z.number().int().positive().optional(),
+  primary: z.string().min(1).optional(),
+  outline: z.string().min(1).optional(),
+  outlineWidth: z.number().int().min(0).optional(),
+  shadow: z.number().int().min(0).optional(),
+  /** ASS alignment 1–9: 1=bottom-left … 2=bottom-center … 8=top-center … 9=top-right */
+  alignment: z.number().int().min(1).max(9).optional(),
+  marginL: z.number().int().min(0).optional(),
+  marginR: z.number().int().min(0).optional(),
+  marginV: z.number().int().min(0).optional(),
+  /** Max characters per subtitle line before wrapping (default 42). */
+  lineWidth: z.number().int().positive().optional(),
+  includeIpa: z.boolean().optional(),
+});
+
+/** Optional audio waveform overlay position and appearance (1920×1080 podcast / 1080×1920 short). */
+export const WaveVisualizerSchema = z.object({
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
+  color: z.string().min(1).optional(),
+  opacity: z.number().min(0).max(1).optional(),
+  /** Podcast overlay X (pixels from left). Default: horizontally centered. */
+  x: z.number().int().min(0).optional(),
+  /** Podcast overlay Y (pixels from top). Default: flush to bottom edge. */
+  y: z.number().int().min(0).optional(),
+  short: z.object({
+    x: z.number().int().min(0).optional(),
+    y: z.number().int().min(0).optional(),
+  }).optional(),
+});
+
 export const ThumbnailBrandingSchema = z.object({
   templateType: z.enum(['podcast-hosts', 'overlay-template']).optional(),
   brandColors: z.string().min(1),
@@ -63,6 +97,8 @@ export const ThumbnailBrandingSchema = z.object({
 
 export const ChannelBrandingSchema = z.object({
   subtitleColors: SubtitleColorsSchema,
+  subtitleStyle: SubtitleStyleSchema.optional(),
+  waveVisualizer: WaveVisualizerSchema.optional(),
   thumbnail: ThumbnailBrandingSchema,
 });
 

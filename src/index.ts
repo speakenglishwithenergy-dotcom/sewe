@@ -12,6 +12,8 @@ import { DISABLE_THUMBNAIL_GENERATION } from './ai/thumbnail.config';
 import { TTSService } from './audio/tts.service';
 import { SupertonicService } from './audio/supertonic.service';
 import { SubtitleService } from './subtitles/subtitle.service';
+import { resolveSubtitleStyle } from './subtitles/subtitle-config.util';
+import { resolveWaveVisualizer } from './ffmpeg/wave-config.util';
 import { KEYWORD_HIGHLIGHTS_ENABLED } from './subtitles/subtitle-highlight.util';
 import { FFmpegService } from './ffmpeg/ffmpeg.service';
 import { VideoService } from './video/video.service';
@@ -499,7 +501,7 @@ async function main(): Promise<void> {
   }
 
   const openaiService = new OpenAIService();
-  const ffmpegService = new FFmpegService();
+  const ffmpegService = new FFmpegService(resolveWaveVisualizer(channelCtx.config.branding));
   const scriptService = new ScriptService(openaiService, channelCtx);
   const shortScriptService = new ShortScriptService(openaiService, channelCtx);
   const thumbnailService = new ThumbnailService(openaiService, channelCtx);
@@ -611,7 +613,10 @@ async function main(): Promise<void> {
     const supertonicService = new SupertonicService(SUPERTONIC_ONNX_DIR, SUPERTONIC_VOICES_DIR);
     const ttsService = new TTSService(supertonicService, ffmpegService, channelCtx.voiceMap);
     const keywordsService = new KeywordsService(openaiService, channelCtx);
-    const subtitleService = new SubtitleService([channelCtx.config.name]);
+    const subtitleService = new SubtitleService(
+      resolveSubtitleStyle(channelCtx.config.branding),
+      [channelCtx.config.name],
+    );
     const videoService = new VideoService(ffmpegService, channelCtx.config.name);
     const shortPaths = buildShortPaths(PROJECT_DIR);
 
@@ -687,7 +692,10 @@ async function main(): Promise<void> {
   const ttsService = new TTSService(supertonicService, ffmpegService, channelCtx.voiceMap);
   const ipaService = new IpaService(openaiService);
   const keywordsService = new KeywordsService(openaiService, channelCtx);
-  const subtitleService = new SubtitleService([channelCtx.config.name]);
+  const subtitleService = new SubtitleService(
+    resolveSubtitleStyle(channelCtx.config.branding),
+    [channelCtx.config.name],
+  );
   const videoService = new VideoService(ffmpegService, channelCtx.config.name);
 
   // ── Step 2: Voices ───────────────────────────────────────────────────────────

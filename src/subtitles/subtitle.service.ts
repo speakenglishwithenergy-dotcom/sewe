@@ -2,14 +2,17 @@ import fs from 'fs/promises';
 import { AudioSegment } from '../types';
 import { logger } from '../utils/logger';
 import { buildPodcastAssDocument, buildShortAssDocument } from './subtitle-ass.util';
+import { ResolvedSubtitleStyle } from './subtitle-config.util';
 import {
-  SHORT_HOOK_KEYWORD_COLOUR,
   highlightWrappedSubtitleText,
 } from './subtitle-highlight.util';
 import { formatIpaSubtitleText } from './subtitle-style';
 
 export class SubtitleService {
-  constructor(private readonly nonBreakingPhrases: string[] = []) {}
+  constructor(
+    private readonly style: ResolvedSubtitleStyle,
+    private readonly nonBreakingPhrases: string[] = [],
+  ) {}
   /**
    * Generate an ASS subtitle file from the timed audio segments.
    * Each segment becomes one subtitle entry. Podcast mode includes IPA below English
@@ -21,19 +24,25 @@ export class SubtitleService {
   async generate(
     segments: AudioSegment[],
     outputPath: string,
-    lineWidth = 42,
-    includeIpa = true,
   ): Promise<void> {
     logger.info('Generating ASS subtitle file...');
 
     const LINGER_SECONDS = 0.5;
-    const SUBTITLE_LINE_WIDTH = lineWidth;
+    const SUBTITLE_LINE_WIDTH = this.style.lineWidth;
+    const includeIpa = this.style.podcast.includeIpa;
 
     const dialogues = segments.map((segment) => {
       const wrapped = wrapSubtitleText(segment.text, SUBTITLE_LINE_WIDTH, this.nonBreakingPhrases);
-      const english = highlightWrappedSubtitleText(wrapped, segment.keywords);
+      const english = highlightWrappedSubtitleText(
+        wrapped,
+        segment.keywords,
+        this.style.keywordColour,
+      );
       const text = includeIpa && segment.ipa
-        ? `${english}\n${formatIpaSubtitleText(wrapSubtitleText(segment.ipa, SUBTITLE_LINE_WIDTH, this.nonBreakingPhrases))}`
+        ? `${english}\n${formatIpaSubtitleText(
+          wrapSubtitleText(segment.ipa, SUBTITLE_LINE_WIDTH, this.nonBreakingPhrases),
+          this.style.ipaColour,
+        )}`
         : english;
 
       return {
@@ -43,7 +52,7 @@ export class SubtitleService {
       };
     });
 
-    const assContent = buildPodcastAssDocument(dialogues);
+    const assContent = buildPodcastAssDocument(dialogues, this.style);
     await fs.writeFile(outputPath, assContent, 'utf-8');
 
     logger.success(`Subtitles saved → ${outputPath}`);
@@ -68,7 +77,7 @@ export class SubtitleService {
       const text = highlightWrappedSubtitleText(
         wrapped,
         segment.keywords,
-        isHook ? SHORT_HOOK_KEYWORD_COLOUR : undefined,
+        isHook ? this.style.ipaColour : this.style.keywordColour,
       );
 
       return {
@@ -79,7 +88,7 @@ export class SubtitleService {
       };
     });
 
-    const assContent = buildShortAssDocument(dialogues);
+    const assContent = buildShortAssDocument(dialogues, this.style);
     await fs.writeFile(outputPath, assContent, 'utf-8');
 
     logger.success(`Short subtitles saved → ${outputPath}`);
