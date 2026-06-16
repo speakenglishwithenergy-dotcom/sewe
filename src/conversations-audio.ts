@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { FFmpegService } from './ffmpeg/ffmpeg.service';
 import { SupertonicService } from './audio/supertonic.service';
 import { TTSService } from './audio/tts.service';
-import { DialogueLineSchema, PAUSE_BETWEEN_SEGMENTS } from './types';
+import { DialogueLineSchema } from './types';
 
 const LEGACY_VOICE_MAP = { Victor: 'M1', Lisa: 'F1' } as const;
 import { logger } from './utils/logger';
@@ -111,13 +111,12 @@ async function generateEpisodeAudio(
 
   const segments = await ttsService.generateSegments(script.script, audioDir);
   const audioFiles = [titlePath, ...segments.map((s) => s.filePath)];
-
-  await ffmpegService.mergeAudioFiles(
-    audioFiles,
-    podcastPath,
-    PAUSE_BETWEEN_SEGMENTS,
+  const pauses = [
     TITLE_INTRO_PAUSE_SECONDS,
-  );
+    ...segments.slice(0, -1).map((s) => s.pauseAfter),
+  ];
+
+  await ffmpegService.mergeAudioFiles(audioFiles, podcastPath, pauses);
 
   logger.success(`Podcast audio saved → ${podcastPath}`);
 }

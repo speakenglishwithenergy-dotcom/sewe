@@ -790,7 +790,8 @@ async function main(): Promise<void> {
     logger.info(`⏭  Merged audio already exists — skipping`);
   } else {
     const audioFiles = segments.map((s) => s.filePath);
-    await ffmpegService.mergeAudioFiles(audioFiles, PODCAST_AUDIO_PATH, 0.5);
+    const pauses = segments.slice(0, -1).map((s) => s.pauseAfter);
+    await ffmpegService.mergeAudioFiles(audioFiles, PODCAST_AUDIO_PATH, pauses);
     logger.success(`Podcast audio saved → ${PODCAST_AUDIO_PATH}`);
   }
 

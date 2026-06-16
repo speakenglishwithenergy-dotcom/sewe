@@ -131,8 +131,7 @@ export async function runShortPipeline(
   );
 
   const totalDuration = segments.reduce(
-    (sum, s, i) =>
-      sum + s.duration + (i < segments.length - 1 ? SHORT_PAUSE_BETWEEN_SEGMENTS : 0),
+    (sum, s) => sum + s.duration + s.pauseAfter,
     0,
   );
   if (totalDuration > SHORT_TARGET_MAX_SECONDS) {

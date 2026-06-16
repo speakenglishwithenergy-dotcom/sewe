@@ -145,28 +145,49 @@ export class FFmpegService {
 
   /**
    * Merge an ordered list of WAV files into a single podcast.mp3.
-   * A silent gap of `pauseSeconds` is inserted between each segment.
+   * Inserts silent gaps between segments. `pauseSeconds` may be a uniform duration
+   * or an array where pauses[i] is the gap after inputFiles[i].
    */
   async mergeAudioFiles(
     inputFiles: string[],
     outputPath: string,
-    pauseSeconds: number,
-    firstPauseSeconds = pauseSeconds,
+    pauseSeconds: number | number[],
+    firstPauseSeconds?: number,
   ): Promise<void> {
     if (inputFiles.length === 0) {
       throw new Error('No audio files provided for merge');
     }
 
     const tmpDir = path.dirname(outputPath);
-    const pauseValues = [...new Set([firstPauseSeconds, pauseSeconds])];
+    const gapAfterIndex = (i: number): number => {
+      if (i >= inputFiles.length - 1) {
+        return 0;
+      }
+      if (Array.isArray(pauseSeconds)) {
+        if (pauseSeconds.length !== inputFiles.length - 1) {
+          throw new Error(
+            `Expected ${inputFiles.length - 1} pause values, got ${pauseSeconds.length}`,
+          );
+        }
+        return pauseSeconds[i];
+      }
+      return i === 0 && firstPauseSeconds !== undefined ? firstPauseSeconds : pauseSeconds;
+    };
+
+    const pauseValues = [...new Set(
+      inputFiles.slice(0, -1).map((_, i) => gapAfterIndex(i)),
+    )];
     const silenceByDuration = new Map<number, string>();
     const concatListPath = path.join(tmpDir, '_concat.txt');
 
-    logger.info(
-      `Merging ${inputFiles.length} audio segments with ${pauseSeconds}s pause` +
-        (firstPauseSeconds !== pauseSeconds ? ` (${firstPauseSeconds}s after first)` : '') +
-        '...',
-    );
+    const pauseLabel = Array.isArray(pauseSeconds)
+      ? `variable pause (${pauseValues.join('s / ')}s)`
+      : `${pauseSeconds}s pause` +
+        (firstPauseSeconds !== undefined && firstPauseSeconds !== pauseSeconds
+          ? ` (${firstPauseSeconds}s after first)`
+          : '');
+
+    logger.info(`Merging ${inputFiles.length} audio segments with ${pauseLabel}...`);
 
     for (const duration of pauseValues) {
       const silencePath = path.join(tmpDir, `_silence_${duration}s.wav`);
@@ -179,7 +200,7 @@ export class FFmpegService {
     for (let i = 0; i < inputFiles.length; i++) {
       lines.push(`file '${inputFiles[i]}'`);
       if (i < inputFiles.length - 1) {
-        const gap = i === 0 ? firstPauseSeconds : pauseSeconds;
+        const gap = gapAfterIndex(i);
         lines.push(`file '${silenceByDuration.get(gap)!}'`);
       }
     }

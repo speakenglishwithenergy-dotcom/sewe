@@ -88,8 +88,8 @@ branding:
     alignment: 2
     marginL: 0
     marginR: 0
-    marginV: 45
-    lineWidth: 58
+    marginV: 30
+    lineWidth: 70
     includeIpa: true
   waveVisualizer:
     x: 560

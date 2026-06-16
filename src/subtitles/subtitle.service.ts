@@ -27,7 +27,6 @@ export class SubtitleService {
   ): Promise<void> {
     logger.info('Generating ASS subtitle file...');
 
-    const LINGER_SECONDS = 0.5;
     const SUBTITLE_LINE_WIDTH = this.style.lineWidth;
     const includeIpa = this.style.podcast.includeIpa;
 
@@ -47,7 +46,7 @@ export class SubtitleService {
 
       return {
         startSeconds: segment.startTime,
-        endSeconds: segment.startTime + segment.duration + LINGER_SECONDS,
+        endSeconds: segment.startTime + segment.duration + segment.pauseAfter,
         text,
       };
     });

@@ -36,7 +36,7 @@ export function appendChannelClosing(ctx: ChannelContext, script: DialogueLine[]
   const lastSpeaker = script.at(-1)?.speaker ?? speakers[0];
   const alternate = speakers.find((s) => s !== lastSpeaker) ?? speakers[0];
 
-  return [...script, { speaker: alternate, text: ctx.closingText }];
+  return [...script, { speaker: alternate, text: ctx.closingText, continuesStory: false }];
 }
 
 export function countScriptWords(script: DialogueLine[]): number {
@@ -69,9 +69,16 @@ function formatRecentContext(lines: DialogueLine[], count = 6): string {
     .join('\n');
 }
 
-function exampleSpeakerLine(ctx: ChannelContext, index: number): string {
+function getContinuesStoryRules(): string {
+  return `- Every dialogue line MUST include "continuesStory" (boolean):
+  - continuesStory: true — this line continues the SAME story/anecdote from the previous line (storyteller still mid-tell, not a new beat)
+  - continuesStory: false — new turn: greeting, listener reaction, section transition, or starting a fresh story after the other host spoke
+  - First line of the episode/section output: always continuesStory: false`;
+}
+
+function exampleSpeakerLine(ctx: ChannelContext, index: number, continuesStory: boolean): string {
   const speaker = ctx.speakers[index % ctx.speakers.length];
-  return `{ "speaker": "${speaker}", "text": "..." }`;
+  return `{ "speaker": "${speaker}", "text": "...", "continuesStory": ${continuesStory} }`;
 }
 
 export function buildMetadataPrompt(
@@ -148,12 +155,13 @@ ${formatRecentContext(previousLines)}
 REQUIREMENTS FOR THIS SECTION:
 - Write EXACTLY ${section.lineCount} dialogue lines in the script array — count carefully
 - Hit every point in the brief with enough depth — no filler, no circling back to the same idea
+${getContinuesStoryRules()}
 
 Return ONLY a valid JSON object (no markdown):
 {
   "script": [
-    ${exampleSpeakerLine(ctx, 0)},
-    ${exampleSpeakerLine(ctx, 1)}
+    ${exampleSpeakerLine(ctx, 0, false)},
+    ${exampleSpeakerLine(ctx, 1, true)}
   ]
 }`;
 }
@@ -188,12 +196,13 @@ ${formatRecentContext(previousLines, 8)}
 
 Write EXACTLY ${linesNeeded} additional dialogue lines — fresh example or sharper Q&A with concrete details, not more recap.
 Each line should be ~14–20 words. Do NOT write a recap or closing yet.
+${getContinuesStoryRules()}
 
 Return ONLY a valid JSON object:
 {
   "script": [
-    ${exampleSpeakerLine(ctx, 0)},
-    ${exampleSpeakerLine(ctx, 1)}
+    ${exampleSpeakerLine(ctx, 0, false)},
+    ${exampleSpeakerLine(ctx, 1, true)}
   ]
 }`;
 }
@@ -219,6 +228,7 @@ Requirements:
 - English level: ${ctx.config.script.languageLevel}
 - Natural conversation, short sentences
 - Include an "ipa" field for every line: General American English IPA in slashes
+${getContinuesStoryRules()}
 
 Return ONLY a valid JSON object:
 {
@@ -227,7 +237,7 @@ Return ONLY a valid JSON object:
   "thumbnailText": "WHY\\nSMART\\nPEOPLE STAY\\nSTUCK?",
   "thumbnailScene": "Topic-specific scene for hosts.",
   "script": [
-    { "speaker": "${ctx.speakers[0]}", "text": "...", "ipa": "/.../" }
+    { "speaker": "${ctx.speakers[0]}", "text": "...", "ipa": "/.../", "continuesStory": false }
   ]
 }`;
   }

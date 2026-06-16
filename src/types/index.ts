@@ -15,6 +15,7 @@ export function buildDialogueLineSchema(speakers: [string, ...string[]]) {
     text: z.string().min(1),
     ipa: z.string().min(1).optional(),
     keywords: z.array(z.string().min(1)).max(4).optional(),
+    continuesStory: z.boolean().optional(),
   });
 }
 
@@ -24,6 +25,7 @@ export const DialogueLineSchema = z.object({
   text: z.string().min(1),
   ipa: z.string().min(1).optional(),
   keywords: z.array(z.string().min(1)).max(4).optional(),
+  continuesStory: z.boolean().optional(),
 });
 export type DialogueLine = z.infer<typeof DialogueLineSchema>;
 
@@ -149,6 +151,8 @@ export interface AudioSegment {
   filePath: string;
   duration: number;
   startTime: number;
+  /** Silence after this segment before the next one (0 for the last segment). */
+  pauseAfter: number;
 }
 
 export interface GenerateOptions {
