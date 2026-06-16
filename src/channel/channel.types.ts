@@ -44,14 +44,17 @@ export const SubtitleColorsSchema = z.object({
 });
 
 export const ThumbnailBrandingSchema = z.object({
+  templateType: z.enum(['podcast-hosts', 'overlay-template']).optional(),
   brandColors: z.string().min(1),
-  charactersBlock: z.string().min(1),
+  charactersBlock: z.string().optional(),
   logoLockRules: z.string().min(1),
   logoUnchanged: z.string().min(1),
   badgeUnchanged: z.string().min(1),
   shortLogoUnchanged: z.string().min(1),
   shortBadgeUnchanged: z.string().min(1),
   artStyle: z.string().min(1),
+  backgroundUnchanged: z.string().optional(),
+  titleChangeBlock: z.string().optional(),
   characterColorReference: z.string().optional(),
   topicRelevance: z.string().optional(),
   expressionModeration: z.string().optional(),
@@ -165,6 +168,7 @@ export const ChannelConfigSchema = z.object({
   branding: ChannelBrandingSchema,
   assets: ChannelAssetsConfigSchema,
   publish: ChannelPublishConfigSchema,
+  perEpisodeBackground: z.boolean().optional(),
   env: z.object({
     prefix: z.string().min(1),
   }),

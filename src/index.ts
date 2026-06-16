@@ -489,6 +489,7 @@ async function main(): Promise<void> {
   const PODCAST_AUDIO_PATH = path.join(PROJECT_DIR, 'podcast.mp3');
   const SUBTITLES_PATH = path.join(PROJECT_DIR, 'subtitles.ass');
   const THUMBNAIL_PATH = path.join(PROJECT_DIR, 'thumbnail.png');
+  const BACKGROUND_PATH = path.join(PROJECT_DIR, 'background.png');
 
   await fs.mkdir(AUDIO_DIR, { recursive: true });
 
@@ -668,6 +669,19 @@ async function main(): Promise<void> {
   );
   await thumbnailService.generate(podcastScript, project.topic, THUMBNAIL_PATH);
 
+  const videoBackgroundPath = channelCtx.config.perEpisodeBackground
+    ? BACKGROUND_PATH
+    : channelAssets.background;
+
+  if (channelCtx.config.perEpisodeBackground) {
+    await thumbnailService.generateBackground(
+      podcastScript,
+      project.topic,
+      BACKGROUND_PATH,
+      channelAssets.background,
+    );
+  }
+
   // ── Wire up TTS / video services ─────────────────────────────────────────
   const supertonicService = new SupertonicService(SUPERTONIC_ONNX_DIR, SUPERTONIC_VOICES_DIR);
   const ttsService = new TTSService(supertonicService, ffmpegService, channelCtx.voiceMap);
@@ -752,7 +766,7 @@ async function main(): Promise<void> {
     await videoService.generateFinalVideo(
       channelAssets.intro,
       THUMBNAIL_PATH,
-      channelAssets.background,
+      videoBackgroundPath,
       PODCAST_AUDIO_PATH,
       SUBTITLES_PATH,
       channelAssets.outro,
@@ -779,7 +793,7 @@ async function main(): Promise<void> {
       await videoService.generateFinalVideo(
         channelAssets.intro,
         THUMBNAIL_PATH,
-        channelAssets.background,
+        videoBackgroundPath,
         PODCAST_AUDIO_PATH,
         SUBTITLES_PATH,
         channelAssets.outro,
@@ -799,7 +813,7 @@ async function main(): Promise<void> {
         videoService.generateFinalVideo(
           channelAssets.intro,
           THUMBNAIL_PATH,
-          channelAssets.background,
+          videoBackgroundPath,
           PODCAST_AUDIO_PATH,
           SUBTITLES_PATH,
           channelAssets.outro,

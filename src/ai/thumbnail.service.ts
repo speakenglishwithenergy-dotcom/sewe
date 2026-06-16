@@ -22,6 +22,10 @@ import {
   buildThumbnailScenePrompt,
 } from '../prompts/thumbnail.prompt';
 import {
+  buildBackgroundImagePrompt,
+  buildBackgroundScenePrompt,
+} from '../prompts/background.prompt';
+import {
   buildShortThumbnailImagePrompt,
   buildShortThumbnailScenePrompt,
 } from '../prompts/short-thumbnail.prompt';
@@ -80,6 +84,54 @@ export class ThumbnailService {
     await fs.writeFile(outputPath, apiBuffer);
 
     logger.success(`Thumbnail saved → ${outputPath} (${apiSize.width}x${apiSize.height})`);
+  }
+
+  async generateBackground(
+    script: PodcastScript,
+    topic: string,
+    outputPath: string,
+    templatePath: string,
+  ): Promise<void> {
+    if (await this.fileExists(outputPath)) {
+      logger.info(`⏭  Background already exists — skipping → ${outputPath}`);
+      return;
+    }
+
+    const thumbnailScene =
+      script.thumbnailScene ??
+      (await this.generateBackgroundScene(topic, script.title));
+
+    const prompt = buildBackgroundImagePrompt(this.ctx, {
+      topic,
+      episodeTitle: script.title,
+      thumbnailScene,
+    });
+
+    if (DISABLE_THUMBNAIL_GENERATION) {
+      printManualThumbnailInstructions('podcast', outputPath, templatePath, prompt);
+      await waitForManualThumbnailFile(outputPath);
+      await normalizeManualThumbnail('podcast', outputPath);
+      logger.success(`Manual background ready → ${outputPath}`);
+      return;
+    }
+
+    logger.info(`Generating episode background for: "${script.title}"`);
+
+    const referenceBuffer = await prepareReferenceImage(templatePath);
+    const refSize = await getImageDimensions(referenceBuffer);
+    logger.info(`Background reference prepared → ${refSize.width}x${refSize.height}`);
+
+    const apiBuffer = await this.openai.generateImageEdit(
+      prompt,
+      [referenceBuffer],
+      ['background.png'],
+    );
+    const apiSize = await getImageDimensions(apiBuffer);
+    logger.info(`API returned → ${apiSize.width}x${apiSize.height}`);
+
+    await fs.writeFile(outputPath, apiBuffer);
+
+    logger.success(`Background saved → ${outputPath} (${apiSize.width}x${apiSize.height})`);
   }
 
   async generateShort(
@@ -173,6 +225,31 @@ export class ThumbnailService {
           typeof (data as { thumbnailScene: unknown }).thumbnailScene !== 'string'
         ) {
           throw new Error('Invalid thumbnail scene response');
+        }
+        return (data as { thumbnailScene: string }).thumbnailScene;
+      },
+    );
+
+    return result;
+  }
+
+  private async generateBackgroundScene(
+    topic: string,
+    episodeTitle: string,
+  ): Promise<string> {
+    logger.info('Generating background scene description...');
+
+    const result = await this.openai.generateJSON(
+      buildBackgroundScenePrompt(this.ctx, topic, episodeTitle),
+      'You are a creative art director. Respond only with valid JSON.',
+      (data: unknown) => {
+        if (
+          typeof data !== 'object' ||
+          data === null ||
+          !('thumbnailScene' in data) ||
+          typeof (data as { thumbnailScene: unknown }).thumbnailScene !== 'string'
+        ) {
+          throw new Error('Invalid background scene response');
         }
         return (data as { thumbnailScene: string }).thumbnailScene;
       },
