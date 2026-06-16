@@ -9,6 +9,7 @@ dist/
 
 # Generated output (keep structure, ignore generated files)
 output
+shadowing/workspaces
 
 # macOS
 .DS_Store

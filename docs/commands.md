@@ -17,6 +17,7 @@ npm run <script> -- [flags]
 | `npm run youtube:auth` | One-time YouTube OAuth setup |
 | `npm run tiktok:auth` | One-time TikTok OAuth setup |
 | `npm run generate:conversations-audio` | Generate TTS audio for basic-english-conversations episodes |
+| `npm run shadowing` | Format a draft script (Alex only) → IPA → audio → shadowing MP4 |
 | `npm run build` | Compile TypeScript to `dist/` |
 | `npm run typecheck` | Type-check without emitting files |
 
@@ -313,6 +314,56 @@ npm run generate:conversations-audio -- --id=1
 
 # Custom collection, force regenerate
 npm run generate:conversations-audio -- --dir=output/basic-english-conversations --force
+```
+
+---
+
+## `npm run shadowing`
+
+Faithful shadowing pipeline: format your draft into Alex-only dialogue lines (no content changes), add IPA, TTS, and render an MP4 with English + IPA subtitles.
+
+**Entry point:** `src/shadowing.ts`
+
+Workspaces live under `shadowing/workspaces/<timestamp>/`. Default profile and background: `shadowing/defaults/`.
+
+### Arguments
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--draft=PATH` | Yes (new) | Text file with your script draft. Creates a new workspace. |
+| `--workspace=ID` | Yes (resume) | Resume an existing workspace (e.g. `20260616-230137`). |
+| `--title=TEXT` | No | Override episode title. |
+| `--test` | No | Format script only — no IPA, audio, or video. |
+| `--force` | No | Regenerate script (new) or audio/video (resume). |
+| `--list` | — | List shadowing workspaces. |
+
+### Examples
+
+```bash
+# New workspace from draft
+npm run shadowing -- --draft=./my-script.txt
+
+# Preview formatted script only
+npm run shadowing -- --draft=./my-script.txt --test
+
+# Resume and render video
+npm run shadowing -- --workspace=20260616-230137
+
+# Force regenerate audio + video
+npm run shadowing -- --workspace=20260616-230137 --force
+```
+
+### Output layout
+
+```
+shadowing/workspaces/<id>/
+  draft.txt
+  script.json
+  shadowing/
+    audio/001.wav …
+    podcast.mp3
+    subtitles.ass
+    shadowing.mp4
 ```
 
 ---

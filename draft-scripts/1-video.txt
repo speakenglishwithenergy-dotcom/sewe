@@ -1,0 +1,185 @@
+# Why I Started a Programming Channel in English (Even Though I’m Not Fluent)
+
+## 🕒 Intro (0:00 – 0:20) — **Strong Question Hook**
+
+**Audio:**
+
+> Would you rather stay silent forever,
+> 
+> 
+> or speak imperfect English and grow?
+> 
+> I chose the second one.
+> 
+> That’s why I’m starting a programming YouTube channel in English.
+> 
+> Hi, my name is Victor. and  I’m a Fullstack developer from Vietnam.
+> 
+
+**Visual:**
+
+- Nhìn thẳng camera
+- Không nhạc hoặc nhạc rất nhẹ
+- Pause 1 giây sau câu hỏi
+
+---
+
+## về 🕒 Part 1 – I’m Not Good at English (0:20 – 0:50). Xxxxxxxc.
+
+**Audio:**
+
+> Let me be honest with you.
+> 
+> 
+> I’m not fluent in English.
+> 
+> I still make grammar mistakes.
+> 
+> I don’t speak fast.
+> 
+> And sometimes, I feel nervous when speaking in English
+> 
+> But I don’t think imperfect English
+> 
+> should stop me from sharing what I know.
+> 
+
+**Visual:**
+
+- Góc quay gần
+- Text nhẹ: *“Not fluent. Still trying.”*
+
+---
+
+## 🕒 Part 2 – Why English? (0:50 – 1:40)
+
+**Audio:**
+
+> So, why did I choose English?
+> 
+> 
+> First, because programming is written in English.
+> 
+> Yeah, if you clicked in this video, you may be a programmer.??
+> 
+> Most documentation, tutorials,
+> 
+> and programming languages
+> 
+> are all in English.
+> 
+> Second, the global tech community uses English.
+> 
+> Developers from different countries
+> 
+> communicate, learn, and help each other in English.
+> 
+> Third, English opens better opportunities.
+> 
+> You know, for now AI is very trending and grow really really fast. And Does layoffs in big companies is matter with you? Like worry about your job, your life, how you earn money to take care your life your family,…
+> So you actually need to be better, day by day. And your English is needed to find new job, to research, read documents…
+> 
+> With a good English person, you can get some Better jobs.
+> 
+> Better salaries.
+> 
+> More competition — but also more growth.
+> 
+> And finally, English helps me feel more confident
+> 
+> and more professional in an international environment.
+> 
+
+**Visual:**
+
+- Code editor
+- Docs, GitHub, Stack Overflow
+- Subtle keywords on screen: *Docs / Community / Opportunity*
+
+---
+
+## 🕒 Part 3 – This Channel Is My Practice (1:40 – 2:20)
+
+**Audio:**
+
+> This channel is not only about teaching programming.
+> 
+> 
+> It is also my personal practice.
+> 
+> Tôi đã thử rất nhiều cách để cải thiện khả năng tiếng anh của mình nhưng dường như tất cả đều không hiệu quả lắm. Tuy nhiên tôi cũng nhận ra rằng để học tốt tiếng anh thì cách duy nhất là lặp lại liên tục, và một điều nữa là tôi thích và ấp ủ làm một kênh youtube từ rất lâu nhưng tôi vẫn chưa bắt đầu thực hiện nó. Một điều khác nữa là tôi thích chia sẽ về những kiến thức về tech/lập trình hay đơn giản là kể chuyện/tám chuyện về lập trình. Vì vậy tôi đã quyết định kết hợp lại và tạo ra kênh youtube này, tôi tin rằng việc này sẽ giúp tôi cãi thiện và phát triển bản thân rất nhiều vì tôi tin rằng khi mình chia sẽ, mình sẽ học được thêm một lần nữa để nắm vững kiến thức và giúp tôi có thể tự tin hơn trước máy quay và nói chuyện một cách tốt hơn. và một điều nữa là tôi muốn thay đổi bản thân một cách tích cực hơn.
+> 
+> Share suy nghĩ và cảm xúc của bản thân
+> 
+> I practice explaining complex ideas simply.
+> 
+> I practice thinking in English.
+> 
+> I practice being more confident on camera.
+> 
+> I believe progress comes from doing,
+> 
+> not from waiting to be perfect.
+> 
+
+**Visual:**
+
+- Bạn đọc script
+- Micro / camera
+- Text: *“Progress over perfection”*
+
+---
+
+## 🕒 Part 4 – Message to Viewers (2:20 – 2:50)
+
+**Audio:**
+
+> If you are a non-native English speaker like me,
+> 
+> 
+> I want you to remember this:
+> 
+> Your English does not need to be perfect
+> 
+> to be valuable.
+> 
+> If you have experience,
+> 
+> if you have ideas,
+> 
+> your voice matters.
+> 
+
+**Visual:**
+
+- Nhìn thẳng camera
+- Giọng chậm, chắc
+
+---
+
+## 🕒 Outro (2:50 – 3:10)
+
+**Audio:**
+
+> Thank you for watching.
+> 
+> 
+> On this channel, I’ll share my experience in programming,
+> 
+> building real projects,
+> 
+> and growing step by step as a developer.
+> 
+> If that sounds helpful to you,
+> 
+> please subscribe.
+> 
+> See you in the next video.
+> 
+
+**Visual:**
+
+- Fade out
+- Text: *“Coding • Learning • Growth”*
+
+Tại sao không kết hợp việc lặp đi lặp lại đó bằng cách đọc để tạo ra video bổ ích

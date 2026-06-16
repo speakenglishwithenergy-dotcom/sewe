@@ -9,6 +9,7 @@
     "youtube:auth": "tsx scripts/youtube-oauth.ts",
     "tiktok:auth": "tsx scripts/tiktok-oauth.ts",
     "generate:conversations-audio": "tsx src/conversations-audio.ts",
+    "shadowing": "tsx src/shadowing.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },

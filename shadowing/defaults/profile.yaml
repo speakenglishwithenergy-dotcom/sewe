@@ -1,0 +1,33 @@
+name: DevTalk Shadowing
+speaker:
+  name: Alex
+  voice: M4
+
+branding:
+  subtitleColors:
+    highlight: "#FF7A00"
+    keyword: "#FF7A00"
+    ipa: "#2ba6e1"
+    background: "#0D1B3D"
+  subtitleStyle:
+    primary: "#FFFFFF"
+    outline: "#0D1B3D"
+    fontSize: 16
+    outlineWidth: 2
+    shadow: 1
+    alignment: 2
+    marginL: 0
+    marginR: 0
+    marginV: 30
+    lineWidth: 70
+    includeIpa: true
+  waveVisualizer:
+    x: 560
+    y: 450
+    width: 800
+    height: 200
+    color: "#14B8A6"
+    opacity: 0.85
+
+assets:
+  background: assets/background.png
