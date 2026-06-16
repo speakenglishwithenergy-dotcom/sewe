@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { ResolvedPublishCopy } from '../channel/channel.types';
 import { SocialMetadata } from '../types';
 import {
   normalizeSocialMetadata,
@@ -108,28 +109,28 @@ export async function resolveSocialMetadataPath(projectDir: string): Promise<str
   }
 }
 
-export function buildExportBundle(meta: SocialMetadata): Record<string, string> {
+export function buildExportBundle(meta: SocialMetadata, pub: ResolvedPublishCopy): Record<string, string> {
   const files: Record<string, string> = {
     [YOUTUBE_LONG_TITLE]: meta.youtube.title,
-    [YOUTUBE_LONG_DESCRIPTION]: formatChannelDescription(meta.youtube),
+    [YOUTUBE_LONG_DESCRIPTION]: formatChannelDescription(meta.youtube, pub),
     [YOUTUBE_LONG_TAGS]: formatYouTubeTags(meta.youtube.tags),
     [YOUTUBE_LONG_PINNED_COMMENT]: meta.youtube.pinnedComment,
   };
 
   if (meta.youtubeShort) {
     files[YOUTUBE_SHORT_TITLE] = meta.youtubeShort.title;
-    files[YOUTUBE_SHORT_CAPTION] = formatChannelShortCaption(meta.youtubeShort);
+    files[YOUTUBE_SHORT_CAPTION] = formatChannelShortCaption(meta.youtubeShort, pub);
     files[YOUTUBE_SHORT_PINNED_COMMENT] = meta.youtubeShort.pinnedComment;
-    files[TIKTOK_SHORT_CAPTION] = formatTikTokShortCaption(meta.youtubeShort);
+    files[TIKTOK_SHORT_CAPTION] = formatTikTokShortCaption(meta.youtubeShort, pub);
   }
 
   if (meta.facebook) {
-    files[FACEBOOK_LONG_CAPTION] = formatFacebookCaption(meta.facebook);
+    files[FACEBOOK_LONG_CAPTION] = formatFacebookCaption(meta.facebook, pub);
     files[FACEBOOK_LONG_FIRST_COMMENT] = meta.facebook.firstComment;
   }
 
   if (meta.facebookShort) {
-    files[FACEBOOK_SHORT_CAPTION] = formatFacebookShortCaption(meta.facebookShort);
+    files[FACEBOOK_SHORT_CAPTION] = formatFacebookShortCaption(meta.facebookShort, pub);
     files[FACEBOOK_SHORT_FIRST_COMMENT] = meta.facebookShort.firstComment;
   }
 
@@ -151,8 +152,9 @@ async function removeLegacyPublishFiles(publishDir: string): Promise<void> {
 export async function writeSocialMetadataExports(
   projectDir: string,
   meta: SocialMetadata,
+  pub: ResolvedPublishCopy,
 ): Promise<void> {
-  const normalized = normalizeSocialMetadata(meta);
+  const normalized = normalizeSocialMetadata(meta, pub);
   const publishDir = getPublishOutputDir(projectDir);
   await fs.mkdir(publishDir, { recursive: true });
   await removeLegacyPublishFiles(publishDir);
@@ -163,7 +165,7 @@ export async function writeSocialMetadataExports(
     'utf-8',
   );
 
-  const files = buildExportBundle(normalized);
+  const files = buildExportBundle(normalized, pub);
   await Promise.all(
     Object.entries(files).map(async ([relativePath, content]) => {
       const outputPath = path.join(publishDir, relativePath);

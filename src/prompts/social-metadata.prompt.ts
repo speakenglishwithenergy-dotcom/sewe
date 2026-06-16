@@ -1,20 +1,6 @@
+import { ChannelContext } from '../channel/channel.types';
 import { PodcastScript, ShortScript } from '../types';
-import { CHANNEL_NAME } from './script.prompt';
-import {
-  PUBLISH_CHAPTER_LABELS,
-  PUBLISH_CORE_HASHTAGS,
-  PUBLISH_CORE_TAGS,
-  PUBLISH_DESCRIPTION,
-  PUBLISH_FACEBOOK,
-  PUBLISH_FACEBOOK_CORE_HASHTAGS,
-  PUBLISH_FACEBOOK_PAGE_URL,
-  PUBLISH_LIMITS,
-  PUBLISH_SHORT_CORE_HASHTAGS,
-  PUBLISH_TIKTOK_CHANNEL_URL,
-  PUBLISH_YOUTUBE_CHANNEL_URL,
-  PUBLISH_YOUTUBE_TITLE_BASE_MAX,
-  PUBLISH_YOUTUBE_TITLE_SUFFIX,
-} from '../social/publish.config';
+import { PUBLISH_LIMITS } from '../social/publish.limits';
 
 function formatScriptExcerpt(script: PodcastScript, maxLines = 40): string {
   const lines = script.script.slice(0, maxLines);
@@ -23,8 +9,19 @@ function formatScriptExcerpt(script: PodcastScript, maxLines = 40): string {
   return excerpt + truncated;
 }
 
-export function buildYouTubeMetadataPrompt(podcastScript: PodcastScript, topic: string): string {
-  return `You are a YouTube SEO specialist for the channel "${CHANNEL_NAME}" — an English learning podcast hosted by Victor and Lisa.
+function hostsDescription(ctx: ChannelContext): string {
+  return ctx.config.hosts.map((h) => h.name).join(' and ');
+}
+
+export function buildYouTubeMetadataPrompt(
+  ctx: ChannelContext,
+  podcastScript: PodcastScript,
+  topic: string,
+): string {
+  const { name, niche, script } = ctx.config;
+  const pub = ctx.publish;
+
+  return `You are a YouTube SEO specialist for the channel "${name}" — ${niche}, hosted by ${hostsDescription(ctx)}.
 
 Create publish-ready YouTube metadata for this episode.
 
@@ -35,55 +32,50 @@ Current description draft: "${podcastScript.description}"
 SCRIPT EXCERPT:
 ${formatScriptExcerpt(podcastScript)}
 
-AUDIENCE: English learners (A2–B1), self-improvement fans, people who want practical speaking tips.
+AUDIENCE: ${niche} (${script.languageLevel}).
 
 CHANNEL STANDARD (enforced automatically — do not duplicate in your output):
-- Core tags always prepended: ${PUBLISH_CORE_TAGS.join(', ')}
-- Core hashtags always prepended: ${PUBLISH_CORE_HASHTAGS.join(', ')}
-- Podcast title suffix always appended: "${PUBLISH_YOUTUBE_TITLE_SUFFIX}" (do not include in your title output)
+- Core tags always prepended: ${pub.coreTags.join(', ')}
+- Core hashtags always prepended: ${pub.coreHashtags.join(', ')}
+- Podcast title suffix always appended: "${pub.titleSuffix}"
 - Description layout is rebuilt from your hook, bullets, and chapters — fixed sections:
-  "${PUBLISH_DESCRIPTION.learnHeader}", "${PUBLISH_DESCRIPTION.chaptersHeader}",
-  "${PUBLISH_DESCRIPTION.subscribeCta}", "${PUBLISH_DESCRIPTION.shortCta}",
-  "${PUBLISH_DESCRIPTION.linksHeader}" with YouTube (${PUBLISH_YOUTUBE_CHANNEL_URL}), Facebook (${PUBLISH_FACEBOOK_PAGE_URL}), and TikTok (${PUBLISH_TIKTOK_CHANNEL_URL}) links
-
-DESCRIPTION CONTENT (use \\n for line breaks inside the JSON string):
-1. HOOK — first 1–2 lines, ≤${PUBLISH_LIMITS.hookMaxChars} characters, front-load main keyword (e.g. "learn English", "English fluency")
-2. Blank line
-3. "${PUBLISH_DESCRIPTION.learnHeader}" + exactly 3 bullet takeaways (• prefix)
+  "${pub.description.learnHeader}", "${pub.description.chaptersHeader}",
+  "${pub.description.subscribeCta}", "${pub.description.shortCta}",
+  "${pub.description.linksHeader}" with YouTube (${pub.youtubeChannelUrl}), Facebook (${pub.facebookPageUrl}), and TikTok (${pub.tiktokChannelUrl}) links
 
 RULES:
-- "title": keep or slightly improve the episode title, max ${PUBLISH_YOUTUBE_TITLE_BASE_MAX} characters (suffix added automatically), keyword-rich
-- "titleVariants": 2 alternative titles for A/B testing, same max length (suffix added automatically)
-- "tags": up to ${PUBLISH_LIMITS.youtubeTagsMax - PUBLISH_CORE_TAGS.length} episode-specific YouTube tags (lowercase, no #). Core channel tags are added automatically.
-- "chapters": exactly 5 entries with labels ${PUBLISH_CHAPTER_LABELS.map((l) => `"${l}"`).join(', ')} — estimate timestamps for an ~8–10 min episode
-- "pinnedComment": one engaging question to spark comments (1–2 sentences, include emoji). Channel links are added automatically — do not include URLs.
-- "hashtags": 1–3 episode-specific hashtags with # prefix (core channel hashtags added automatically)
-- Tone: warm, encouraging, professional — not clickbait
+- "title": max ${pub.titleBaseMax} characters (suffix added automatically), keyword-rich
+- "titleVariants": 2 alternative titles, same max length
+- "tags": up to ${PUBLISH_LIMITS.youtubeTagsMax - pub.coreTags.length} episode-specific tags (lowercase, no #)
+- "chapters": exactly ${pub.chapterLabels.length} entries with labels ${pub.chapterLabels.map((l) => `"${l}"`).join(', ')}
+- "pinnedComment": one engaging question (1–2 sentences). Do not include URLs.
+- "hashtags": 1–3 episode-specific hashtags with # prefix
 
 Return ONLY a valid JSON object (no markdown):
 {
   "title": "...",
   "titleVariants": ["...", "..."],
   "description": "...",
-  "tags": ["mental blocks", "..."],
-  "chapters": [{ "time": "0:00", "label": "Intro" }, ...],
+  "tags": ["..."],
+  "chapters": [{ "time": "0:00", "label": "Intro" }],
   "pinnedComment": "...",
-  "hashtags": ["#EnglishFluency", "..."]
+  "hashtags": ["#..."]
 }`;
 }
 
 export function buildYouTubeShortMetadataPrompt(
+  ctx: ChannelContext,
   shortScript: ShortScript,
   podcastScript: PodcastScript,
   topic: string,
 ): string {
+  const { name } = ctx.config;
+  const pub = ctx.publish;
   const shortLines = shortScript.script
     .map((line) => `${line.speaker}: ${line.text}`)
     .join('\n');
 
-  return `You are a YouTube Shorts SEO specialist for "${CHANNEL_NAME}".
-
-Create publish-ready metadata for this Short derived from the full podcast episode.
+  return `You are a YouTube Shorts SEO specialist for "${name}".
 
 Topic: "${topic}"
 Podcast title: "${podcastScript.title}"
@@ -93,104 +85,91 @@ Short hook: "${shortScript.hook}"
 SHORT SCRIPT:
 ${shortLines}
 
-AUDIENCE: English learners scrolling Shorts — need instant hook + value.
-
 CHANNEL STANDARD (enforced automatically):
-- Core Short hashtags always prepended: ${PUBLISH_SHORT_CORE_HASHTAGS.join(', ')}
-- YouTube (${PUBLISH_YOUTUBE_CHANNEL_URL}), Facebook (${PUBLISH_FACEBOOK_PAGE_URL}), and TikTok (${PUBLISH_TIKTOK_CHANNEL_URL}) links appended to the exported caption automatically
+- Core Short hashtags always prepended: ${pub.shortCoreHashtags.join(', ')}
+- Platform links appended to exported caption automatically
 
 RULES:
-- "title": scroll-stopping, max ${PUBLISH_LIMITS.youtubeShortTitleMax} characters, different angle from podcast title
-- "caption": 1–2 sentences (≤${PUBLISH_LIMITS.shortCaptionMaxChars} chars) — hook + one concrete takeaway, NO hashtags inside
-- "hashtags": 1–2 episode-specific hashtags with # prefix (core channel hashtags added automatically)
-- "pinnedComment": short question or CTA to drive comments (1 sentence, emoji ok). Do not include URLs — links are added automatically.
-- Tone: direct, energetic, speak to viewer as "you"
+- "title": max ${PUBLISH_LIMITS.youtubeShortTitleMax} characters
+- "caption": ≤${PUBLISH_LIMITS.shortCaptionMaxChars} chars — hook + takeaway, NO hashtags inside
+- "hashtags": 1–2 episode-specific hashtags
+- "pinnedComment": short question or CTA. Do not include URLs.
 
 Return ONLY a valid JSON object (no markdown):
 {
   "title": "...",
   "caption": "...",
-  "hashtags": ["#EnglishTips", "#BreakThrough"],
+  "hashtags": ["#..."],
   "pinnedComment": "..."
 }`;
 }
 
-export function buildFacebookMetadataPrompt(podcastScript: PodcastScript, topic: string): string {
-  return `You are a Facebook Page content specialist for "${CHANNEL_NAME}" — an English learning podcast hosted by Victor and Lisa.
+export function buildFacebookMetadataPrompt(
+  ctx: ChannelContext,
+  podcastScript: PodcastScript,
+  topic: string,
+): string {
+  const { name, niche, script } = ctx.config;
+  const pub = ctx.publish;
 
-Create publish-ready Facebook post copy for uploading the full podcast video to the Fanpage.
+  return `You are a Facebook Page content specialist for "${name}" — ${niche}, hosted by ${hostsDescription(ctx)}.
 
 Topic: "${topic}"
 Episode title: "${podcastScript.title}"
-Current description draft: "${podcastScript.description}"
 
 SCRIPT EXCERPT:
 ${formatScriptExcerpt(podcastScript)}
 
-AUDIENCE: English learners (A2–B1), self-improvement fans, people who want practical speaking tips.
-
-CHANNEL STANDARD (enforced automatically — do not duplicate in your output):
-- Core hashtags always prepended: ${PUBLISH_FACEBOOK_CORE_HASHTAGS.join(', ')}
-- Post layout is rebuilt from your hook and bullets — fixed sections:
-  "${PUBLISH_FACEBOOK.learnHeader}", "${PUBLISH_FACEBOOK.followCta}", "${PUBLISH_FACEBOOK.youtubeCta}", "${PUBLISH_FACEBOOK.tiktokCta}"
-- No chapters block — Facebook posts do not use timestamps
-
-CAPTION CONTENT (use \\n for line breaks inside the JSON string):
-1. HOOK — first 1–2 lines, ≤${PUBLISH_LIMITS.hookMaxChars} characters, front-load main keyword (e.g. "learn English", "English fluency")
-2. Blank line
-3. "${PUBLISH_FACEBOOK.learnHeader}" + exactly 3 bullet takeaways (• prefix)
+CHANNEL STANDARD (enforced automatically):
+- Core hashtags: ${pub.facebookCoreHashtags.join(', ')}
+- Fixed sections: "${pub.facebook.learnHeader}", follow/youtube/tiktok CTAs
 
 RULES:
-- "caption": hook + learn block only (no CTAs, no hashtags, no URLs — those are added automatically)
-- "hashtags": 1–3 episode-specific hashtags with # prefix (core channel hashtags added automatically)
-- "firstComment": one engaging question to spark comments (1–2 sentences, include emoji). Do not include URLs.
-- Tone: warm, conversational, native to Facebook — not clickbait, not YouTube-style "Subscribe"
+- "caption": hook + learn block only (no CTAs, no hashtags, no URLs)
+- "hashtags": 1–3 episode-specific hashtags
+- "firstComment": engaging question. Do not include URLs.
+- Audience: ${script.languageLevel}
 
 Return ONLY a valid JSON object (no markdown):
 {
   "caption": "...",
-  "hashtags": ["#EnglishFluency", "..."],
+  "hashtags": ["#..."],
   "firstComment": "..."
 }`;
 }
 
 export function buildFacebookShortMetadataPrompt(
+  ctx: ChannelContext,
   shortScript: ShortScript,
   podcastScript: PodcastScript,
   topic: string,
 ): string {
+  const { name } = ctx.config;
+  const pub = ctx.publish;
   const shortLines = shortScript.script
     .map((line) => `${line.speaker}: ${line.text}`)
     .join('\n');
 
-  return `You are a Facebook Reels content specialist for "${CHANNEL_NAME}".
-
-Create publish-ready metadata for this Reel derived from the full podcast episode.
+  return `You are a Facebook Reels content specialist for "${name}".
 
 Topic: "${topic}"
-Podcast title: "${podcastScript.title}"
-Short title draft: "${shortScript.title}"
 Short hook: "${shortScript.hook}"
 
 SHORT SCRIPT:
 ${shortLines}
 
-AUDIENCE: English learners scrolling Reels — need instant hook + value.
-
 CHANNEL STANDARD (enforced automatically):
-- Core Reel hashtags always prepended: #LearnEnglish, #Reels
-- YouTube (${PUBLISH_YOUTUBE_CHANNEL_URL}), Facebook (${PUBLISH_FACEBOOK_PAGE_URL}), and TikTok (${PUBLISH_TIKTOK_CHANNEL_URL}) links appended to the exported caption automatically
+- Core Reel hashtags: ${pub.facebookShortCoreHashtags.join(', ')}
 
 RULES:
-- "caption": 1–2 sentences (≤${PUBLISH_LIMITS.facebookShortCaptionMaxChars} chars) — hook + one concrete takeaway, NO hashtags inside
-- "hashtags": 1–2 episode-specific hashtags with # prefix (core channel hashtags added automatically)
-- "firstComment": short question or CTA to drive comments (1 sentence, emoji ok). Do not include URLs.
-- Tone: direct, energetic, speak to viewer as "you"
+- "caption": ≤${PUBLISH_LIMITS.facebookShortCaptionMaxChars} chars — hook + takeaway, NO hashtags
+- "hashtags": 1–2 episode-specific hashtags
+- "firstComment": short question or CTA. Do not include URLs.
 
 Return ONLY a valid JSON object (no markdown):
 {
   "caption": "...",
-  "hashtags": ["#EnglishTips", "#BreakThrough"],
+  "hashtags": ["#..."],
   "firstComment": "..."
 }`;
 }

@@ -1,10 +1,12 @@
 import { OpenAIService } from './openai.service';
+import { ChannelContext } from '../channel/channel.types';
 import {
+  asSpeakerTuple,
+  buildPodcastScriptSchema,
+  buildScriptSectionResultSchema,
   DialogueLine,
   PodcastMetadataSchema,
   PodcastScript,
-  PodcastScriptSchema,
-  ScriptSectionResultSchema,
 } from '../types';
 import {
   appendChannelClosing,
@@ -13,9 +15,6 @@ import {
   buildScriptPrompt,
   buildSectionPrompt,
   countScriptWords,
-  SCRIPT_SECTIONS,
-  SCRIPT_TARGET_MIN_LINES,
-  SCRIPT_TARGET_MIN_WORDS,
 } from '../prompts/script.prompt';
 import { logger } from '../utils/logger';
 
@@ -24,16 +23,24 @@ const SYSTEM_PROMPT =
   'You are a professional podcast script writer. Respond only with valid JSON matching the requested structure exactly.';
 
 export class ScriptService {
-  constructor(private readonly openai: OpenAIService) {}
+  private readonly speakers: [string, ...string[]];
+
+  constructor(
+    private readonly openai: OpenAIService,
+    private readonly ctx: ChannelContext,
+  ) {
+    this.speakers = asSpeakerTuple(ctx.speakers);
+  }
 
   async generate(topic: string, test = false): Promise<PodcastScript> {
+    const { script: scriptConfig } = this.ctx.config;
     logger.info(`Generating podcast script for topic: "${topic}"${test ? ' [TEST MODE]' : ''}`);
 
     if (test) {
       const script = await this.openai.generateJSON(
-        buildScriptPrompt(topic, true),
+        buildScriptPrompt(this.ctx, topic, true),
         SYSTEM_PROMPT,
-        (data) => PodcastScriptSchema.parse(data),
+        (data) => buildPodcastScriptSchema(this.speakers, 10).parse(data),
       );
       logger.success(
         `Script ready — "${script.title}" (${script.script.length} lines, ${countScriptWords(script.script)} words)`,
@@ -42,14 +49,14 @@ export class ScriptService {
     }
 
     const metadata = await this.openai.generateJSON(
-      buildMetadataPrompt(topic),
+      buildMetadataPrompt(this.ctx, topic),
       SYSTEM_PROMPT,
       (data) => PodcastMetadataSchema.parse(data),
     );
 
     const allLines: DialogueLine[] = [];
 
-    for (const section of SCRIPT_SECTIONS) {
+    for (const section of scriptConfig.sections) {
       logger.info(`Writing section "${section.label}" (${section.lineCount} lines)...`);
       const sectionLines = await this.generateSection(topic, section, allLines, metadata.title);
       allLines.push(...sectionLines);
@@ -62,7 +69,7 @@ export class ScriptService {
     script = await this.expandIfNeeded(topic, script);
     script = {
       ...script,
-      script: appendChannelClosing(script.script),
+      script: appendChannelClosing(this.ctx, script.script),
     };
 
     const words = countScriptWords(script.script);
@@ -75,16 +82,18 @@ export class ScriptService {
 
   private async generateSection(
     topic: string,
-    section: (typeof SCRIPT_SECTIONS)[number],
+    section: (typeof this.ctx.config.script.sections)[number],
     previousLines: DialogueLine[],
     episodeTitle: string,
   ): Promise<DialogueLine[]> {
     let lastCount = 0;
     let lastLines: DialogueLine[] = [];
+    const sectionSchema = buildScriptSectionResultSchema(this.speakers);
 
     for (let attempt = 1; attempt <= MAX_SECTION_ATTEMPTS; attempt++) {
       const result = await this.openai.generateJSON(
         buildSectionPrompt(
+          this.ctx,
           topic,
           section,
           previousLines,
@@ -92,7 +101,7 @@ export class ScriptService {
           attempt > 1 ? lastCount : undefined,
         ),
         SYSTEM_PROMPT,
-        (data) => ScriptSectionResultSchema.parse(data),
+        (data) => sectionSchema.parse(data),
       );
 
       lastCount = result.script.length;
@@ -115,25 +124,25 @@ export class ScriptService {
   }
 
   private async expandIfNeeded(topic: string, script: PodcastScript): Promise<PodcastScript> {
+    const { targetMinWords, targetMinLines } = this.ctx.config.script;
     let lines = [...script.script];
     let words = countScriptWords(lines);
 
-    if (words >= SCRIPT_TARGET_MIN_WORDS && lines.length >= SCRIPT_TARGET_MIN_LINES) {
+    if (words >= targetMinWords && lines.length >= targetMinLines) {
       return { ...script, script: lines };
     }
 
-    const linesNeeded = Math.max(10, SCRIPT_TARGET_MIN_LINES - lines.length + 5);
+    const linesNeeded = Math.max(10, targetMinLines - lines.length + 5);
     logger.warn(
       `Script below target (${lines.length} lines, ${words} words) — expanding by ~${linesNeeded} lines...`,
     );
 
     const expansion = await this.openai.generateJSON(
-      buildExpansionPrompt(topic, script.title, lines, linesNeeded),
+      buildExpansionPrompt(this.ctx, topic, script.title, lines, linesNeeded),
       SYSTEM_PROMPT,
-      (data) => ScriptSectionResultSchema.parse(data),
+      (data) => buildScriptSectionResultSchema(this.speakers).parse(data),
     );
 
-    // Insert expansion before any closing/sign-off lines in the last section
     const closingStart = findClosingStart(lines);
     lines = [...lines.slice(0, closingStart), ...expansion.script, ...lines.slice(closingStart)];
     words = countScriptWords(lines);
@@ -144,7 +153,6 @@ export class ScriptService {
   }
 }
 
-/** Find where recap/closing begins so expansion inserts before it. */
 function findClosingStart(lines: DialogueLine[]): number {
   const closingPatterns = [
     /\brecap\b/i,

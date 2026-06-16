@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { OpenAIService } from '../ai/openai.service';
+import { ChannelContext } from '../channel/channel.types';
 import {
   AudioSegment,
   FacebookMetadataSchema,
@@ -24,10 +25,13 @@ import { resolveSocialMetadataPath, writeSocialMetadataExports } from './social-
 import { logger } from '../utils/logger';
 
 const SYSTEM_PROMPT =
-  'You are a social media SEO specialist for an English learning channel. Respond only with valid JSON matching the requested structure exactly.';
+  'You are a social media SEO specialist. Respond only with valid JSON matching the requested structure exactly.';
 
 export class SocialMetadataService {
-  constructor(private readonly openai: OpenAIService) {}
+  constructor(
+    private readonly openai: OpenAIService,
+    private readonly ctx: ChannelContext,
+  ) {}
 
   async loadOrGenerate(
     projectDir: string,
@@ -44,12 +48,12 @@ export class SocialMetadataService {
 
       if (merged === cached) {
         logger.info('⏭  Social metadata already exists — loading from cache');
-        await writeSocialMetadataExports(projectDir, cached);
-        return normalizeSocialMetadata(cached);
+        await writeSocialMetadataExports(projectDir, cached, this.ctx.publish);
+        return normalizeSocialMetadata(cached, this.ctx.publish);
       }
 
-      await writeSocialMetadataExports(projectDir, merged);
-      return normalizeSocialMetadata(merged);
+      await writeSocialMetadataExports(projectDir, merged, this.ctx.publish);
+      return normalizeSocialMetadata(merged, this.ctx.publish);
     }
 
     if (options?.regenerate) {
@@ -59,9 +63,9 @@ export class SocialMetadataService {
     }
 
     const meta = await this.generateAllMetadata(podcastScript, topic, options);
-    await writeSocialMetadataExports(projectDir, meta);
+    await writeSocialMetadataExports(projectDir, meta, this.ctx.publish);
     logger.success(`Social metadata saved → ${path.join(projectDir, 'publish')}`);
-    return normalizeSocialMetadata(meta);
+    return normalizeSocialMetadata(meta, this.ctx.publish);
   }
 
   private async fillMissingMetadata(
@@ -136,17 +140,18 @@ export class SocialMetadataService {
     segments?: AudioSegment[],
   ) {
     const raw = await this.openai.generateJSON(
-      buildYouTubeMetadataPrompt(podcastScript, topic),
+      buildYouTubeMetadataPrompt(this.ctx, podcastScript, topic),
       SYSTEM_PROMPT,
       (data) => YouTubeMetadataSchema.parse(data),
       { temperature: 0.7 },
     );
 
     if (segments && segments.length > 0) {
+      const chapters = refineChapterTimes(this.ctx, raw.chapters, segments);
       return {
         ...raw,
-        chapters: refineChapterTimes(raw.chapters, segments),
-        description: injectChapterBlock(raw.description, refineChapterTimes(raw.chapters, segments)),
+        chapters,
+        description: injectChapterBlock(raw.description, chapters),
       };
     }
 
@@ -159,7 +164,7 @@ export class SocialMetadataService {
     topic: string,
   ) {
     return this.openai.generateJSON(
-      buildYouTubeShortMetadataPrompt(shortScript, podcastScript, topic),
+      buildYouTubeShortMetadataPrompt(this.ctx, shortScript, podcastScript, topic),
       SYSTEM_PROMPT,
       (data) => YouTubeShortMetadataSchema.parse(data),
       { temperature: 0.75 },
@@ -168,7 +173,7 @@ export class SocialMetadataService {
 
   private async generateFacebookMetadata(podcastScript: PodcastScript, topic: string) {
     return this.openai.generateJSON(
-      buildFacebookMetadataPrompt(podcastScript, topic),
+      buildFacebookMetadataPrompt(this.ctx, podcastScript, topic),
       SYSTEM_PROMPT,
       (data) => FacebookMetadataSchema.parse(data),
       { temperature: 0.7 },
@@ -181,7 +186,7 @@ export class SocialMetadataService {
     topic: string,
   ) {
     return this.openai.generateJSON(
-      buildFacebookShortMetadataPrompt(shortScript, podcastScript, topic),
+      buildFacebookShortMetadataPrompt(this.ctx, shortScript, podcastScript, topic),
       SYSTEM_PROMPT,
       (data) => FacebookShortMetadataSchema.parse(data),
       { temperature: 0.75 },

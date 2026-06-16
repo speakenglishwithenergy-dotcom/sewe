@@ -1,18 +1,28 @@
 import { z } from 'zod';
+import { ChannelContext } from '../channel/channel.types';
 
-// ─── Speakers ────────────────────────────────────────────────────────────────
+// ─── Speakers (dynamic per channel) ──────────────────────────────────────────
 
-export const SpeakerSchema = z.enum(['Victor', 'Lisa']);
-export type Speaker = z.infer<typeof SpeakerSchema>;
+export type Speaker = string;
 
-// ─── Podcast Script ──────────────────────────────────────────────────────────
+export function buildSpeakerSchema(speakers: [string, ...string[]]) {
+  return z.enum(speakers);
+}
 
+export function buildDialogueLineSchema(speakers: [string, ...string[]]) {
+  return z.object({
+    speaker: buildSpeakerSchema(speakers),
+    text: z.string().min(1),
+    ipa: z.string().min(1).optional(),
+    keywords: z.array(z.string().min(1)).max(4).optional(),
+  });
+}
+
+/** Loose schema for loading cached JSON — speaker validated at runtime when needed. */
 export const DialogueLineSchema = z.object({
-  speaker: SpeakerSchema,
+  speaker: z.string().min(1),
   text: z.string().min(1),
-  /** General American English IPA transcription of the spoken line */
   ipa: z.string().min(1).optional(),
-  /** 0–4 words/phrases to highlight in subtitles; empty when the line needs no highlight */
   keywords: z.array(z.string().min(1)).max(4).optional(),
 });
 export type DialogueLine = z.infer<typeof DialogueLineSchema>;
@@ -25,16 +35,28 @@ export const PodcastMetadataSchema = z.object({
 });
 export type PodcastMetadata = z.infer<typeof PodcastMetadataSchema>;
 
+export function buildScriptSectionResultSchema(speakers: [string, ...string[]]) {
+  return z.object({
+    script: z.array(buildDialogueLineSchema(speakers)).min(1),
+  });
+}
+
 export const ScriptSectionResultSchema = z.object({
   script: z.array(DialogueLineSchema).min(1),
 });
 
 export const PodcastScriptSchema = PodcastMetadataSchema.extend({
   script: z.array(DialogueLineSchema).min(10),
-  /** Bumped when keyword highlight logic changes — triggers re-generation on resume */
   keywordsVersion: z.number().int().optional(),
 });
 export type PodcastScript = z.infer<typeof PodcastScriptSchema>;
+
+export function buildPodcastScriptSchema(speakers: [string, ...string[]], minLines = 10) {
+  return PodcastMetadataSchema.extend({
+    script: z.array(buildDialogueLineSchema(speakers)).min(minLines),
+    keywordsVersion: z.number().int().optional(),
+  });
+}
 
 // ─── Short Script ────────────────────────────────────────────────────────────
 
@@ -44,12 +66,28 @@ export const ShortScriptSchema = z.object({
   hook: z.string().min(1),
   thumbnailText: z.string().min(1),
   thumbnailScene: z.string().min(1).optional(),
-  script: z.array(DialogueLineSchema).min(5).max(12),
+  script: z.array(DialogueLineSchema).min(1).max(30),
   keywordsVersion: z.number().int().optional(),
 });
 export type ShortScript = z.infer<typeof ShortScriptSchema>;
 
-// ─── Social Metadata (YouTube + Shorts) ──────────────────────────────────────
+export function buildShortScriptSchema(
+  speakers: [string, ...string[]],
+  minLines: number,
+  maxLines: number,
+) {
+  return z.object({
+    title: z.string().min(1),
+    description: z.string().min(1),
+    hook: z.string().min(1),
+    thumbnailText: z.string().min(1),
+    thumbnailScene: z.string().min(1).optional(),
+    script: z.array(buildDialogueLineSchema(speakers)).min(minLines).max(maxLines),
+    keywordsVersion: z.number().int().optional(),
+  });
+}
+
+// ─── Social Metadata ─────────────────────────────────────────────────────────
 
 export const YouTubeChapterSchema = z.object({
   time: z.string().min(1),
@@ -98,7 +136,6 @@ export const SocialMetadataSchema = z.object({
 });
 export type SocialMetadata = z.infer<typeof SocialMetadataSchema>;
 
-/** Silence duration in seconds between short-form audio segments */
 export const SHORT_PAUSE_BETWEEN_SEGMENTS = 0.3;
 
 // ─── Audio ───────────────────────────────────────────────────────────────────
@@ -110,34 +147,41 @@ export interface AudioSegment {
   ipa?: string;
   keywords?: string[];
   filePath: string;
-  /** Duration in seconds */
   duration: number;
-  /** Absolute start time in seconds within the merged podcast audio */
   startTime: number;
 }
 
-// ─── Config ──────────────────────────────────────────────────────────────────
-
 export interface GenerateOptions {
   topic: string;
+  channelId: string;
 }
 
-export const VOICE_MAP: Record<Speaker, string> = {
-  Victor: 'M1',  // Supertonic male preset voice
-  Lisa: 'F1',    // Supertonic female preset voice
-};
-
-/** Silence duration in seconds inserted between each audio segment */
 export const PAUSE_BETWEEN_SEGMENTS = 0.5;
 
 // ─── Project ──────────────────────────────────────────────────────────────────
 
 export interface Project {
   id: string;
+  channelId: string;
   topic: string;
   title?: string;
   description?: string;
   thumbnailText?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export function asSpeakerTuple(speakers: string[]): [string, ...string[]] {
+  if (speakers.length === 0) {
+    throw new Error('Channel must define at least one host');
+  }
+  return speakers as [string, ...string[]];
+}
+
+export function getVoiceForSpeaker(ctx: ChannelContext, speaker: string): string {
+  const voice = ctx.voiceMap[speaker];
+  if (!voice) {
+    throw new Error(`No voice mapping for speaker "${speaker}" on channel "${ctx.config.id}"`);
+  }
+  return voice;
 }

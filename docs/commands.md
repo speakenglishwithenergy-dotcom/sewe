@@ -22,6 +22,37 @@ npm run <script> -- [flags]
 
 ---
 
+## Multi-channel workflow
+
+Each channel lives under `channels/<channel-id>/` with a `channel.yaml` config and `assets/` folder. Projects are stored under `output/<channel-id>/projects/<timestamp>/`.
+
+```bash
+# List configured channels
+npm run generate -- --list-channels
+
+# New project (channel required)
+npm run generate -- --channel=speak-english-with-energy --topic="Why Smart People Stay Stuck"
+
+# Resume existing project (channel loaded from project.json)
+npm run generate -- --project=20260614-185052
+
+# List projects (optionally filter by channel)
+npm run generate -- --list
+npm run generate -- --list --channel=speak-english-with-energy
+```
+
+### Adding a new channel
+
+1. Copy `channels/speak-english-with-energy/` as a template
+2. Edit `channel.yaml` (name, hosts, script sections, publish URLs, `env.prefix`)
+3. Replace assets (intro, outro, thumbnails, logo)
+4. Add OAuth env vars with the new prefix to `.env`
+5. Run `npm run youtube:auth -- --channel=<new-id>` and `npm run tiktok:auth -- --channel=<new-id>`
+
+Set `short.enabled: false` in `channel.yaml` to disable short-form generation for a channel.
+
+---
+
 ## `npm run generate`
 
 Main pipeline: script → TTS → subtitles → video → social metadata (and optionally publish).
@@ -32,9 +63,11 @@ Main pipeline: script → TTS → subtitles → video → social metadata (and o
 
 | Flag | Required | Description |
 |------|----------|-------------|
+| `--channel=ID` | Yes (new project) | Channel to generate for (see `--list-channels`). |
 | `--topic="..."` | Yes (new project) | Start a new project with this topic. Quotes optional. |
 | `--project=ID` | Yes (resume) | Resume an existing project by ID (e.g. `20260614-185052`). |
-| `--list` | — | List all projects and exit. No other flags needed. |
+| `--list-channels` | — | List all configured channels and exit. |
+| `--list` | — | List all projects. Optional `--channel=ID` to filter. |
 
 ### Pipeline flags
 
@@ -86,16 +119,16 @@ In `--short` mode, `--publish` uploads short-format only. In full or `--podcast`
 
 ```bash
 # New project — full pipeline
-npm run generate -- --topic="Why Smart People Stay Stuck"
+npm run generate -- --channel=speak-english-with-energy --topic="Why Smart People Stay Stuck"
 
 # Quick script preview (no video)
-npm run generate -- --topic="Why Smart People Stay Stuck" --test
+npm run generate -- --channel=speak-english-with-energy --topic="Why Smart People Stay Stuck" --test
 
 # Short only
-npm run generate -- --topic="Why Smart People Stay Stuck" --short
+npm run generate -- --channel=speak-english-with-energy --topic="Why Smart People Stay Stuck" --short
 
 # Podcast only
-npm run generate -- --topic="Why Smart People Stay Stuck" --podcast
+npm run generate -- --channel=speak-english-with-energy --topic="Why Smart People Stay Stuck" --podcast
 
 # Resume existing project
 npm run generate -- --project=20260614-185052
@@ -213,15 +246,15 @@ One-time OAuth flow to obtain a YouTube refresh token.
 
 1. Create OAuth 2.0 credentials (Desktop app) in Google Cloud Console.
 2. Enable YouTube Data API v3.
-3. Set `YOUTUBE_CLIENT_ID` and `YOUTUBE_CLIENT_SECRET` in `.env`.
+3. Set `{PREFIX}_YOUTUBE_CLIENT_ID` and `{PREFIX}_YOUTUBE_CLIENT_SECRET` in `.env` (e.g. `SEWE_YOUTUBE_CLIENT_ID`).
 
 ### Usage
 
 ```bash
-npm run youtube:auth
+npm run youtube:auth -- --channel=speak-english-with-energy
 ```
 
-No CLI arguments. Opens a browser URL, listens on `http://localhost:53682/oauth2callback`, and prints `YOUTUBE_REFRESH_TOKEN=...` to add to `.env`.
+Opens a browser URL, listens on `http://localhost:53682/oauth2callback`, and prints the prefixed refresh token env var to add to `.env`.
 
 ---
 
@@ -236,15 +269,15 @@ One-time OAuth flow to obtain TikTok access and refresh tokens.
 1. Create an app at [TikTok for Developers](https://developers.tiktok.com/).
 2. Enable Login Kit (Desktop) + Content Posting API; add scope `video.publish`.
 3. Register redirect URI: `http://localhost:53683/callback`.
-4. Set `TIKTOK_CLIENT_KEY` and `TIKTOK_CLIENT_SECRET` in `.env`.
+4. Set `{PREFIX}_TIKTOK_CLIENT_KEY` and `{PREFIX}_TIKTOK_CLIENT_SECRET` in `.env`.
 
 ### Usage
 
 ```bash
-npm run tiktok:auth
+npm run tiktok:auth -- --channel=speak-english-with-energy
 ```
 
-No CLI arguments. Opens a browser URL, listens on `http://localhost:53683/callback`, and prints tokens to add to `.env`.
+Opens a browser URL, listens on `http://localhost:53683/callback`, and prints prefixed tokens to add to `.env`.
 
 ---
 

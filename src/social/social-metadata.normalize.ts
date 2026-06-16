@@ -1,18 +1,5 @@
-import {
-  PUBLISH_CHAPTER_LABELS,
-  PUBLISH_CORE_HASHTAGS,
-  PUBLISH_CORE_TAGS,
-  PUBLISH_DEFAULT_BULLETS,
-  PUBLISH_DESCRIPTION,
-  PUBLISH_FACEBOOK,
-  PUBLISH_FACEBOOK_CORE_HASHTAGS,
-  PUBLISH_FACEBOOK_SHORT_CORE_HASHTAGS,
-  PUBLISH_LIMITS,
-  PUBLISH_SHORT_CORE_HASHTAGS,
-  PUBLISH_SHORT_LINKS,
-  PUBLISH_YOUTUBE_TITLE_BASE_MAX,
-  PUBLISH_YOUTUBE_TITLE_SUFFIX,
-} from './publish.config';
+import { ResolvedPublishCopy } from '../channel/channel.types';
+import { PUBLISH_LIMITS } from './publish.limits';
 import {
   FacebookMetadata,
   FacebookShortMetadata,
@@ -75,7 +62,6 @@ function truncateAtWord(text: string, maxLength: number): string {
   return slice.trim();
 }
 
-/** Remove hashtag-only lines and trailing inline hashtags from LLM caption text. */
 function stripEmbeddedHashtags(text: string): string {
   return text
     .split('\n')
@@ -94,7 +80,7 @@ function extractHook(description: string, learnHeader: string): string {
 
 function extractBullets(description: string, learnHeader: string): string[] {
   const learnPattern = new RegExp(
-    `${escapeRegExp(learnHeader)}\\s*\\n([\\s\\S]*?)(?=\\n\\n${escapeRegExp(PUBLISH_DESCRIPTION.chaptersHeader)}|\\n\\n👍|\\n\\n🔔|$)`,
+    `${escapeRegExp(learnHeader)}\\s*\\n([\\s\\S]*?)(?=\\n\\n${escapeRegExp('⏱ Chapters:')}|\\n\\n👍|\\n\\n🔔|$)`,
   );
   const match = description.match(learnPattern);
   if (!match) return [];
@@ -105,23 +91,23 @@ function extractBullets(description: string, learnHeader: string): string[] {
     .filter(Boolean);
 }
 
-/** Always return exactly 3 bullets — pad with channel defaults if needed. */
-function normalizeBullets(bullets: string[]): string[] {
+function normalizeBullets(bullets: string[], pub: ResolvedPublishCopy): string[] {
   const trimmed = bullets.map((bullet) => bullet.trim()).filter(Boolean).slice(0, 3);
   while (trimmed.length < 3) {
-    trimmed.push(PUBLISH_DEFAULT_BULLETS[trimmed.length]);
+    trimmed.push(pub.defaultBullets[trimmed.length] ?? pub.defaultBullets[0]);
   }
   return trimmed;
 }
 
 function normalizeChapterLabels(
   chapters: YouTubeMetadata['chapters'],
+  pub: ResolvedPublishCopy,
 ): YouTubeMetadata['chapters'] {
-  if (chapters.length !== PUBLISH_CHAPTER_LABELS.length) return chapters;
+  if (chapters.length !== pub.chapterLabels.length) return chapters;
 
   return chapters.map((chapter, index) => ({
     time: chapter.time,
-    label: PUBLISH_CHAPTER_LABELS[index],
+    label: pub.chapterLabels[index] ?? chapter.label,
   }));
 }
 
@@ -129,59 +115,55 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function stripYouTubeTitleSuffix(title: string): string {
-  const suffixPattern = new RegExp(`${escapeRegExp(PUBLISH_YOUTUBE_TITLE_SUFFIX)}$`);
+function stripYouTubeTitleSuffix(title: string, suffix: string): string {
+  const suffixPattern = new RegExp(`${escapeRegExp(suffix)}$`);
   return title.replace(suffixPattern, '').trim();
 }
 
-/** Append channel title suffix; total length stays within youtubeTitleMax. */
-export function formatYouTubeTitle(title: string): string {
-  const base = truncateAtWord(stripYouTubeTitleSuffix(title), PUBLISH_YOUTUBE_TITLE_BASE_MAX);
-  return `${base}${PUBLISH_YOUTUBE_TITLE_SUFFIX}`;
+export function formatYouTubeTitle(title: string, pub: ResolvedPublishCopy): string {
+  const base = truncateAtWord(stripYouTubeTitleSuffix(title, pub.titleSuffix), pub.titleBaseMax);
+  return `${base}${pub.titleSuffix}`;
 }
 
 export function formatYouTubeTags(tags: string[]): string {
   return tags.join(', ');
 }
 
-function formatShortLinksFooter(): string {
-  return [
-    PUBLISH_SHORT_LINKS.youtubeLine,
-    PUBLISH_SHORT_LINKS.facebookLine,
-    PUBLISH_SHORT_LINKS.tiktokLine,
-  ].join('\n');
+function formatShortLinksFooter(pub: ResolvedPublishCopy): string {
+  return [pub.shortLinks.youtubeLine, pub.shortLinks.facebookLine, pub.shortLinks.tiktokLine].join(
+    '\n',
+  );
 }
 
-/** Build the canonical channel description layout from structured metadata. */
-export function formatChannelDescription(meta: YouTubeMetadata): string {
-  const hook = extractHook(meta.description, PUBLISH_DESCRIPTION.learnHeader);
-  const bullets = normalizeBullets(extractBullets(meta.description, PUBLISH_DESCRIPTION.learnHeader));
+export function formatChannelDescription(meta: YouTubeMetadata, pub: ResolvedPublishCopy): string {
+  const desc = pub.description;
+  const hook = extractHook(meta.description, desc.learnHeader);
+  const bullets = normalizeBullets(extractBullets(meta.description, desc.learnHeader), pub);
   const hashtags = mergeUniqueHashtags(
-    PUBLISH_CORE_HASHTAGS,
+    pub.coreHashtags,
     meta.hashtags,
     PUBLISH_LIMITS.youtubeHashtagsMax,
   );
-  const chapters = normalizeChapterLabels(meta.chapters);
+  const chapters = normalizeChapterLabels(meta.chapters, pub);
   const chapterBlock = chapters.map((chapter) => `${chapter.time} ${chapter.label}`).join('\n');
-
   const bulletBlock = bullets.map((bullet) => `• ${bullet}`).join('\n');
 
   return [
     hook,
     '',
-    PUBLISH_DESCRIPTION.learnHeader,
+    desc.learnHeader,
     bulletBlock,
     '',
-    PUBLISH_DESCRIPTION.chaptersHeader,
+    desc.chaptersHeader,
     chapterBlock,
     '',
-    PUBLISH_DESCRIPTION.subscribeCta,
-    PUBLISH_DESCRIPTION.shortCta,
+    desc.subscribeCta,
+    desc.shortCta,
     '',
-    PUBLISH_DESCRIPTION.linksHeader,
-    PUBLISH_DESCRIPTION.youtubeLinkLine,
-    PUBLISH_DESCRIPTION.facebookLinkLine,
-    PUBLISH_DESCRIPTION.tiktokLinkLine,
+    desc.linksHeader,
+    desc.youtubeLinkLine,
+    desc.facebookLinkLine,
+    desc.tiktokLinkLine,
     '',
     hashtags.join(' '),
   ]
@@ -189,22 +171,27 @@ export function formatChannelDescription(meta: YouTubeMetadata): string {
     .trim();
 }
 
-export function formatChannelShortCaption(meta: YouTubeShortMetadata): string {
+export function formatChannelShortCaption(
+  meta: YouTubeShortMetadata,
+  pub: ResolvedPublishCopy,
+): string {
   const caption = truncateAtWord(meta.caption.trim(), PUBLISH_LIMITS.shortCaptionMaxChars);
   const hashtags = mergeUniqueHashtags(
-    PUBLISH_SHORT_CORE_HASHTAGS,
+    pub.shortCoreHashtags,
     meta.hashtags,
     PUBLISH_LIMITS.shortHashtagsMax,
   );
 
-  return [caption, '', hashtags.join(' '), '', formatShortLinksFooter()].join('\n').trim();
+  return [caption, '', hashtags.join(' '), '', formatShortLinksFooter(pub)].join('\n').trim();
 }
 
-/** TikTok caption — hook + hashtags only (no cross-platform link footer). */
-export function formatTikTokShortCaption(meta: YouTubeShortMetadata): string {
+export function formatTikTokShortCaption(
+  meta: YouTubeShortMetadata,
+  pub: ResolvedPublishCopy,
+): string {
   const caption = truncateAtWord(meta.caption.trim(), PUBLISH_LIMITS.shortCaptionMaxChars);
   const hashtags = mergeUniqueHashtags(
-    PUBLISH_SHORT_CORE_HASHTAGS,
+    pub.shortCoreHashtags,
     meta.hashtags,
     PUBLISH_LIMITS.shortHashtagsMax,
   );
@@ -212,12 +199,12 @@ export function formatTikTokShortCaption(meta: YouTubeShortMetadata): string {
   return [caption, '', hashtags.join(' ')].join('\n').trim();
 }
 
-/** Build the canonical Facebook podcast post caption from structured metadata. */
-export function formatFacebookCaption(meta: FacebookMetadata): string {
-  const hook = extractHook(meta.caption, PUBLISH_FACEBOOK.learnHeader);
-  const bullets = normalizeBullets(extractBullets(meta.caption, PUBLISH_FACEBOOK.learnHeader));
+export function formatFacebookCaption(meta: FacebookMetadata, pub: ResolvedPublishCopy): string {
+  const fb = pub.facebook;
+  const hook = extractHook(meta.caption, fb.learnHeader);
+  const bullets = normalizeBullets(extractBullets(meta.caption, fb.learnHeader), pub);
   const hashtags = mergeUniqueHashtags(
-    PUBLISH_FACEBOOK_CORE_HASHTAGS,
+    pub.facebookCoreHashtags,
     meta.hashtags,
     PUBLISH_LIMITS.facebookHashtagsMax,
   );
@@ -226,12 +213,12 @@ export function formatFacebookCaption(meta: FacebookMetadata): string {
   return [
     hook,
     '',
-    PUBLISH_FACEBOOK.learnHeader,
+    fb.learnHeader,
     bulletBlock,
     '',
-    PUBLISH_FACEBOOK.followCta,
-    PUBLISH_FACEBOOK.youtubeCta,
-    PUBLISH_FACEBOOK.tiktokCta,
+    fb.followCta,
+    fb.youtubeCta,
+    fb.tiktokCta,
     '',
     hashtags.join(' '),
   ]
@@ -239,46 +226,52 @@ export function formatFacebookCaption(meta: FacebookMetadata): string {
     .trim();
 }
 
-export function formatFacebookShortCaption(meta: FacebookShortMetadata): string {
+export function formatFacebookShortCaption(
+  meta: FacebookShortMetadata,
+  pub: ResolvedPublishCopy,
+): string {
   const caption = truncateAtWord(meta.caption.trim(), PUBLISH_LIMITS.facebookShortCaptionMaxChars);
   const hashtags = mergeUniqueHashtags(
-    PUBLISH_FACEBOOK_SHORT_CORE_HASHTAGS,
+    pub.facebookShortCoreHashtags,
     meta.hashtags,
     PUBLISH_LIMITS.facebookShortHashtagsMax,
   );
 
-  return [caption, '', hashtags.join(' '), '', formatShortLinksFooter()].join('\n').trim();
+  return [caption, '', hashtags.join(' '), '', formatShortLinksFooter(pub)].join('\n').trim();
 }
 
-function normalizeYouTubeMetadata(meta: YouTubeMetadata): YouTubeMetadata {
+function normalizeYouTubeMetadata(meta: YouTubeMetadata, pub: ResolvedPublishCopy): YouTubeMetadata {
   const hashtags = mergeUniqueHashtags(
-    PUBLISH_CORE_HASHTAGS,
+    pub.coreHashtags,
     meta.hashtags,
     PUBLISH_LIMITS.youtubeHashtagsMax,
   );
   const normalized: YouTubeMetadata = {
     ...meta,
-    title: formatYouTubeTitle(meta.title),
-    titleVariants: meta.titleVariants.map((title) => formatYouTubeTitle(title)),
-    tags: mergeUniqueTags(PUBLISH_CORE_TAGS, meta.tags, PUBLISH_LIMITS.youtubeTagsMax),
-    chapters: normalizeChapterLabels(meta.chapters),
+    title: formatYouTubeTitle(meta.title, pub),
+    titleVariants: meta.titleVariants.map((title) => formatYouTubeTitle(title, pub)),
+    tags: mergeUniqueTags(pub.coreTags, meta.tags, PUBLISH_LIMITS.youtubeTagsMax),
+    chapters: normalizeChapterLabels(meta.chapters, pub),
     hashtags,
     pinnedComment: meta.pinnedComment.trim(),
   };
 
   return {
     ...normalized,
-    description: formatChannelDescription(normalized),
+    description: formatChannelDescription(normalized, pub),
   };
 }
 
-function normalizeYouTubeShortMetadata(meta: YouTubeShortMetadata): YouTubeShortMetadata {
+function normalizeYouTubeShortMetadata(
+  meta: YouTubeShortMetadata,
+  pub: ResolvedPublishCopy,
+): YouTubeShortMetadata {
   return {
     ...meta,
     title: truncateAtWord(meta.title, PUBLISH_LIMITS.youtubeShortTitleMax),
     caption: truncateAtWord(stripEmbeddedHashtags(meta.caption.trim()), PUBLISH_LIMITS.shortCaptionMaxChars),
     hashtags: mergeUniqueHashtags(
-      PUBLISH_SHORT_CORE_HASHTAGS,
+      pub.shortCoreHashtags,
       meta.hashtags,
       PUBLISH_LIMITS.shortHashtagsMax,
     ),
@@ -286,11 +279,14 @@ function normalizeYouTubeShortMetadata(meta: YouTubeShortMetadata): YouTubeShort
   };
 }
 
-function normalizeFacebookMetadata(meta: FacebookMetadata): FacebookMetadata {
+function normalizeFacebookMetadata(
+  meta: FacebookMetadata,
+  pub: ResolvedPublishCopy,
+): FacebookMetadata {
   const normalized: FacebookMetadata = {
     ...meta,
     hashtags: mergeUniqueHashtags(
-      PUBLISH_FACEBOOK_CORE_HASHTAGS,
+      pub.facebookCoreHashtags,
       meta.hashtags,
       PUBLISH_LIMITS.facebookHashtagsMax,
     ),
@@ -299,11 +295,14 @@ function normalizeFacebookMetadata(meta: FacebookMetadata): FacebookMetadata {
 
   return {
     ...normalized,
-    caption: formatFacebookCaption(normalized),
+    caption: formatFacebookCaption(normalized, pub),
   };
 }
 
-function normalizeFacebookShortMetadata(meta: FacebookShortMetadata): FacebookShortMetadata {
+function normalizeFacebookShortMetadata(
+  meta: FacebookShortMetadata,
+  pub: ResolvedPublishCopy,
+): FacebookShortMetadata {
   return {
     ...meta,
     caption: truncateAtWord(
@@ -311,7 +310,7 @@ function normalizeFacebookShortMetadata(meta: FacebookShortMetadata): FacebookSh
       PUBLISH_LIMITS.facebookShortCaptionMaxChars,
     ),
     hashtags: mergeUniqueHashtags(
-      PUBLISH_FACEBOOK_SHORT_CORE_HASHTAGS,
+      pub.facebookShortCoreHashtags,
       meta.hashtags,
       PUBLISH_LIMITS.facebookShortHashtagsMax,
     ),
@@ -319,14 +318,17 @@ function normalizeFacebookShortMetadata(meta: FacebookShortMetadata): FacebookSh
   };
 }
 
-export function normalizeSocialMetadata(meta: SocialMetadata): SocialMetadata {
-  const youtube = normalizeYouTubeMetadata(meta.youtube);
+export function normalizeSocialMetadata(
+  meta: SocialMetadata,
+  pub: ResolvedPublishCopy,
+): SocialMetadata {
+  const youtube = normalizeYouTubeMetadata(meta.youtube, pub);
   const youtubeShort = meta.youtubeShort
-    ? normalizeYouTubeShortMetadata(meta.youtubeShort)
+    ? normalizeYouTubeShortMetadata(meta.youtubeShort, pub)
     : undefined;
-  const facebook = meta.facebook ? normalizeFacebookMetadata(meta.facebook) : undefined;
+  const facebook = meta.facebook ? normalizeFacebookMetadata(meta.facebook, pub) : undefined;
   const facebookShort = meta.facebookShort
-    ? normalizeFacebookShortMetadata(meta.facebookShort)
+    ? normalizeFacebookShortMetadata(meta.facebookShort, pub)
     : undefined;
 
   return { youtube, youtubeShort, facebook, facebookShort };

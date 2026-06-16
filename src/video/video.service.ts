@@ -16,7 +16,10 @@ const SHORT_VIDEO_HEIGHT = SHORT_THUMB_HEIGHT;
 const THUMBNAIL_VIDEO_DURATION = 5;
 
 export class VideoService {
-  constructor(private readonly ffmpeg: FFmpegService) {}
+  constructor(
+    private readonly ffmpeg: FFmpegService,
+    private readonly channelName = 'Podcast',
+  ) {}
 
   async generatePodcastVideo(
     audioPath: string,
@@ -158,20 +161,13 @@ export class VideoService {
   <line x1="930" y1="520" x2="990" y2="520" stroke="#6c63ff" stroke-width="6" stroke-linecap="round" opacity="0.85"/>
 
   <!-- Channel name -->
-  <text x="960" y="610"
+  <text x="960" y="660"
     font-family="Arial, Helvetica, sans-serif"
-    font-size="80"
+    font-size="72"
     font-weight="bold"
     fill="#ffffff"
     text-anchor="middle"
-    letter-spacing="2">Speak English</text>
-  <text x="960" y="710"
-    font-family="Arial, Helvetica, sans-serif"
-    font-size="80"
-    font-weight="bold"
-    fill="#6c63ff"
-    text-anchor="middle"
-    letter-spacing="2">With Energy</text>
+    letter-spacing="2">${this.channelName.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</text>
 
   <!-- Tagline -->
   <text x="960" y="790"

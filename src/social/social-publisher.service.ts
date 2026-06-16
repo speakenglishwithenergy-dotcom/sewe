@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { ChannelContext } from '../channel/channel.types';
 import { PodcastScript, ShortScript, SocialMetadata } from '../types';
 import { buildPodcastVideoPath, buildShortVideoPath } from '../utils/filename.util';
 import { logger } from '../utils/logger';
@@ -134,6 +135,7 @@ function isAlreadyPublished(
 
 export class SocialPublisherService {
   async publishProject(
+    ctx: ChannelContext,
     projectDir: string,
     socialMeta: SocialMetadata,
     podcastScript: PodcastScript,
@@ -143,17 +145,22 @@ export class SocialPublisherService {
     const targets = options.targets ?? ['youtube', 'facebook', 'tiktok'];
     const formats = options.formats ?? (shortScript ? ['long', 'short'] : ['long']);
     const force = options.force ?? false;
+    const pub = ctx.publish;
+    const envPrefix = ctx.config.env.prefix;
 
-    const missing = targets.filter((target) => !isPublishConfigured(target));
+    const missing = targets.filter((target) => !isPublishConfigured(target, envPrefix, ctx.config.id));
     if (missing.length > 0) {
       throw new Error(
-        `Publish credentials missing for: ${missing.join(', ')}. See .env.example for setup.`,
+        `Publish credentials missing for: ${missing.join(', ')} (prefix ${envPrefix}_*). See .env.example for setup.`,
       );
     }
 
-    const config = loadPublishEnvConfig(targets);
+    const config = loadPublishEnvConfig(envPrefix, targets, ctx.config.id);
     const youtube = targets.includes('youtube')
-      ? new YouTubePublisherService(config.youtube)
+      ? new YouTubePublisherService(config.youtube, {
+          long: pub.youtubeLongPlaylistId,
+          short: pub.youtubeShortPlaylistId,
+        })
       : null;
     const facebook = targets.includes('facebook')
       ? new FacebookPublisherService(config.facebook)
@@ -183,7 +190,7 @@ export class SocialPublisherService {
             videoPath,
             thumbnailPath,
             title: socialMeta.youtube.title,
-            description: formatChannelDescription(socialMeta.youtube),
+            description: formatChannelDescription(socialMeta.youtube, pub),
             tags: socialMeta.youtube.tags,
             pinnedComment: socialMeta.youtube.pinnedComment,
             format: 'long',
@@ -200,7 +207,7 @@ export class SocialPublisherService {
           const result = await facebook.uploadVideo({
             videoPath,
             thumbnailPath,
-            caption: formatFacebookCaption(socialMeta.facebook),
+            caption: formatFacebookCaption(socialMeta.facebook, pub),
             firstComment: socialMeta.facebook.firstComment,
             format: 'long',
           });
@@ -232,7 +239,7 @@ export class SocialPublisherService {
             videoPath,
             thumbnailPath,
             title: socialMeta.youtubeShort.title,
-            description: formatChannelShortCaption(socialMeta.youtubeShort),
+            description: formatChannelShortCaption(socialMeta.youtubeShort, pub),
             tags: [],
             pinnedComment: socialMeta.youtubeShort.pinnedComment,
             format: 'short',
@@ -249,7 +256,7 @@ export class SocialPublisherService {
           const result = await facebook.uploadVideo({
             videoPath,
             thumbnailPath,
-            caption: formatFacebookShortCaption(socialMeta.facebookShort),
+            caption: formatFacebookShortCaption(socialMeta.facebookShort, pub),
             firstComment: socialMeta.facebookShort.firstComment,
             format: 'short',
           });
@@ -264,7 +271,7 @@ export class SocialPublisherService {
         } else {
           const result = await tiktok.uploadVideo({
             videoPath,
-            caption: formatTikTokShortCaption(socialMeta.youtubeShort),
+            caption: formatTikTokShortCaption(socialMeta.youtubeShort, pub),
           });
           results.push(result);
           recordResult(status, result);

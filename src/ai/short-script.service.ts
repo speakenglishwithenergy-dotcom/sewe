@@ -1,5 +1,6 @@
 import { OpenAIService } from './openai.service';
-import { PodcastScript, ShortScript, ShortScriptSchema } from '../types';
+import { ChannelContext } from '../channel/channel.types';
+import { asSpeakerTuple, buildShortScriptSchema, PodcastScript, ShortScript } from '../types';
 import {
   buildShortScriptPrompt,
   buildShortScriptReviewPrompt,
@@ -7,23 +8,33 @@ import {
 import { logger } from '../utils/logger';
 
 export class ShortScriptService {
-  constructor(private readonly openai: OpenAIService) {}
+  private readonly speakers: [string, ...string[]];
+
+  constructor(
+    private readonly openai: OpenAIService,
+    private readonly ctx: ChannelContext,
+  ) {
+    this.speakers = asSpeakerTuple(ctx.speakers);
+  }
 
   async generate(podcastScript: PodcastScript, topic: string): Promise<ShortScript> {
+    const { minLines, maxLines } = this.ctx.config.short;
+    const schema = buildShortScriptSchema(this.speakers, minLines, maxLines);
+
     logger.info(`Generating short script from podcast: "${podcastScript.title}"`);
 
     const draft = await this.openai.generateJSON(
-      buildShortScriptPrompt(podcastScript, topic),
-      'You are a professional short-form video script writer who creates cohesive self-help Shorts: Victor opens with one short punchy hook (6–12 words), Lisa narrates the rest — never podcast summaries or back-and-forth dialogue. Respond only with valid JSON matching the requested structure exactly.',
-      (data) => ShortScriptSchema.parse(data),
+      buildShortScriptPrompt(this.ctx, podcastScript, topic),
+      'You are a professional short-form video script writer. Respond only with valid JSON matching the requested structure exactly.',
+      (data) => schema.parse(data),
     );
 
     logger.info('Reviewing short script for flow, pacing, and natural spoken rhythm…');
 
     const script = await this.openai.generateJSON(
-      buildShortScriptReviewPrompt(draft, topic),
-      'You are a senior short-form script editor. Revise the draft for natural flow, connected beats, and a gradual close — not a rushed ending. Respond only with valid JSON matching the requested structure exactly.',
-      (data) => ShortScriptSchema.parse(data),
+      buildShortScriptReviewPrompt(this.ctx, draft, topic),
+      'You are a senior short-form script editor. Revise the draft for natural flow. Respond only with valid JSON matching the requested structure exactly.',
+      (data) => schema.parse(data),
     );
 
     logger.success(

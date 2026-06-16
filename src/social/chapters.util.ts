@@ -1,4 +1,4 @@
-import { SCRIPT_SECTIONS } from '../prompts/script.prompt';
+import { ChannelContext } from '../channel/channel.types';
 import { AudioSegment, YouTubeChapter } from '../types';
 
 function formatChapterTime(seconds: number): string {
@@ -18,19 +18,20 @@ function formatChapterTime(seconds: number): string {
  * based on script section line boundaries.
  */
 export function refineChapterTimes(
+  ctx: ChannelContext,
   chapters: YouTubeChapter[],
   segments: AudioSegment[],
 ): YouTubeChapter[] {
+  const sections = ctx.config.script.sections;
   if (segments.length === 0 || chapters.length === 0) {
     return chapters;
   }
 
-  const sectionLabels = SCRIPT_SECTIONS.map((s) => s.label);
   let lineIndex = 0;
 
-  return SCRIPT_SECTIONS.map((section, i) => {
+  return sections.map((section, i) => {
     const segment = segments[Math.min(lineIndex, segments.length - 1)];
-    const label = chapters[i]?.label ?? sectionLabels[i] ?? section.label;
+    const label = chapters[i]?.label ?? ctx.publish.chapterLabels[i] ?? section.label;
     lineIndex += section.lineCount;
     return {
       time: formatChapterTime(segment.startTime),

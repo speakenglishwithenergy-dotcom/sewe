@@ -1,10 +1,5 @@
-import { CHANNEL_NAME } from '../prompts/script.prompt';
-
 /** Maximum highlights burned into each subtitle line. */
 export const MAX_KEYWORDS_PER_LINE = 4;
-
-/** Branding phrases that must be highlighted whenever they appear in a line. */
-export const ALWAYS_HIGHLIGHT_PHRASES = [CHANNEL_NAME];
 
 const TOPIC_STOP_WORDS = new Set([
   'about', 'after', 'also', 'been', 'being', 'from', 'have', 'into', 'just', 'more',
@@ -212,10 +207,14 @@ export function findLearnablePhrasesInText(text: string): string[] {
 }
 
 /** Reserve slots for branding phrases first, then fill remaining budget. */
-export function applyAlwaysHighlightPhrases(text: string, keywords: string[]): string[] {
+export function applyAlwaysHighlightPhrases(
+  text: string,
+  keywords: string[],
+  alwaysHighlightPhrases: string[],
+): string[] {
   const always: string[] = [];
 
-  for (const phrase of ALWAYS_HIGHLIGHT_PHRASES) {
+  for (const phrase of alwaysHighlightPhrases) {
     if (keywordAppearsInText(text, phrase)) {
       always.push(phrase);
     }

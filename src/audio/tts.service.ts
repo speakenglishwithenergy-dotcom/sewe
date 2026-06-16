@@ -10,7 +10,7 @@ import {
   isWavFilePlausible,
   prepareTextForTts,
 } from './tts-stability';
-import { AudioSegment, DialogueLine, VOICE_MAP, PAUSE_BETWEEN_SEGMENTS, Speaker } from '../types';
+import { AudioSegment, DialogueLine, PAUSE_BETWEEN_SEGMENTS } from '../types';
 import { logger } from '../utils/logger';
 
 const PODCAST_TTS_SPEED = 0.85;
@@ -19,6 +19,7 @@ export class TTSService {
   constructor(
     private readonly supertonic: SupertonicService,
     private readonly ffmpeg: FFmpegService,
+    private readonly voiceMap: Record<string, string> = {},
   ) {}
 
   private async synthesizeWithStability(
@@ -108,7 +109,10 @@ export class TTSService {
       const fileName = `${String(index).padStart(3, '0')}.wav`;
       const filePath = path.join(audioDir, fileName);
 
-      const voiceName = VOICE_MAP[line.speaker as Speaker];
+      const voiceName = this.voiceMap[line.speaker];
+      if (!voiceName) {
+        throw new Error(`No voice mapping for speaker "${line.speaker}"`);
+      }
       const preview = prepareTextForTts(line.text);
       const previewText = `"${preview.slice(0, 60)}${preview.length > 60 ? '…' : ''}"`;
 
@@ -131,7 +135,7 @@ export class TTSService {
 
       segments.push({
         index,
-        speaker: line.speaker as Speaker,
+        speaker: line.speaker,
         text: line.text,
         ipa: line.ipa,
         keywords: line.keywords,

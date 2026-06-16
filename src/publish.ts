@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { OpenAIService } from './ai/openai.service';
+import { ChannelService } from './channel/channel.service';
 import { ProjectService } from './project/project.service';
 import { SocialMetadataService } from './social/social-metadata.service';
 import {
@@ -73,6 +74,7 @@ function parsePublishArgs(): PublishCliArgs {
 async function main(): Promise<void> {
   const args = parsePublishArgs();
   const projectService = new ProjectService();
+  const channelService = new ChannelService();
 
   let project;
   try {
@@ -82,11 +84,12 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const projectDir = projectService.getDir(project.id);
+  const channelCtx = await channelService.loadChannel(project.channelId);
+  const projectDir = projectService.getDir(project);
   const podcastScript = await loadPodcastScript(projectDir);
   const shortScript = await loadShortScript(projectDir);
 
-  const socialMetadataService = new SocialMetadataService(new OpenAIService());
+  const socialMetadataService = new SocialMetadataService(new OpenAIService(), channelCtx);
   let socialMeta;
   try {
     socialMeta = await loadSocialMetadata(projectDir);
@@ -101,46 +104,35 @@ async function main(): Promise<void> {
   }
 
   logger.divider('═');
-  console.log('  📤  Speak English With Energy — Social Publisher');
+  console.log(`  📤  ${channelCtx.config.name} — Social Publisher`);
   logger.divider('═');
   logger.info(`Project : ${project.id}`);
+  logger.info(`Channel : ${channelCtx.config.id}`);
   logger.info(`Title   : ${podcastScript.title}`);
-  logger.info(`Targets : ${args.targets.join(', ')}`);
-  logger.info(`Formats : ${args.formats.join(', ')}`);
-  if (args.force) logger.info('Mode    : FORCE (re-publish even if already uploaded)');
-  logger.info('');
 
   const publisher = new SocialPublisherService();
   const results = await publisher.publishProject(
+    channelCtx,
     projectDir,
     socialMeta,
     podcastScript,
-    {
-      targets: args.targets,
-      formats: args.formats,
-      force: args.force,
-    },
+    { targets: args.targets, formats: args.formats, force: args.force },
     shortScript,
   );
 
-  logger.info('');
-  logger.divider('═');
   if (results.length === 0) {
     logger.info('Nothing new published (already uploaded — use --force to re-upload).');
-  } else {
-    logger.success(`Published ${results.length} video(s):`);
-    for (const result of results) {
-      console.log(`  ${result.platform} ${result.format}: ${result.url}`);
-    }
+    return;
   }
-  logger.divider('═');
+
+  logger.success(`Published ${results.length} video(s):`);
+  for (const result of results) {
+    console.log(`  ${result.platform} ${result.format}: ${result.url}`);
+  }
 }
 
 main().catch((err: unknown) => {
   const message = err instanceof Error ? err.message : String(err);
   logger.error(`Fatal: ${message}`);
-  if (err instanceof Error && err.stack) {
-    logger.error(err.stack);
-  }
   process.exit(1);
 });

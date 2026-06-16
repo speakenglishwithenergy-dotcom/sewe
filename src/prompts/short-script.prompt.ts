@@ -1,21 +1,26 @@
+import { ChannelContext } from '../channel/channel.types';
 import { PodcastScript, ShortScript } from '../types';
 
-export function buildShortScriptPrompt(podcastScript: PodcastScript, topic: string): string {
+export function buildShortScriptPrompt(
+  ctx: ChannelContext,
+  podcastScript: PodcastScript,
+  topic: string,
+): string {
+  const { name, short } = ctx.config;
+  const hookSpeaker = short.hookSpeaker;
+  const bodySpeaker = short.bodySpeaker;
+
   const scriptText = podcastScript.script
     .map((line) => `${line.speaker}: ${line.text}`)
     .join('\n');
 
-  return `You are a professional short-form video script writer for the YouTube/TikTok channel "Speak English With Energy".
+  return `You are a professional short-form video script writer for the YouTube/TikTok channel "${name}".
 
 The Short uses a two-voice handoff — NOT a back-and-forth dialogue:
-- Victor (warm, energetic male) speaks ONLY the FIRST beat — one short, punchy opening hook that names the topic and stops the scroll.
-- Lisa (thoughtful, practical female) speaks ALL remaining beats — she carries the mini-lesson directly to the viewer ("you").
+- ${hookSpeaker} speaks ONLY the FIRST beat — one short, punchy opening hook that names the topic and stops the scroll.
+- ${bodySpeaker} speaks ALL remaining beats — carries the mini-lesson directly to the viewer ("you").
 
-There is NO conversation between Victor and Lisa. Victor opens; Lisa takes over and finishes. Write one cohesive self-help monologue split into short beats for pacing.
-
-Your job is NOT to summarize the podcast or recap what Victor and Lisa discussed. Do NOT stitch together disconnected episode points.
-
-Instead: read the full episode, extract the 2–3 strongest self-help ideas, and rewrite them as ONE flowing mini-lesson. Use the episode only as source material.
+There is NO conversation between ${hookSpeaker} and ${bodySpeaker}. ${hookSpeaker} opens; ${bodySpeaker} takes over and finishes.
 
 Episode topic: "${topic}"
 Episode title: "${podcastScript.title}"
@@ -24,60 +29,15 @@ Episode thumbnail headline: "${podcastScript.thumbnailText}"
 FULL PODCAST SCRIPT:
 ${scriptText}
 
-CURATION (do this before writing):
-1. Pick ONE relatable problem the viewer has about "${topic}" — this becomes your hook
-2. Choose ONE counterintuitive insight or reframe (the "aha" moment)
-3. Add ONE quick proof — a short example, analogy, or "I see this all the time…" moment
-4. End with ONE concrete action the viewer can try today
-5. Close with a warm subscribe reminder — invite viewers to subscribe for more English + self-help Shorts like this (this MUST be its own separate script beat — never combined with the action or lesson line)
-6. Drop everything else — no extra tips, no episode recap, no "we also talked about…"
-
-NARRATIVE ARC — every beat must connect to the next; use bridge phrases ("Here's the thing…", "That's why…", "So instead of…", "Try this today…"):
-  OPEN — Victor names the topic + hooks the pain → Lisa: REFRAME (the key insight) → WHY IT MATTERS → PROOF (quick example) → ACTION (one tip) → SUBSCRIBE CTA (Lisa's LAST beat — subscribe line ONLY, in its own script item)
-
 SPEAKER & PACING RULES:
 - Target length: 30–60 seconds (~80–150 words total across ALL beats)
-- 5–8 beats — split the monologue into natural sentence groups for pacing
-- Beat 1 ONLY: Victor — ONE short sentence (6–12 words max). Name the topic ("${topic}") in plain language — not a vague hook, not "In today's episode…", not the full episode title quoted verbatim
-- Victor's opening must be the most scroll-stopping line in the whole Short — concise and bold, not a setup + long reveal
-- BAD (too long): "Think everyone's watching? Here's the truth: 'Nobody Thinks About You As Much As You Think'."
-- GOOD: "Nobody's watching you as much as you think."
-- GOOD: "You replay every mistake — but nobody else remembers it."
-- Beats 2 through the last: Lisa — she continues the lesson seamlessly, as if picking up right after Victor's hook
-- NEVER assign Victor to more than the first beat
+- ${short.minLines}–${short.maxLines} beats — split the monologue into natural sentence groups
+- Beat 1 ONLY: ${hookSpeaker} — ONE short sentence (6–12 words max). Name the topic ("${topic}") in plain language
+- Beats 2 through the last: ${bodySpeaker} only
+- NEVER assign ${hookSpeaker} to more than the first beat
 - Speak directly to the viewer: use "you" and "your"
-- NO podcast intros ("Hey everyone", "Welcome back", "Today we're talking about…")
-- NO episode recap ("In our podcast…", "Lisa said…", "We discussed…", "The main takeaway is…")
-- NO bullet-point listing ("First… Second… Third…") or lecture-style walls of text
-- NO disconnected fact drops — each beat must answer "so what?" and lead into the next
-- Self-help tone: empathetic, practical, energizing — help the viewer feel understood, then give them a clear next step
-- Each beat: 1–2 short sentences max; A2–B1 vocabulary; contractions and natural spoken rhythm
-- The LAST script beat (Lisa) MUST be ONLY the subscribe CTA — one short sentence, nothing else in that beat (e.g. "Subscribe for more Shorts like this — I'll see you in the next one.")
-- NEVER combine the subscribe line with another sentence in the same beat — BAD: "Remember, growth is a journey. Subscribe for more tips." GOOD: beat before last = lesson/action line; last beat = subscribe line only
-
-FLOW CHECK before returning JSON:
-- Does line 1 name the topic and stop the scroll in one short sentence (≤12 words)?
-- Could someone who never heard the podcast follow ONE clear thread?
-- Does each beat earn the next beat (no random jumps)?
-- Is there ONE "aha" moment, not three half-explained ideas?
-- Does Victor's hook hand off cleanly to Lisa's teaching voice?
-- Does Lisa sound like she's coaching the viewer, not reading episode notes?
-- Is the subscribe CTA its own separate beat (not merged with the lesson or action line)?
-- Does the final beat contain ONLY the subscribe reminder?
-
-REVISION PASS (mandatory — do this AFTER drafting, BEFORE returning JSON):
-Read your draft aloud in your head. Revise until ALL of these pass:
-1. NOT TOO SHORT — ~80–150 words total, 5–8 beats. If under ~80 words, add one bridging beat (insight, proof, or action) — never pad with filler.
-2. NOT STIFF — every beat sounds like natural spoken English (A2–B1). Use contractions and bridge phrases ("Here's the thing…", "That's why…", "So instead of…", "Try this today…"). Replace textbook or robotic wording.
-3. CONNECTED — each beat picks up from the previous one. No random jumps or disconnected fact drops. If a beat feels standalone, add a link back to the thread.
-4. GRADUAL CLOSE — do NOT rush the ending. Lisa needs at least one beat that lands the lesson (proof or action) BEFORE the subscribe CTA. The subscribe line must be its own final beat — never appended to the action/lesson beat. The subscribe beat should feel like a warm goodbye, not an abrupt stop.
-5. HANDOFF — Victor's hook and Lisa's first beat must feel like one continuous monologue, not two unrelated openings.
-
-METADATA:
-- "hook": Victor's exact opening line — one short sentence (6–12 words), must name the topic and match beat 1
-- "thumbnailText": reuse the episode thumbnail headline exactly — same ALL-CAPS stacked lines with \\n: "${podcastScript.thumbnailText.replace(/\n/g, '\\n')}"
-- "thumbnailScene": reuse the episode thumbnail scene exactly: "${podcastScript.thumbnailScene ?? 'Victor jaw-drop surprised with comic prop tied to the topic. Lisa claps excitedly with a big coaching grin. Book spines related to the topic.'}"
-- English level: A2–B1 (clear vocabulary, short sentences)
+- English level: ${ctx.config.script.languageLevel}
+- The LAST script beat (${bodySpeaker}) MUST be ONLY the subscribe CTA — one short sentence in its own beat
 
 Return ONLY a valid JSON object (no markdown, no code blocks):
 {
@@ -85,53 +45,36 @@ Return ONLY a valid JSON object (no markdown, no code blocks):
   "description": "TikTok/Short caption with 2–3 hashtags",
   "hook": "One short punchy opening line — 6–12 words, names the topic",
   "thumbnailText": "${podcastScript.thumbnailText.replace(/\n/g, '\\n')}",
-  "thumbnailScene": "Victor embarrassed laugh, hand on back of neck — puzzle pieces flying off desk. Lisa leans toward camera with whisper gesture, playful knowing smirk. Book spines: MINDSET, FOCUS, GROWTH.",
+  "thumbnailScene": "${podcastScript.thumbnailScene ?? 'Topic-specific scene for hosts.'}",
   "script": [
-    { "speaker": "Victor", "text": "One short punchy hook — 6–12 words, names the topic" },
-    { "speaker": "Lisa", "text": "..." },
-    { "speaker": "Lisa", "text": "Lesson landing or action — one beat before the CTA" },
-    { "speaker": "Lisa", "text": "Subscribe for more Shorts like this — I'll see you in the next one." }
+    { "speaker": "${hookSpeaker}", "text": "One short punchy hook — 6–12 words, names the topic" },
+    { "speaker": "${bodySpeaker}", "text": "..." },
+    { "speaker": "${bodySpeaker}", "text": "Subscribe for more Shorts like this — I'll see you in the next one." }
   ]
 }`;
 }
 
-export function buildShortScriptReviewPrompt(draft: ShortScript, topic: string): string {
+export function buildShortScriptReviewPrompt(
+  ctx: ChannelContext,
+  draft: ShortScript,
+  topic: string,
+): string {
+  const { name, short } = ctx.config;
   const draftJson = JSON.stringify(draft, null, 2);
 
-  return `You are a senior short-form script editor for "Speak English With Energy".
-
-You received a DRAFT Short script. Double-check it and REVISE — do not rewrite from scratch unless a beat is broken.
+  return `You are a senior short-form script editor for "${name}".
 
 Topic: "${topic}"
 
 DRAFT JSON:
 ${draftJson}
 
-REVISION CHECKLIST — fix every issue you find:
-1. NOT TOO SHORT — ~80–150 words total, 5–8 beats. If under ~80 words or fewer than 5 beats, expand with one bridging beat (insight, proof, or action). Never pad with filler.
-2. NOT STIFF — replace robotic or textbook phrasing. Use contractions, spoken rhythm, and bridge phrases ("Here's the thing…", "That's why…", "So instead of…", "Try this today…").
-3. CONNECTED — every beat must logically lead to the next. Add a connective phrase where a beat feels like a random jump.
-4. GRADUAL CLOSE — the ending must NOT feel rushed. Before the subscribe CTA, Lisa needs at least one beat that lands the lesson (proof or action). The subscribe line must be its own final beat — never combined with the lesson or action in the same script item. The subscribe beat should feel warm, not abrupt.
-5. PRESERVE STRUCTURE — beat 1 ONLY: Victor (one short hook, 6–12 words, names "${topic}"). Beats 2 through last: Lisa only. No podcast recap, no back-and-forth dialogue.
-6. SHORT OPENING — Victor's first line must stay ≤12 words. Trim setup phrases ("Here's the truth…", "Let me tell you…") and never quote the full episode title.
-7. SUBSCRIBE BEAT — if the last beat mixes subscribe with another sentence, split them: keep the lesson/action in the second-to-last beat; move ONLY the subscribe line to its own final beat.
+REVISION CHECKLIST:
+1. NOT TOO SHORT — ~80–150 words total, ${short.minLines}–${short.maxLines} beats.
+2. NOT STIFF — natural spoken English (${ctx.config.script.languageLevel}).
+3. CONNECTED — every beat must logically lead to the next.
+4. GRADUAL CLOSE — subscribe CTA must be its own final beat.
+5. PRESERVE STRUCTURE — beat 1 ONLY: ${short.hookSpeaker}. Beats 2 through last: ${short.bodySpeaker} only.
 
-Keep metadata unchanged unless Victor's opening line changes — then update "hook" too.
-
-Return ONLY a valid JSON object (no markdown, no code blocks) with the EXACT same structure as the draft:
-{
-  "title": "Short catchy title — max 50 characters",
-  "description": "TikTok/Short caption with 2–3 hashtags",
-  "hook": "One short punchy opening line — 6–12 words, names the topic",
-  "thumbnailText": "ALL-CAPS stacked lines with \\n",
-  "thumbnailScene": "Victor embarrassed laugh, hand on back of neck — puzzle pieces flying off desk. Lisa leans toward camera with whisper gesture, playful knowing smirk. Book spines: MINDSET, FOCUS, GROWTH.",
-  "script": [
-    { "speaker": "Victor", "text": "One short punchy hook — 6–12 words, names the topic" },
-    { "speaker": "Lisa", "text": "..." },
-    { "speaker": "Lisa", "text": "Lesson landing or action — one beat before the CTA" },
-    { "speaker": "Lisa", "text": "Subscribe for more Shorts like this — I'll see you in the next one." }
-  ]
-}
-
-Every script item MUST have exactly "speaker" ("Victor" or "Lisa") and "text" (spoken line string). Do NOT return script as plain strings or use other field names.`;
+Return ONLY a valid JSON object with the EXACT same structure as the draft.`;
 }

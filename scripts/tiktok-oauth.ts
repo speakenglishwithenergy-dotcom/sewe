@@ -1,19 +1,31 @@
 /**
  * One-time setup: obtain TikTok OAuth tokens for Content Posting API.
  *
- * 1. Create an app at https://developers.tiktok.com/
- * 2. Enable Login Kit (Desktop) + Content Posting API, add scope video.publish
- * 3. Register redirect URI: http://localhost:53683/callback
- * 4. Add TIKTOK_CLIENT_KEY and TIKTOK_CLIENT_SECRET to .env
- * 5. Run: npm run tiktok:auth
+ * Run: npm run tiktok:auth -- --channel=speak-english-with-energy
  */
 import 'dotenv/config';
 import crypto from 'crypto';
 import http from 'http';
 import { URL } from 'url';
+import { ChannelService } from '../src/channel/channel.service';
+import { resolveOAuthEnvNames } from '../src/social/publish.env';
 
 const REDIRECT_URI = 'http://localhost:53683/callback';
 const SCOPES = ['user.info.basic', 'video.publish'];
+
+function parseChannelArg(): string {
+  const arg = process.argv.find((a) => a.startsWith('--channel='));
+  if (!arg) {
+    console.error('Missing --channel=CHANNEL_ID (e.g. --channel=speak-english-with-energy)');
+    process.exit(1);
+  }
+  const channelId = arg.replace('--channel=', '').trim();
+  if (!channelId) {
+    console.error('--channel value cannot be empty');
+    process.exit(1);
+  }
+  return channelId;
+}
 
 function requireEnv(name: string): string {
   const value = process.env[name]?.trim();
@@ -31,8 +43,13 @@ function generatePkce(): { codeVerifier: string; codeChallenge: string } {
 }
 
 async function main(): Promise<void> {
-  const clientKey = requireEnv('TIKTOK_CLIENT_KEY');
-  const clientSecret = requireEnv('TIKTOK_CLIENT_SECRET');
+  const channelId = parseChannelArg();
+  const channelService = new ChannelService();
+  const channel = await channelService.loadChannel(channelId);
+  const envNames = resolveOAuthEnvNames(channel.config.env.prefix, channel.config.id);
+
+  const clientKey = requireEnv(envNames.tiktokClientKey);
+  const clientSecret = requireEnv(envNames.tiktokClientSecret);
   const { codeVerifier, codeChallenge } = generatePkce();
   const state = crypto.randomBytes(16).toString('hex');
 
@@ -48,6 +65,7 @@ async function main(): Promise<void> {
 
   const authUrl = `https://www.tiktok.com/v2/auth/authorize/?${params.toString()}`;
 
+  console.log(`\nChannel: ${channel.config.name} (${channel.config.id})`);
   console.log('\nOpen this URL in your browser and authorize your TikTok account:\n');
   console.log(authUrl);
   console.log('\nWaiting for callback on', REDIRECT_URI, '...\n');
@@ -84,10 +102,10 @@ async function main(): Promise<void> {
   }
 
   console.log('\n✅ Success! Add these to your .env:\n');
-  console.log(`TIKTOK_ACCESS_TOKEN=${tokens.access_token}`);
-  console.log(`TIKTOK_REFRESH_TOKEN=${tokens.refresh_token}`);
+  console.log(`${envNames.tiktokAccessToken}=${tokens.access_token}`);
+  console.log(`${envNames.tiktokRefreshToken}=${tokens.refresh_token}`);
   if (tokens.open_id) {
-    console.log(`# TIKTOK_OPEN_ID=${tokens.open_id}`);
+    console.log(`# ${envNames.tiktokAccessToken.replace('ACCESS_TOKEN', 'OPEN_ID')}=${tokens.open_id}`);
   }
   console.log('\nNote: access_token expires in ~24 hours; refresh_token lasts ~365 days.\n');
 }

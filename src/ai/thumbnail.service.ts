@@ -15,6 +15,7 @@ import {
   printManualThumbnailInstructions,
   waitForManualThumbnailFile,
 } from './manual-thumbnail.util';
+import { ChannelContext } from '../channel/channel.types';
 import { PodcastScript, ShortScript } from '../types';
 import {
   buildThumbnailImagePrompt,
@@ -29,7 +30,7 @@ import { logger } from '../utils/logger';
 export class ThumbnailService {
   constructor(
     private readonly openai: OpenAIService,
-    private readonly assetsDir: string,
+    private readonly ctx: ChannelContext,
   ) {}
 
   async generate(script: PodcastScript, topic: string, outputPath: string): Promise<void> {
@@ -41,13 +42,13 @@ export class ThumbnailService {
       return;
     }
 
-    const demoPath = path.join(this.assetsDir, 'demo-thumbnail.png');
+    const demoPath = this.ctx.assets.demoThumbnail;
 
     const thumbnailScene =
       script.thumbnailScene ??
       (await this.generateScene(topic, script.title, script.thumbnailText));
 
-    const prompt = buildThumbnailImagePrompt({
+    const prompt = buildThumbnailImagePrompt(this.ctx, {
       topic,
       episodeTitle: script.title,
       thumbnailText: script.thumbnailText,
@@ -95,14 +96,14 @@ export class ThumbnailService {
       return;
     }
 
-    const demoShortPath = path.join(this.assetsDir, 'demo-short-thumbnail.png');
+    const demoShortPath = this.ctx.assets.demoShortThumbnail;
 
     const thumbnailScene =
       episode.thumbnailScene ??
       script.thumbnailScene ??
       (await this.generateShortScene(topic, episode.title, episode.thumbnailText));
 
-    const prompt = buildShortThumbnailImagePrompt({
+    const prompt = buildShortThumbnailImagePrompt(this.ctx, {
       topic,
       episodeTitle: episode.title,
       thumbnailText: episode.thumbnailText,
@@ -162,7 +163,7 @@ export class ThumbnailService {
     logger.info('Generating thumbnail scene description...');
 
     const result = await this.openai.generateJSON(
-      buildThumbnailScenePrompt(topic, episodeTitle, thumbnailText),
+      buildThumbnailScenePrompt(this.ctx, topic, episodeTitle, thumbnailText),
       'You are a creative art director. Respond only with valid JSON.',
       (data: unknown) => {
         if (
@@ -188,7 +189,7 @@ export class ThumbnailService {
     logger.info('Generating short thumbnail scene description...');
 
     const result = await this.openai.generateJSON(
-      buildShortThumbnailScenePrompt(topic, episodeTitle, thumbnailText),
+      buildShortThumbnailScenePrompt(this.ctx, topic, episodeTitle, thumbnailText),
       'You are a creative art director. Respond only with valid JSON.',
       (data: unknown) => {
         if (

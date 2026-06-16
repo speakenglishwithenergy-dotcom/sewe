@@ -19,6 +19,7 @@
     "onnxruntime-node": "^1.26.0",
     "openai": "^4.52.0",
     "sharp": "^0.33.4",
+    "yaml": "^2.9.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {

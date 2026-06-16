@@ -6,7 +6,9 @@ import { z } from 'zod';
 import { FFmpegService } from './ffmpeg/ffmpeg.service';
 import { SupertonicService } from './audio/supertonic.service';
 import { TTSService } from './audio/tts.service';
-import { DialogueLineSchema, PAUSE_BETWEEN_SEGMENTS, VOICE_MAP } from './types';
+import { DialogueLineSchema, PAUSE_BETWEEN_SEGMENTS } from './types';
+
+const LEGACY_VOICE_MAP = { Victor: 'M1', Lisa: 'F1' } as const;
 import { logger } from './utils/logger';
 
 const ROOT_DIR = process.cwd();
@@ -105,7 +107,7 @@ async function generateEpisodeAudio(
   const script = ConversationScriptSchema.parse(JSON.parse(raw));
   const titleSpeech = formatTitleForSpeech(script.title);
 
-  await ttsService.generateNarration(titleSpeech, titlePath, VOICE_MAP.Victor);
+  await ttsService.generateNarration(titleSpeech, titlePath, LEGACY_VOICE_MAP.Victor);
 
   const segments = await ttsService.generateSegments(script.script, audioDir);
   const audioFiles = [titlePath, ...segments.map((s) => s.filePath)];

@@ -6,10 +6,10 @@ import {
   SHORT_HOOK_KEYWORD_COLOUR,
   highlightWrappedSubtitleText,
 } from './subtitle-highlight.util';
-import { CHANNEL_NAME } from '../prompts/script.prompt';
 import { formatIpaSubtitleText } from './subtitle-style';
 
 export class SubtitleService {
+  constructor(private readonly nonBreakingPhrases: string[] = []) {}
   /**
    * Generate an ASS subtitle file from the timed audio segments.
    * Each segment becomes one subtitle entry. Podcast mode includes IPA below English
@@ -30,10 +30,10 @@ export class SubtitleService {
     const SUBTITLE_LINE_WIDTH = lineWidth;
 
     const dialogues = segments.map((segment) => {
-      const wrapped = wrapSubtitleText(segment.text, SUBTITLE_LINE_WIDTH);
+      const wrapped = wrapSubtitleText(segment.text, SUBTITLE_LINE_WIDTH, this.nonBreakingPhrases);
       const english = highlightWrappedSubtitleText(wrapped, segment.keywords);
       const text = includeIpa && segment.ipa
-        ? `${english}\n${formatIpaSubtitleText(wrapSubtitleText(segment.ipa, SUBTITLE_LINE_WIDTH))}`
+        ? `${english}\n${formatIpaSubtitleText(wrapSubtitleText(segment.ipa, SUBTITLE_LINE_WIDTH, this.nonBreakingPhrases))}`
         : english;
 
       return {
@@ -63,7 +63,7 @@ export class SubtitleService {
     const LINGER_SECONDS = 0.3;
 
     const dialogues = segments.map((segment, i) => {
-      const wrapped = wrapSubtitleText(segment.text, lineWidth);
+      const wrapped = wrapSubtitleText(segment.text, lineWidth, this.nonBreakingPhrases);
       const isHook = i === 0;
       const text = highlightWrappedSubtitleText(
         wrapped,
@@ -89,16 +89,10 @@ export class SubtitleService {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /** Phrases that must never be split across subtitle lines (channel branding). */
-const NON_BREAKING_PHRASES = [CHANNEL_NAME];
-
-/**
- * Replace spaces inside protected phrases with non-breaking spaces so line
- * wrapping treats each phrase as a single word.
- */
-function protectNonBreakingPhrases(text: string): string {
+function protectNonBreakingPhrases(text: string, phrases: string[]): string {
   let result = text;
 
-  for (const phrase of NON_BREAKING_PHRASES) {
+  for (const phrase of phrases) {
     const pattern = phrase
       .split(' ')
       .map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
@@ -115,8 +109,8 @@ function protectNonBreakingPhrases(text: string): string {
  * Wrap subtitle text to a narrower line width for better on-screen readability.
  * Rebalances lines afterward to avoid orphan/widow text (a single word alone on a line).
  */
-function wrapSubtitleText(text: string, maxWidth: number): string {
-  const words = protectNonBreakingPhrases(text).split(' ');
+function wrapSubtitleText(text: string, maxWidth: number, nonBreakingPhrases: string[]): string {
+  const words = protectNonBreakingPhrases(text, nonBreakingPhrases).split(' ');
   if (words.length <= 1) {
     return text;
   }

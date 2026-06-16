@@ -1,9 +1,5 @@
 import fs from 'fs';
 import { google } from 'googleapis';
-import {
-  YOUTUBE_LONG_PLAYLIST_ID,
-  YOUTUBE_SHORT_PLAYLIST_ID,
-} from './publish.config';
 import { PublishEnvConfig } from './publish.env';
 import { PublishResult } from './publish.types';
 import { logger } from '../utils/logger';
@@ -19,7 +15,10 @@ export interface YouTubeUploadInput {
 }
 
 export class YouTubePublisherService {
-  constructor(private readonly config: PublishEnvConfig['youtube']) {}
+  constructor(
+    private readonly config: PublishEnvConfig['youtube'],
+    private readonly playlists: { long: string; short: string },
+  ) {}
 
   private createClient() {
     const oauth2 = new google.auth.OAuth2(
@@ -69,7 +68,7 @@ export class YouTubePublisherService {
     await this.addToPlaylist(
       youtube,
       videoId,
-      input.format === 'long' ? YOUTUBE_LONG_PLAYLIST_ID : YOUTUBE_SHORT_PLAYLIST_ID,
+      input.format === 'long' ? this.playlists.long : this.playlists.short,
       label,
     );
 

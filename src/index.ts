@@ -16,6 +16,8 @@ import { KEYWORD_HIGHLIGHTS_ENABLED } from './subtitles/subtitle-highlight.util'
 import { FFmpegService } from './ffmpeg/ffmpeg.service';
 import { VideoService } from './video/video.service';
 import { ProjectService } from './project/project.service';
+import { ChannelService } from './channel/channel.service';
+import { ChannelContext } from './channel/channel.types';
 import { SocialMetadataService } from './social/social-metadata.service';
 import {
   FACEBOOK_LONG_CAPTION,
@@ -44,11 +46,7 @@ import { logger } from './utils/logger';
 // ─── Paths ───────────────────────────────────────────────────────────────────
 
 const ROOT_DIR = process.cwd();
-const ASSETS_DIR = path.join(ROOT_DIR, 'assets');
-const BACKGROUND_PATH = path.join(ASSETS_DIR, 'background.png');
-const INTRO_PATH = path.join(ASSETS_DIR, 'intro.mp4');
-const OUTRO_PATH = path.join(ASSETS_DIR, 'outro.mp4');
-const SUPERTONIC_DIR = path.join(ASSETS_DIR, 'supertonic-3');
+const SUPERTONIC_DIR = path.join(ROOT_DIR, 'assets', 'supertonic-3');
 const SUPERTONIC_ONNX_DIR = process.env.SUPERTONIC_ONNX_DIR ?? path.join(SUPERTONIC_DIR, 'onnx');
 const SUPERTONIC_VOICES_DIR = process.env.SUPERTONIC_VOICES_DIR ?? path.join(SUPERTONIC_DIR, 'voice_styles');
 
@@ -73,6 +71,7 @@ type MetadataRegenMode = 'auto' | 'normalize' | 'generate';
 type CliArgs =
   | {
       mode: 'new';
+      channelId: string;
       topic: string;
       test: boolean;
       short: boolean;
@@ -93,7 +92,8 @@ type CliArgs =
       publish?: boolean;
       forcePublish?: boolean;
     }
-  | { mode: 'list' };
+  | { mode: 'list'; channelId?: string }
+  | { mode: 'list-channels' };
 
 async function removeIfExists(filePath: string): Promise<void> {
   try {
@@ -211,7 +211,16 @@ function parseArgs(): CliArgs {
     process.exit(1);
   }
 
-  if (args.includes('--list')) return { mode: 'list' };
+  if (args.includes('--list-channels')) return { mode: 'list-channels' };
+
+  const listChannelArg = args.find((a) => a.startsWith('--list'));
+  if (listChannelArg === '--list') {
+    const channelFilter = args.find((a) => a.startsWith('--channel='));
+    return {
+      mode: 'list',
+      channelId: channelFilter?.replace('--channel=', '').trim() || undefined,
+    };
+  }
 
   const projectArg = args.find((a) => a.startsWith('--project='));
   if (projectArg) {
@@ -232,23 +241,24 @@ function parseArgs(): CliArgs {
 
   const topicArg = args.find((a) => a.startsWith('--topic='));
   if (!topicArg) {
-    logger.error('Missing required argument: --topic, --project, or --list');
+    logger.error('Missing required argument: --channel + --topic, --project, --list, or --list-channels');
     logger.info('Usage:');
-    logger.info('  npm run generate -- --topic="Why Smart People Stay Stuck"  # new project (podcast + short)');
-    logger.info('  npm run generate -- --topic="..." --test                    # quick test (script only)');
-    logger.info('  npm run generate -- --topic="..." --short                   # script + short only');
-    logger.info('  npm run generate -- --topic="..." --podcast                 # script + podcast only');
-    logger.info('  npm run generate -- --project=20260612-143022               # resume project (podcast + short)');
-    logger.info('  npm run generate -- --project=20260612-143022 --force         # re-run from scratch (keep thumbnails)');
-    logger.info('  npm run generate -- --project=20260612-143022 --short       # short only');
-    logger.info('  npm run generate -- --project=20260612-143022 --short --force # re-run short only');
-    logger.info('  npm run generate -- --project=20260612-143022 --podcast     # podcast only');
-    logger.info('  npm run generate -- --project=20260612-143022 --podcast --force # re-run podcast only');
-    logger.info('  npm run generate -- --project=20260612-143022 --regenerate-metadata           # re-export metadata (cache + normalize)');
-    logger.info('  npm run generate -- --project=20260612-143022 --regenerate-metadata=generate  # regenerate metadata via LLM');
-    logger.info('  npm run generate -- --project=20260612-143022 --publish              # generate then auto-publish');
-    logger.info('  npm run publish -- --project=20260612-143022                         # publish existing project');
-    logger.info('  npm run generate -- --list                                  # list all projects');
+    logger.info('  npm run generate -- --channel=speak-english-with-energy --topic="..."');
+    logger.info('  npm run generate -- --list-channels');
+    logger.info('  npm run generate -- --list [--channel=ID]');
+    logger.info('  npm run generate -- --project=20260612-143022');
+    process.exit(1);
+  }
+
+  const channelArg = args.find((a) => a.startsWith('--channel='));
+  if (!channelArg) {
+    logger.error('Missing required argument: --channel=CHANNEL_ID (required for new projects)');
+    logger.info('Run `npm run generate -- --list-channels` to see available channels.');
+    process.exit(1);
+  }
+  const channelId = channelArg.replace('--channel=', '').trim();
+  if (!channelId) {
+    logger.error('--channel value cannot be empty');
     process.exit(1);
   }
 
@@ -265,7 +275,7 @@ function parseArgs(): CliArgs {
     logger.error('--regenerate-metadata requires --project');
     process.exit(1);
   }
-  return { mode: 'new', topic, test, short, podcast, force, publish, forcePublish };
+  return { mode: 'new', channelId, topic, test, short, podcast, force, publish, forcePublish };
 }
 
 async function resolveMetadataRegenerate(
@@ -298,6 +308,7 @@ function printSocialMetadataSummary(projectDir: string, hasShort: boolean): void
 }
 
 async function maybePublishProject(
+  ctx: ChannelContext,
   projectDir: string,
   socialMeta: Awaited<ReturnType<SocialMetadataService['loadOrGenerate']>>,
   podcastScript: PodcastScript,
@@ -310,6 +321,7 @@ async function maybePublishProject(
   logger.info('Publishing to YouTube, Facebook, TikTok...');
   const publisher = new SocialPublisherService();
   const results = await publisher.publishProject(
+    ctx,
     projectDir,
     socialMeta,
     podcastScript,
@@ -328,7 +340,10 @@ async function maybePublishProject(
   }
 }
 
-function printSocialMetadataPreview(socialMeta: Awaited<ReturnType<SocialMetadataService['loadOrGenerate']>>): void {
+function printSocialMetadataPreview(
+  socialMeta: Awaited<ReturnType<SocialMetadataService['loadOrGenerate']>>,
+  pub: ChannelContext['publish'],
+): void {
   logger.info('\nYouTube Description (copy-paste ready):\n');
   console.log(socialMeta.youtube.description);
   logger.info('\nYouTube Tags:\n');
@@ -337,7 +352,7 @@ function printSocialMetadataPreview(socialMeta: Awaited<ReturnType<SocialMetadat
   console.log(socialMeta.youtube.pinnedComment);
   if (socialMeta.youtubeShort) {
     logger.info('\nYouTube Short Caption:\n');
-    console.log(formatChannelShortCaption(socialMeta.youtubeShort));
+    console.log(formatChannelShortCaption(socialMeta.youtubeShort, pub));
     logger.info('\nShort pinned comment:\n');
     console.log(socialMeta.youtubeShort.pinnedComment);
   }
@@ -349,7 +364,7 @@ function printSocialMetadataPreview(socialMeta: Awaited<ReturnType<SocialMetadat
   }
   if (socialMeta.facebookShort) {
     logger.info('\nFacebook Reel Caption:\n');
-    console.log(formatFacebookShortCaption(socialMeta.facebookShort));
+    console.log(formatFacebookShortCaption(socialMeta.facebookShort, pub));
     logger.info('\nFacebook Reel first comment:\n');
     console.log(socialMeta.facebookShort.firstComment);
   }
@@ -358,22 +373,40 @@ function printSocialMetadataPreview(socialMeta: Awaited<ReturnType<SocialMetadat
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  // track time
   console.time('Total execution time');
   const args = parseArgs();
   const projectService = new ProjectService();
+  const channelService = new ChannelService();
 
-  // ── List projects ─────────────────────────────────────────────────────────
+  if (args.mode === 'list-channels') {
+    const channels = await channelService.listChannels();
+    if (channels.length === 0) {
+      logger.info('No channels found. Add a folder under channels/ with channel.yaml');
+      return;
+    }
+    logger.divider('─');
+    logger.info(`Found ${channels.length} channel(s):\n`);
+    for (const channel of channels) {
+      console.log(`  ID    : ${channel.id}`);
+      console.log(`  Name  : ${channel.name}`);
+      console.log(`  Niche : ${channel.niche}`);
+      console.log(`  Short : ${channel.short.enabled ? 'enabled' : 'disabled'}`);
+      logger.divider('─');
+    }
+    return;
+  }
+
   if (args.mode === 'list') {
-    const projects = await projectService.list();
+    const projects = await projectService.list(args.channelId);
     if (projects.length === 0) {
-      logger.info('No projects found. Create one with --topic="..."');
+      logger.info('No projects found. Create one with --channel=... --topic="..."');
       return;
     }
     logger.divider('─');
     logger.info(`Found ${projects.length} project(s):\n`);
     for (const p of projects) {
       console.log(`  ID      : ${p.id}`);
+      console.log(`  Channel : ${p.channelId}`);
       console.log(`  Topic   : ${p.topic}`);
       console.log(`  Title   : ${p.title ?? '(script not yet generated)'}`);
       console.log(`  Created : ${new Date(p.createdAt).toLocaleString()}`);
@@ -383,7 +416,6 @@ async function main(): Promise<void> {
     return;
   }
 
-  // ── Load or create project ────────────────────────────────────────────────
   let project: Project;
 
   if (args.mode === 'resume') {
@@ -394,14 +426,38 @@ async function main(): Promise<void> {
       logger.info('Use --list to see available projects.');
       process.exit(1);
     }
-    logger.divider('═');
-    console.log('  🎙  Speak English With Energy — Podcast Generator');
-    logger.divider('═');
+  } else {
+    try {
+      await channelService.loadChannel(args.channelId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      logger.error(message);
+      process.exit(1);
+    }
+    project = await projectService.create(args.topic, args.channelId);
+  }
+
+  let channelCtx: ChannelContext;
+  try {
+    channelCtx = await channelService.loadChannel(project.channelId);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(message);
+    process.exit(1);
+  }
+
+  const shortEnabled = channelCtx.config.short.enabled;
+
+  if (args.short && !shortEnabled) {
+    logger.error(`Channel "${channelCtx.config.id}" has short generation disabled in channel.yaml`);
+    process.exit(1);
+  }
+
+  logger.divider('═');
+  console.log(`  🎙  ${channelCtx.config.name} — Podcast Generator`);
+  logger.divider('═');
+  if (args.mode === 'resume') {
     logger.info(`Resuming project : ${project.id}`);
-    logger.info(`Topic            : "${project.topic}"`);
-    if (args.test) logger.info('Mode             : TEST (script only)');
-    if (args.short) logger.info('Mode             : SHORT only');
-    if (args.podcast) logger.info('Mode             : PODCAST only');
     if (args.metadataRegen) {
       logger.info(
         `Mode             : METADATA ONLY (${args.metadataRegen === 'generate' ? 'LLM' : args.metadataRegen === 'normalize' ? 'normalize' : 'auto'})`,
@@ -409,15 +465,15 @@ async function main(): Promise<void> {
     }
     if (args.force) logger.info('Mode             : FORCE (re-run, keep thumbnails)');
   } else {
-    project = await projectService.create(args.topic);
-    logger.divider('═');
-    console.log('  🎙  Speak English With Energy — Podcast Generator');
-    logger.divider('═');
     logger.info(`New project      : ${project.id}`);
-    logger.info(`Topic            : "${project.topic}"`);
-    if (args.test) logger.info('Mode             : TEST (script only)');
-    if (args.short) logger.info('Mode             : SHORT only');
-    if (args.podcast) logger.info('Mode             : PODCAST only');
+  }
+  logger.info(`Channel          : ${channelCtx.config.id}`);
+  logger.info(`Topic            : "${project.topic}"`);
+  if (args.test) logger.info('Mode             : TEST (script only)');
+  if (args.short) logger.info('Mode             : SHORT only');
+  if (args.podcast) logger.info('Mode             : PODCAST only');
+  if (!shortEnabled && !args.podcast && !args.test && !args.short) {
+    logger.info('Mode             : PODCAST only (short disabled for this channel)');
   }
 
   logger.info('');
@@ -426,8 +482,8 @@ async function main(): Promise<void> {
     logger.info('Thumbnail mode     : MANUAL (DISABLE_THUMBNAIL_GENERATION — use ChatGPT, then save PNG to project folder)');
   }
 
-  // ── Derive paths from project ─────────────────────────────────────────────
-  const PROJECT_DIR = projectService.getDir(project.id);
+  const PROJECT_DIR = projectService.getDir(project);
+  const channelAssets = channelCtx.assets;
   const AUDIO_DIR = path.join(PROJECT_DIR, 'audio');
   const SCRIPT_PATH = path.join(PROJECT_DIR, 'script.json');
   const PODCAST_AUDIO_PATH = path.join(PROJECT_DIR, 'podcast.mp3');
@@ -441,13 +497,12 @@ async function main(): Promise<void> {
     await clearProjectCache(PROJECT_DIR, scope);
   }
 
-  // ── Wire up services ──────────────────────────────────────────────────────
   const openaiService = new OpenAIService();
   const ffmpegService = new FFmpegService();
-  const scriptService = new ScriptService(openaiService);
-  const shortScriptService = new ShortScriptService(openaiService);
-  const thumbnailService = new ThumbnailService(openaiService, ASSETS_DIR);
-  const socialMetadataService = new SocialMetadataService(openaiService);
+  const scriptService = new ScriptService(openaiService, channelCtx);
+  const shortScriptService = new ShortScriptService(openaiService, channelCtx);
+  const thumbnailService = new ThumbnailService(openaiService, channelCtx);
+  const socialMetadataService = new SocialMetadataService(openaiService, channelCtx);
 
   // ── Step 0: Preflight ─────────────────────────────────────────────────────
   await ffmpegService.checkDependencies();
@@ -495,7 +550,7 @@ async function main(): Promise<void> {
     const firstSegmentPath = path.join(AUDIO_DIR, '001.wav');
     if (await fileExists(firstSegmentPath)) {
       const supertonicService = new SupertonicService(SUPERTONIC_ONNX_DIR, SUPERTONIC_VOICES_DIR);
-      const ttsService = new TTSService(supertonicService, ffmpegService);
+      const ttsService = new TTSService(supertonicService, ffmpegService, channelCtx.voiceMap);
       segments = await ttsService.generateSegments(podcastScript.script, AUDIO_DIR);
     }
 
@@ -516,8 +571,8 @@ async function main(): Promise<void> {
     printSocialMetadataSummary(PROJECT_DIR, !!shortScript);
     console.log(`
   `);
-    printSocialMetadataPreview(socialMeta);
-    await maybePublishProject(PROJECT_DIR, socialMeta, podcastScript, shortScript, {
+    printSocialMetadataPreview(socialMeta, channelCtx.publish);
+    await maybePublishProject(channelCtx, PROJECT_DIR, socialMeta, podcastScript, shortScript, {
       publish: args.publish,
       forcePublish: args.forcePublish,
     });
@@ -546,17 +601,17 @@ async function main(): Promise<void> {
   `);
     console.log('First 3 lines:');
     podcastScript.script.slice(0, 3).forEach((l) => console.log(`  ${l.speaker}: ${l.text}`));
-    printSocialMetadataPreview(socialMeta);
+    printSocialMetadataPreview(socialMeta, channelCtx.publish);
     return;
   }
 
   // ── Short-only mode: script + short pipeline, skip podcast ───────────────
   if (args.short) {
     const supertonicService = new SupertonicService(SUPERTONIC_ONNX_DIR, SUPERTONIC_VOICES_DIR);
-    const ttsService = new TTSService(supertonicService, ffmpegService);
-    const keywordsService = new KeywordsService(openaiService);
-    const subtitleService = new SubtitleService();
-    const videoService = new VideoService(ffmpegService);
+    const ttsService = new TTSService(supertonicService, ffmpegService, channelCtx.voiceMap);
+    const keywordsService = new KeywordsService(openaiService, channelCtx);
+    const subtitleService = new SubtitleService([channelCtx.config.name]);
+    const videoService = new VideoService(ffmpegService, channelCtx.config.name);
     const shortPaths = buildShortPaths(PROJECT_DIR);
 
     const shortScript = await runShortPipeline(project, podcastScript, {
@@ -594,8 +649,8 @@ async function main(): Promise<void> {
     printSocialMetadataSummary(PROJECT_DIR, true);
     console.log(`
   `);
-    printSocialMetadataPreview(socialMeta);
-    await maybePublishProject(PROJECT_DIR, socialMeta, podcastScript, shortScript, {
+    printSocialMetadataPreview(socialMeta, channelCtx.publish);
+    await maybePublishProject(channelCtx, PROJECT_DIR, socialMeta, podcastScript, shortScript, {
       publish: args.publish,
       forcePublish: args.forcePublish,
       formats: ['short'],
@@ -615,11 +670,11 @@ async function main(): Promise<void> {
 
   // ── Wire up TTS / video services ─────────────────────────────────────────
   const supertonicService = new SupertonicService(SUPERTONIC_ONNX_DIR, SUPERTONIC_VOICES_DIR);
-  const ttsService = new TTSService(supertonicService, ffmpegService);
+  const ttsService = new TTSService(supertonicService, ffmpegService, channelCtx.voiceMap);
   const ipaService = new IpaService(openaiService);
-  const keywordsService = new KeywordsService(openaiService);
-  const subtitleService = new SubtitleService();
-  const videoService = new VideoService(ffmpegService);
+  const keywordsService = new KeywordsService(openaiService, channelCtx);
+  const subtitleService = new SubtitleService([channelCtx.config.name]);
+  const videoService = new VideoService(ffmpegService, channelCtx.config.name);
 
   // ── Step 2: Voices ───────────────────────────────────────────────────────────
   logger.step(3, totalSteps, 'Generating voice audio...');
@@ -678,7 +733,7 @@ async function main(): Promise<void> {
   logger.step(
     6,
     totalSteps,
-    args.podcast
+    args.podcast || !shortEnabled
       ? 'Rendering final video...'
       : 'Rendering final video + short (parallel)...',
   );
@@ -693,21 +748,20 @@ async function main(): Promise<void> {
 
   let shortScript: ShortScript | undefined;
 
-  if (args.podcast) {
+  if (args.podcast || !shortEnabled) {
     await videoService.generateFinalVideo(
-      INTRO_PATH,
+      channelAssets.intro,
       THUMBNAIL_PATH,
-      BACKGROUND_PATH,
+      channelAssets.background,
       PODCAST_AUDIO_PATH,
       SUBTITLES_PATH,
-      OUTRO_PATH,
+      channelAssets.outro,
       FINAL_VIDEO_PATH,
     );
   } else {
     const shortPaths = buildShortPaths(PROJECT_DIR);
 
     if (DISABLE_THUMBNAIL_GENERATION) {
-      // Manual thumbnails need interactive input — run short pipeline before final video.
       shortScript = await runShortPipeline(
         project,
         podcastScript,
@@ -723,12 +777,12 @@ async function main(): Promise<void> {
         shortPaths,
       );
       await videoService.generateFinalVideo(
-        INTRO_PATH,
+        channelAssets.intro,
         THUMBNAIL_PATH,
-        BACKGROUND_PATH,
+        channelAssets.background,
         PODCAST_AUDIO_PATH,
         SUBTITLES_PATH,
-        OUTRO_PATH,
+        channelAssets.outro,
         FINAL_VIDEO_PATH,
       );
     } else {
@@ -743,12 +797,12 @@ async function main(): Promise<void> {
           videoService,
         }, shortPaths),
         videoService.generateFinalVideo(
-          INTRO_PATH,
+          channelAssets.intro,
           THUMBNAIL_PATH,
-          BACKGROUND_PATH,
+          channelAssets.background,
           PODCAST_AUDIO_PATH,
           SUBTITLES_PATH,
-          OUTRO_PATH,
+          channelAssets.outro,
           FINAL_VIDEO_PATH,
         ),
       ]);
@@ -766,7 +820,7 @@ async function main(): Promise<void> {
   logger.info('');
   logger.divider('═');
   logger.success(
-    args.podcast
+    args.podcast || !shortEnabled
       ? 'All done! Your podcast is ready.'
       : 'All done! Your podcast and short are ready.',
   );
@@ -791,8 +845,8 @@ async function main(): Promise<void> {
   printSocialMetadataSummary(PROJECT_DIR, !!shortScript);
   console.log(`
   `);
-  printSocialMetadataPreview(socialMeta);
-  await maybePublishProject(PROJECT_DIR, socialMeta, podcastScript, shortScript, {
+  printSocialMetadataPreview(socialMeta, channelCtx.publish);
+  await maybePublishProject(channelCtx, PROJECT_DIR, socialMeta, podcastScript, shortScript, {
     publish: args.publish,
     forcePublish: args.forcePublish,
   });

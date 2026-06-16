@@ -1,9 +1,11 @@
 import { z } from 'zod';
 import { OpenAIService } from './openai.service';
+import { ChannelContext } from '../channel/channel.types';
 import { DialogueLine } from '../types';
 import {
   buildKeywordsBoostPrompt,
   buildKeywordsPrompt,
+  getAlwaysHighlightPhrases,
   KeywordsPromptContext,
 } from '../prompts/keywords.prompt';
 import {
@@ -40,7 +42,14 @@ export interface KeywordEnrichmentContext {
 }
 
 export class KeywordsService {
-  constructor(private readonly openai: OpenAIService) {}
+  private readonly alwaysHighlightPhrases: string[];
+
+  constructor(
+    private readonly openai: OpenAIService,
+    private readonly ctx: ChannelContext,
+  ) {
+    this.alwaysHighlightPhrases = getAlwaysHighlightPhrases(ctx);
+  }
 
   needsEnrichment(script: DialogueLine[], keywordsVersion?: number): boolean {
     if (keywordsVersion !== KEYWORDS_GENERATOR_VERSION) {
@@ -82,11 +91,11 @@ export class KeywordsService {
 
     for (const { index, text, line } of batch) {
       const raw = keywordsByIndex.get(index) ?? [];
-      line.keywords = finalizeKeywords(text, raw, topicTerms);
+      line.keywords = finalizeKeywords(text, raw, topicTerms, this.alwaysHighlightPhrases);
     }
 
     await this.runBoostPass(script, promptContext, topicTerms);
-    await this.runGapFillPass(script, promptContext, topicTerms);
+    await this.runGapFillPass(script, topicTerms);
 
     const withHighlights = script.filter((line) => (line.keywords?.length ?? 0) > 0).length;
     logger.success(
@@ -118,13 +127,12 @@ export class KeywordsService {
 
     for (const { index, text, line, current } of sparse) {
       const raw = boosted.get(index) ?? current;
-      line.keywords = finalizeKeywords(text, raw, topicTerms);
+      line.keywords = finalizeKeywords(text, raw, topicTerms, this.alwaysHighlightPhrases);
     }
   }
 
   private async runGapFillPass(
     script: DialogueLine[],
-    promptContext: KeywordsPromptContext,
     topicTerms: string[],
   ): Promise<void> {
     const gapLines = script
@@ -132,7 +140,7 @@ export class KeywordsService {
       .filter(({ line, text }) => (line.keywords?.length ?? 0) === 0 && shouldAttemptGapFill(text));
 
     for (const { text, line } of gapLines) {
-      line.keywords = finalizeKeywords(text, [], topicTerms);
+      line.keywords = finalizeKeywords(text, [], topicTerms, this.alwaysHighlightPhrases);
     }
 
     if (gapLines.length > 0) {
@@ -170,7 +178,7 @@ export class KeywordsService {
     context: KeywordsPromptContext,
   ): Promise<Map<number, string[]>> {
     const result = await this.openai.generateJSON(
-      buildKeywordsPrompt(lines, context),
+      buildKeywordsPrompt(this.ctx, lines, context),
       'You are an English teacher curating subtitle highlights for podcast learners. ' +
         'The #1 rule: if a learner reads only the highlights, the sentence meaning must not change. ' +
         'Prioritize multi-word phrases, idioms, and collocations over single words. ' +
@@ -189,7 +197,7 @@ export class KeywordsService {
     context: KeywordsPromptContext,
   ): Promise<Map<number, string[]>> {
     const result = await this.openai.generateJSON(
-      buildKeywordsBoostPrompt(lines, context),
+      buildKeywordsBoostPrompt(this.ctx, lines, context),
       'You add more subtitle highlights for English learners. ' +
         'The #1 rule: if a learner reads only the highlights, the sentence meaning must not change. ' +
         'Return the full expanded keyword list (max 4). Prefer phrases and collocations over single words. ' +
@@ -215,12 +223,17 @@ export class KeywordsService {
   }
 }
 
-function finalizeKeywords(text: string, raw: string[], topicTerms: string[]): string[] {
+function finalizeKeywords(
+  text: string,
+  raw: string[],
+  topicTerms: string[],
+  alwaysHighlightPhrases: string[],
+): string[] {
   const filtered = filterKeywordsForText(text, raw);
   const boosted = boostKeywordsLocally(text, filtered, topicTerms);
   const pruned = pruneSubsumedSingleWords(boosted);
   const prioritized = sortKeywordsByPhrasePriority(pruned);
-  return applyAlwaysHighlightPhrases(text, prioritized);
+  return applyAlwaysHighlightPhrases(text, prioritized, alwaysHighlightPhrases);
 }
 
 /** Keep only keywords that actually appear in the sentence. */
