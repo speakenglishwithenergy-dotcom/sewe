@@ -5,8 +5,8 @@ import { ShadowingService } from './shadowing/shadowing.service';
 import { logger } from './utils/logger';
 
 type CliArgs =
-  | { mode: 'new'; draft: string; title?: string; test: boolean; force: boolean }
-  | { mode: 'resume'; workspaceId: string; title?: string; test: boolean; force: boolean }
+  | { mode: 'new'; draft: string; title?: string; force: boolean }
+  | { mode: 'resume'; workspaceId: string; title?: string; test: boolean; force: boolean; review: boolean }
   | { mode: 'list' };
 
 async function fileExists(filePath: string): Promise<boolean> {
@@ -32,6 +32,7 @@ function parseArgs(): CliArgs {
 
   const test = args.includes('--test');
   const force = args.includes('--force');
+  const review = args.includes('--review');
 
   const titleArg = args.find((a) => a.startsWith('--title='));
   const title = titleArg?.replace('--title=', '').replace(/^["']|["']$/g, '').trim() || undefined;
@@ -40,14 +41,14 @@ function parseArgs(): CliArgs {
   const workspaceId = workspaceArg?.replace('--workspace=', '').replace(/^["']|["']$/g, '').trim();
 
   if (workspaceId) {
-    return { mode: 'resume', workspaceId, title, test, force };
+    return { mode: 'resume', workspaceId, title, test, force, review };
   }
 
   const draftArg = args.find((a) => a.startsWith('--draft='));
   const draft = draftArg?.replace('--draft=', '').replace(/^["']|["']$/g, '').trim();
 
   if (draft) {
-    return { mode: 'new', draft, title, test, force };
+    return { mode: 'new', draft, title, force };
   }
 
   logger.error('Missing required flag. Use --draft=PATH for a new workspace or --workspace=ID to resume.');
@@ -60,16 +61,24 @@ function printHelp(): void {
   npm run shadowing -- --draft=./my-script.txt
   npm run shadowing -- --draft=./my-script.txt --title="Episode title"
   npm run shadowing -- --workspace=20260616-230137
-  npm run shadowing -- --draft=./my-script.txt --test
+  npm run shadowing -- --workspace=20260616-230137 --test
   npm run shadowing -- --workspace=20260616-230137 --force
+  npm run shadowing -- --workspace=20260616-230137 --review
+  npm run shadowing -- --workspace=20260616-230137 --review --force
   npm run shadowing -- --list
 
+Workflow:
+  1. --draft=PATH     Create workspace + AI writes script.md for you to review
+  2. Edit script.md   Change the "## Script" section; apply or ignore AI suggestions
+  3. --workspace=ID   Build script.json and render shadowing video
+
 Options:
-  --draft=PATH       Create a new workspace from a text draft (Alex only, word-for-word)
-  --workspace=ID     Resume an existing workspace
+  --draft=PATH       Create a new workspace from a text draft (generates script.md only)
+  --workspace=ID     Continue an existing workspace (script.json + audio + video)
+  --review           Regenerate script.md from draft.txt (use with --workspace)
   --title=TEXT       Override episode title
-  --test             Format script only — no audio or video
-  --force            Regenerate script (new workspace) or audio/video (resume)
+  --test             Format script.json only — no audio or video
+  --force            Regenerate script.json or audio/video (resume), or script.md (--review)
   --list             List shadowing workspaces
 `);
 }
@@ -102,9 +111,16 @@ async function main(): Promise<void> {
     }
 
     const workspace = await service.createWorkspace(resolved, args.title);
-    await service.run(workspace.id, {
-      test: args.test,
+    await service.generateReview(workspace.id, {
       force: true,
+      title: args.title,
+    });
+    return;
+  }
+
+  if (args.review) {
+    await service.generateReview(args.workspaceId, {
+      force: args.force,
       title: args.title,
     });
     return;

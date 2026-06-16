@@ -3,19 +3,51 @@ import fs from 'fs/promises';
 import path from 'path';
 import { logger } from '../utils/logger';
 
+const GROQ_BASE_URL = 'https://api.groq.com/openai/v1';
+
+type LlmProvider = 'groq' | 'openai';
+
+function resolveLlmProvider(): LlmProvider {
+  const explicit = process.env.LLM_PROVIDER?.toLowerCase();
+  if (explicit === 'groq' || explicit === 'openai') {
+    return explicit;
+  }
+  if (process.env.GROQ_API_KEY) {
+    return 'groq';
+  }
+  return 'openai';
+}
+
 export class OpenAIService {
-  private readonly client: OpenAI;
+  /** Chat / JSON completions (Groq or OpenAI). */
+  private readonly chatClient: OpenAI;
+  /** TTS and image APIs — OpenAI only. */
+  private readonly mediaClient: OpenAI | null;
+  private readonly llmProvider: LlmProvider;
   private readonly model: string;
   private readonly ttsModel: string;
   private readonly imageModel: string;
 
   constructor() {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error('OPENAI_API_KEY environment variable is required');
+    const openaiKey = process.env.OPENAI_API_KEY;
+    const groqKey = process.env.GROQ_API_KEY;
+    this.llmProvider = resolveLlmProvider();
+
+    if (this.llmProvider === 'groq') {
+      if (!groqKey) {
+        throw new Error('GROQ_API_KEY environment variable is required when LLM_PROVIDER=groq');
+      }
+      this.chatClient = new OpenAI({ apiKey: groqKey, baseURL: GROQ_BASE_URL });
+      this.model = process.env.GROQ_MODEL ?? 'llama-3.3-70b-versatile';
+    } else {
+      if (!openaiKey) {
+        throw new Error('OPENAI_API_KEY environment variable is required');
+      }
+      this.chatClient = new OpenAI({ apiKey: openaiKey });
+      this.model = process.env.OPENAI_MODEL ?? 'gpt-4o';
     }
-    this.client = new OpenAI({ apiKey });
-    this.model = process.env.OPENAI_MODEL ?? 'gpt-4o';
+
+    this.mediaClient = openaiKey ? new OpenAI({ apiKey: openaiKey }) : null;
     this.ttsModel = process.env.OPENAI_TTS_MODEL ?? 'tts-1';
     this.imageModel = process.env.OPENAI_IMAGE_MODEL ?? 'gpt-image-1';
   }
@@ -27,11 +59,14 @@ export class OpenAIService {
     userPrompt: string,
     systemPrompt: string,
     validator: (data: unknown) => T,
-    options?: { temperature?: number },
+    options?: { temperature?: number; maxTokens?: number },
   ): Promise<T> {
-    logger.info(`Calling ${this.model} for JSON generation...`);
+    logger.info(`Calling ${this.llmProvider}/${this.model} for JSON generation...`);
 
-    const response = await this.client.chat.completions.create({
+    const defaultMaxTokens = this.llmProvider === 'groq' ? 4_096 : 16_384;
+    const maxTokens = options?.maxTokens ?? defaultMaxTokens;
+
+    const response = await this.chatClient.chat.completions.create({
       model: this.model,
       messages: [
         { role: 'system', content: systemPrompt },
@@ -39,22 +74,51 @@ export class OpenAIService {
       ],
       response_format: { type: 'json_object' },
       temperature: options?.temperature ?? 0.85,
-      max_tokens: 16_384,
+      max_tokens: maxTokens,
     });
 
     const content = response.choices[0]?.message?.content;
     if (!content) {
-      throw new Error('OpenAI returned an empty response');
+      throw new Error('LLM returned an empty response');
     }
 
     let parsed: unknown;
     try {
       parsed = JSON.parse(content);
     } catch {
-      throw new Error(`OpenAI returned invalid JSON: ${content.slice(0, 200)}`);
+      throw new Error(`LLM returned invalid JSON: ${content.slice(0, 200)}`);
     }
 
     return validator(parsed);
+  }
+
+  /** Call the Chat Completions API and return plain text (no JSON mode). */
+  async generateText(
+    userPrompt: string,
+    systemPrompt: string,
+    options?: { temperature?: number; maxTokens?: number },
+  ): Promise<string> {
+    logger.info(`Calling ${this.llmProvider}/${this.model} for text generation...`);
+
+    const defaultMaxTokens = this.llmProvider === 'groq' ? 4_096 : 16_384;
+    const maxTokens = options?.maxTokens ?? defaultMaxTokens;
+
+    const response = await this.chatClient.chat.completions.create({
+      model: this.model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: options?.temperature ?? 0.7,
+      max_tokens: maxTokens,
+    });
+
+    const content = response.choices[0]?.message?.content?.trim();
+    if (!content) {
+      throw new Error('LLM returned an empty response');
+    }
+
+    return content;
   }
 
   /**
@@ -66,7 +130,11 @@ export class OpenAIService {
     outputPath: string,
     speed = 0.85,
   ): Promise<void> {
-    const response = await this.client.audio.speech.create({
+    if (!this.mediaClient) {
+      throw new Error('OPENAI_API_KEY is required for TTS (Groq does not support speech generation)');
+    }
+
+    const response = await this.mediaClient.audio.speech.create({
       model: this.ttsModel,
       voice,
       input: text,
@@ -88,6 +156,10 @@ export class OpenAIService {
     referenceNames?: string[],
     options?: { size?: '1024x1024' | '1536x1024' | '1024x1536' | 'auto' },
   ): Promise<Buffer> {
+    if (!this.mediaClient) {
+      throw new Error('OPENAI_API_KEY is required for image generation (Groq does not support images)');
+    }
+
     logger.info(`Calling ${this.imageModel} for thumbnail generation...`);
 
     const images = await Promise.all(
@@ -100,7 +172,7 @@ export class OpenAIService {
       }),
     );
 
-    const response = await this.client.images.edit({
+    const response = await this.mediaClient.images.edit({
       model: this.imageModel,
       image: images.length === 1 ? images[0] : images,
       prompt,

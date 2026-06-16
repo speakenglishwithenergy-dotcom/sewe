@@ -5,6 +5,7 @@ export const DEFAULTS_DIR = 'defaults';
 export const WORKSPACES_DIR = 'workspaces';
 
 export const DRAFT_FILE = 'draft.txt';
+export const REVIEW_FILE = 'script.md';
 export const SCRIPT_FILE = 'script.json';
 export const WORKSPACE_META_FILE = 'workspace.json';
 

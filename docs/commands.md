@@ -17,7 +17,7 @@ npm run <script> -- [flags]
 | `npm run youtube:auth` | One-time YouTube OAuth setup |
 | `npm run tiktok:auth` | One-time TikTok OAuth setup |
 | `npm run generate:conversations-audio` | Generate TTS audio for basic-english-conversations episodes |
-| `npm run shadowing` | Format a draft script (Alex only) → IPA → audio → shadowing MP4 |
+| `npm run shadowing` | Format a draft script (Victor only) → IPA → audio → shadowing MP4 |
 | `npm run build` | Compile TypeScript to `dist/` |
 | `npm run typecheck` | Type-check without emitting files |
 
@@ -320,34 +320,56 @@ npm run generate:conversations-audio -- --dir=output/basic-english-conversations
 
 ## `npm run shadowing`
 
-Faithful shadowing pipeline: format your draft into Alex-only dialogue lines (no content changes), add IPA, TTS, and render an MP4 with English + IPA subtitles.
+Shadowing pipeline with a human review step: AI rewrites your draft into an editable `script.md` (with add/edit/remove suggestions), then you continue to IPA, TTS, and MP4.
 
 **Entry point:** `src/shadowing.ts`
 
 Workspaces live under `shadowing/workspaces/<timestamp>/`. Default profile and background: `shadowing/defaults/`.
 
+### Workflow
+
+1. **Draft → review** — create workspace and `script.md`:
+   ```bash
+   npm run shadowing -- --draft=./my-script.txt
+   ```
+2. **Edit** — open `shadowing/workspaces/<id>/script.md`, revise the `## Script` section (apply or ignore `## AI Suggestions`).
+3. **Continue** — build `script.json` and render video:
+   ```bash
+   npm run shadowing -- --workspace=<id>
+   ```
+
+Optional preview of formatted lines only (no audio/video):
+
+```bash
+npm run shadowing -- --workspace=<id> --test
+```
+
 ### Arguments
 
 | Flag | Required | Description |
 |------|----------|-------------|
-| `--draft=PATH` | Yes (new) | Text file with your script draft. Creates a new workspace. |
-| `--workspace=ID` | Yes (resume) | Resume an existing workspace (e.g. `20260616-230137`). |
+| `--draft=PATH` | Yes (new) | Text file with your script draft. Creates workspace + `script.md` only. |
+| `--workspace=ID` | Yes (resume) | Continue workspace (e.g. `20260616-230137`). |
+| `--review` | No | Regenerate `script.md` from `draft.txt` (use with `--workspace`). |
 | `--title=TEXT` | No | Override episode title. |
-| `--test` | No | Format script only — no IPA, audio, or video. |
-| `--force` | No | Regenerate script (new) or audio/video (resume). |
+| `--test` | No | Format `script.json` only — no IPA, audio, or video. |
+| `--force` | No | Regenerate `script.json` and/or audio/video (resume), or `script.md` with `--review`. |
 | `--list` | — | List shadowing workspaces. |
 
 ### Examples
 
 ```bash
-# New workspace from draft
+# Step 1: new workspace + AI review markdown
 npm run shadowing -- --draft=./my-script.txt
 
-# Preview formatted script only
-npm run shadowing -- --draft=./my-script.txt --test
+# Step 2: preview script.json from edited script.md
+npm run shadowing -- --workspace=20260616-230137 --test
 
-# Resume and render video
+# Step 3: full video
 npm run shadowing -- --workspace=20260616-230137
+
+# Regenerate script.md from draft after you change draft.txt
+npm run shadowing -- --workspace=20260616-230137 --review --force
 
 # Force regenerate audio + video
 npm run shadowing -- --workspace=20260616-230137 --force
@@ -358,6 +380,7 @@ npm run shadowing -- --workspace=20260616-230137 --force
 ```
 shadowing/workspaces/<id>/
   draft.txt
+  script.md          # Human-editable script + AI suggestions (review here first)
   script.json
   shadowing/
     audio/001.wav …
@@ -387,7 +410,10 @@ Variables read by the CLI and pipeline (set in `.env`):
 
 | Variable | Used by | Description |
 |----------|---------|-------------|
-| `OPENAI_API_KEY` | generate | Required for script, metadata, thumbnails, keywords. |
+| `GROQ_API_KEY` | generate, shadowing | Groq API key for LLM (script, metadata, IPA). Auto-selected when set. |
+| `GROQ_MODEL` | generate, shadowing | Groq model (default: `llama-3.3-70b-versatile`). |
+| `LLM_PROVIDER` | generate, shadowing | `groq` or `openai` — override auto-detection when both keys are set. |
+| `OPENAI_API_KEY` | generate | Required for TTS/thumbnails; LLM fallback when Groq is not configured. |
 | `OPENAI_MODEL` | generate | LLM model (default: `gpt-4o`). |
 | `OPENAI_TTS_MODEL` | — | TTS model if OpenAI TTS is used (default: `tts-1`). |
 | `OPENAI_IMAGE_MODEL` | generate | Thumbnail image model (default: `gpt-image-1`). |

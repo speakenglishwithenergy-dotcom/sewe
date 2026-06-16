@@ -13,7 +13,7 @@ const IpaBatchSchema = z.object({
   ),
 });
 
-const BATCH_SIZE = 25;
+const BATCH_SIZE = 5;
 
 export class IpaService {
   constructor(private readonly openai: OpenAIService) {}
@@ -56,7 +56,7 @@ export class IpaService {
       buildIpaPrompt(lines),
       'You are a linguist specializing in English phonetics. Respond only with valid JSON matching the requested structure exactly.',
       (data) => IpaBatchSchema.parse(data),
-      { temperature: 0.2 },
+      { temperature: 0.2, maxTokens: 4_096 },
     );
 
     const map = new Map<number, string>();

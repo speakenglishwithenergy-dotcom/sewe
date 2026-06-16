@@ -19,7 +19,7 @@ function wordCount(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
-/** Split draft into Alex dialogue lines without changing any words. */
+/** Split draft into Victor dialogue lines without changing any words. */
 export function splitDraftIntoLines(
   draft: string,
   speaker: string,
