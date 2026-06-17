@@ -7,6 +7,36 @@ import { logger } from '../utils/logger';
 const GRAPH_API_VERSION = 'v21.0';
 const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
 const GRAPH_VIDEO_BASE = `https://graph-video.facebook.com/${GRAPH_API_VERSION}`;
+const FETCH_MAX_ATTEMPTS = 5;
+const FETCH_CHUNK_TIMEOUT_MS = 10 * 60 * 1000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchWithRetry(url: string, init: RequestInit, label: string): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= FETCH_MAX_ATTEMPTS; attempt++) {
+    try {
+      return await fetch(url, {
+        ...init,
+        signal: AbortSignal.timeout(FETCH_CHUNK_TIMEOUT_MS),
+      });
+    } catch (err) {
+      lastError = err;
+      const message = err instanceof Error ? err.message : String(err);
+      if (attempt < FETCH_MAX_ATTEMPTS) {
+        const delayMs = Math.min(1000 * 2 ** (attempt - 1), 30_000);
+        logger.info(
+          `Facebook ${label} failed (${message}) — retry ${attempt}/${FETCH_MAX_ATTEMPTS} in ${delayMs / 1000}s`,
+        );
+        await sleep(delayMs);
+        continue;
+      }
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
 
 export interface FacebookUploadInput {
   videoPath: string;
@@ -111,10 +141,11 @@ export class FacebookPublisherService {
         form.append('start_offset', String(offset));
         form.append('video_file_chunk', new Blob([chunk]), 'chunk');
 
-        const response = await fetch(`${GRAPH_VIDEO_BASE}/${this.config.pageId}/videos`, {
-          method: 'POST',
-          body: form,
-        });
+        const response = await fetchWithRetry(
+          `${GRAPH_VIDEO_BASE}/${this.config.pageId}/videos`,
+          { method: 'POST', body: form },
+          'chunk upload',
+        );
         const data = (await response.json()) as {
           start_offset: string;
           end_offset: string;
@@ -151,7 +182,7 @@ export class FacebookPublisherService {
   }
 
   private async postUrlEncoded<T = { success?: boolean }>(url: string): Promise<T> {
-    const response = await fetch(url, { method: 'POST' });
+    const response = await fetchWithRetry(url, { method: 'POST' }, 'API request');
     const text = await response.text();
     let data: T & GraphErrorBody;
     try {
@@ -193,16 +224,20 @@ export class FacebookPublisherService {
     }
 
     const videoBuffer = await fs.promises.readFile(input.videoPath);
-    const uploadResponse = await fetch(uploadUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: `OAuth ${this.config.accessToken}`,
-        'Content-Type': 'application/octet-stream',
-        offset: '0',
-        file_size: String(videoBuffer.length),
+    const uploadResponse = await fetchWithRetry(
+      uploadUrl,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `OAuth ${this.config.accessToken}`,
+          'Content-Type': 'application/octet-stream',
+          offset: '0',
+          file_size: String(videoBuffer.length),
+        },
+        body: videoBuffer,
       },
-      body: videoBuffer,
-    });
+      'Reel upload',
+    );
     if (!uploadResponse.ok) {
       const body = await uploadResponse.text();
       throw new Error(`Facebook Reel binary upload failed (${uploadResponse.status}): ${body}`);
@@ -270,22 +305,32 @@ export class FacebookPublisherService {
   private async postFirstComment(objectId: string, message: string): Promise<boolean> {
     logger.info('Posting first comment on Facebook...');
 
-    const params = new URLSearchParams({
-      access_token: this.config.accessToken,
-      message,
-    });
-    await this.postJson(`${GRAPH_BASE}/${objectId}/comments?${params.toString()}`, {});
-
-    logger.success('First comment posted on Facebook');
-    return true;
+    try {
+      const params = new URLSearchParams({
+        access_token: this.config.accessToken,
+        message,
+      });
+      await this.postJson(`${GRAPH_BASE}/${objectId}/comments?${params.toString()}`, {});
+      logger.success('First comment posted on Facebook');
+      return true;
+    } catch (err) {
+      const errMessage = err instanceof Error ? err.message : String(err);
+      logger.error(`Could not post Facebook first comment: ${errMessage}`);
+      logger.info('Video uploaded successfully — post the first comment manually in Meta Business Suite if needed.');
+      return false;
+    }
   }
 
   private async postJson<T>(url: string, body: unknown): Promise<T> {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    const response = await fetchWithRetry(
+      url,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+      'API request',
+    );
     const data = (await response.json()) as T & GraphErrorBody;
     if (!response.ok) {
       throw new Error(

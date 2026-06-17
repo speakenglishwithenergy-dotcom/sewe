@@ -119,6 +119,15 @@ function recordResult(
   }
 }
 
+async function recordAndSaveResult(
+  projectDir: string,
+  status: PublishStatus,
+  result: PublishResult,
+): Promise<void> {
+  recordResult(status, result);
+  await savePublishStatus(projectDir, status);
+}
+
 function isAlreadyPublished(
   status: PublishStatus,
   platform: PublishTarget,
@@ -196,7 +205,7 @@ export class SocialPublisherService {
             format: 'long',
           });
           results.push(result);
-          recordResult(status, result);
+          await recordAndSaveResult(projectDir, status, result);
         }
       }
 
@@ -212,7 +221,7 @@ export class SocialPublisherService {
             format: 'long',
           });
           results.push(result);
-          recordResult(status, result);
+          await recordAndSaveResult(projectDir, status, result);
         }
       }
     }
@@ -245,7 +254,7 @@ export class SocialPublisherService {
             format: 'short',
           });
           results.push(result);
-          recordResult(status, result);
+          await recordAndSaveResult(projectDir, status, result);
         }
       }
 
@@ -261,7 +270,7 @@ export class SocialPublisherService {
             format: 'short',
           });
           results.push(result);
-          recordResult(status, result);
+          await recordAndSaveResult(projectDir, status, result);
         }
       }
 
@@ -274,12 +283,11 @@ export class SocialPublisherService {
             caption: formatTikTokShortCaption(socialMeta.youtubeShort, pub),
           });
           results.push(result);
-          recordResult(status, result);
+          await recordAndSaveResult(projectDir, status, result);
         }
       }
     }
 
-    await savePublishStatus(projectDir, status);
     return results;
   }
 }
