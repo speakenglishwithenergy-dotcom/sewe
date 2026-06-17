@@ -14,6 +14,7 @@ const IpaBatchSchema = z.object({
 });
 
 const BATCH_SIZE = 5;
+const MAX_BATCH_ATTEMPTS = 3;
 
 export class IpaService {
   constructor(private readonly openai: OpenAIService) {}
@@ -32,7 +33,7 @@ export class IpaService {
 
     for (let offset = 0; offset < missing.length; offset += BATCH_SIZE) {
       const batch = missing.slice(offset, offset + BATCH_SIZE);
-      const ipaByIndex = await this.generateBatch(
+      const ipaByIndex = await this.generateBatchWithRetry(
         batch.map(({ index, text }) => ({ index, text })),
       );
 
@@ -47,6 +48,37 @@ export class IpaService {
 
     logger.success('IPA transcriptions ready');
     return script;
+  }
+
+  private async generateBatchWithRetry(
+    lines: { index: number; text: string }[],
+  ): Promise<Map<number, string>> {
+    const merged = new Map<number, string>();
+    let pending = lines;
+
+    for (let attempt = 1; attempt <= MAX_BATCH_ATTEMPTS && pending.length > 0; attempt++) {
+      if (attempt > 1) {
+        logger.warn(
+          `IPA batch incomplete — retrying ${pending.length} line(s) (attempt ${attempt}/${MAX_BATCH_ATTEMPTS})...`,
+        );
+      }
+
+      const partial = await this.generateBatch(pending);
+      const stillMissing: typeof pending = [];
+
+      for (const line of pending) {
+        const ipa = partial.get(line.index);
+        if (ipa) {
+          merged.set(line.index, ipa);
+        } else {
+          stillMissing.push(line);
+        }
+      }
+
+      pending = stillMissing;
+    }
+
+    return merged;
   }
 
   private async generateBatch(

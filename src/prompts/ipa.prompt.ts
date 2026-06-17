@@ -9,6 +9,7 @@ Rules:
 - Match the spoken form (contractions, reduced vowels, natural connected speech)
 - Do NOT include speaker names or extra commentary
 - Return one IPA string per input line, in the same order
+- You MUST return exactly ${lines.length} entries with these indices: ${lines.map((line) => line.index).join(', ')}
 
 Input lines:
 ${JSON.stringify(payload, null, 2)}
