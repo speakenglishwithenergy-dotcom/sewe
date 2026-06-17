@@ -73,6 +73,8 @@ branding:
     keyword: "#FF7A00"
     ipa: "#2ba6e1"
     background: "#0D1B3D"
+  waveVisualizer:
+    y: 200
   thumbnail:
     brandColors: "Dark Navy #0D1B3D, Royal Blue #1E3A8A, Bright Orange #FF7A00, Off-white #F2F4F7"
     charactersBlock: |
