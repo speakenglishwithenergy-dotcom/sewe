@@ -5,6 +5,7 @@ export function buildShortScriptPrompt(
   ctx: ChannelContext,
   podcastScript: PodcastScript,
   topic: string,
+  tooFewLines?: number,
 ): string {
   const { name, short } = ctx.config;
   const hookSpeaker = short.hookSpeaker;
@@ -14,7 +15,12 @@ export function buildShortScriptPrompt(
     .map((line) => `${line.speaker}: ${line.text}`)
     .join('\n');
 
+  const retryNote = tooFewLines
+    ? `\nCRITICAL: Your last attempt had only ${tooFewLines} beats. You MUST return at least ${short.minLines} beats (max ${short.maxLines}). Split the mini-lesson into more natural sentence groups.\n`
+    : '';
+
   return `You are a professional short-form video script writer for the YouTube/TikTok channel "${name}".
+${retryNote}
 
 The Short uses a two-voice handoff — NOT a back-and-forth dialogue:
 - ${hookSpeaker} speaks ONLY the FIRST beat — one short, punchy opening hook that names the topic and stops the scroll.
@@ -48,21 +54,31 @@ Return ONLY a valid JSON object (no markdown, no code blocks):
   "thumbnailScene": "${podcastScript.thumbnailScene ?? 'Topic-specific scene for hosts.'}",
   "script": [
     { "speaker": "${hookSpeaker}", "text": "One short punchy hook — 6–12 words, names the topic" },
-    { "speaker": "${bodySpeaker}", "text": "..." },
+    { "speaker": "${bodySpeaker}", "text": "First teaching beat — one natural sentence" },
+    { "speaker": "${bodySpeaker}", "text": "Second teaching beat — builds on the first" },
+    { "speaker": "${bodySpeaker}", "text": "Third teaching beat — actionable takeaway" },
     { "speaker": "${bodySpeaker}", "text": "Subscribe for more Shorts like this — I'll see you in the next one." }
   ]
-}`;
+}
+
+The script array MUST contain ${short.minLines}–${short.maxLines} beats. The example above shows the minimum (${short.minLines} beats).`;
 }
 
 export function buildShortScriptReviewPrompt(
   ctx: ChannelContext,
   draft: ShortScript,
   topic: string,
+  tooFewLines?: number,
 ): string {
   const { name, short } = ctx.config;
   const draftJson = JSON.stringify(draft, null, 2);
 
+  const retryNote = tooFewLines
+    ? `\nCRITICAL: Your last revision had only ${tooFewLines} beats. You MUST return at least ${short.minLines} beats (max ${short.maxLines}). Add beats by splitting long sentences — do NOT merge beats.\n`
+    : '';
+
   return `You are a senior short-form script editor for "${name}".
+${retryNote}
 
 Topic: "${topic}"
 
