@@ -8,6 +8,9 @@ export type TikTokPrivacy =
 
 export type PublishTarget = 'youtube' | 'facebook' | 'tiktok';
 
+/** Default platforms for publish — TikTok temporarily disabled. */
+export const DEFAULT_PUBLISH_TARGETS: PublishTarget[] = ['youtube', 'facebook'];
+
 export type PublishFormat = 'long' | 'short';
 
 export interface PublishedVideoRecord {

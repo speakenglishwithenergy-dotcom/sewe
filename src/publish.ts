@@ -9,7 +9,7 @@ import {
   loadSocialMetadata,
   SocialPublisherService,
 } from './social/social-publisher.service';
-import { PublishFormat, PublishTarget } from './social/publish.types';
+import { DEFAULT_PUBLISH_TARGETS, PublishFormat, PublishTarget } from './social/publish.types';
 import { logger } from './utils/logger';
 
 type PublishCliArgs = {
@@ -59,7 +59,7 @@ function parsePublishArgs(): PublishCliArgs {
     process.exit(1);
   }
 
-  let targets: PublishTarget[] = ['youtube', 'facebook', 'tiktok'];
+  let targets: PublishTarget[] = [...DEFAULT_PUBLISH_TARGETS];
   if (youtubeOnly) targets = ['youtube'];
   if (facebookOnly) targets = ['facebook'];
   if (tiktokOnly) targets = ['tiktok'];
