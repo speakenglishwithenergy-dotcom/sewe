@@ -444,9 +444,9 @@ Variables read by the CLI and pipeline (set in `.env`):
 | `YOUTUBE_PUBLISH_PRIVACY` | no | `private` | `private`, `unlisted`, or `public`. |
 | `YOUTUBE_CATEGORY_ID` | no | `27` | YouTube category (27 = Education). |
 
-### YouTube scheduled publishing
+### Scheduled publishing (YouTube + Facebook)
 
-Set `youtubeSchedule` in `channel.yaml` under the `publish` key to automatically schedule uploads:
+Set `youtubeSchedule` and/or `facebookSchedule` in `channel.yaml` under the `publish` key to automatically schedule uploads:
 
 ```yaml
 publish:
@@ -454,9 +454,17 @@ publish:
     longTime: "11:30"   # wall-clock time for long-form video (24-h HH:MM)
     shortTime: "17:30"  # wall-clock time for Shorts
     timezone: "Asia/Ho_Chi_Minh"  # IANA timezone (default: UTC)
+  facebookSchedule:
+    longTime: "11:30"   # wall-clock time for long-form video
+    shortTime: "17:30"  # wall-clock time for Reels
+    timezone: "Asia/Ho_Chi_Minh"
 ```
 
-When a schedule is configured, the video is uploaded immediately (as `private`) and YouTube publishes it at the next occurrence of the specified wall-clock time. If the target time for today has already passed, the video is scheduled for the following day.
+When a schedule is configured, the video is uploaded immediately and held as scheduled/private. The platform publishes it at the next occurrence of the specified wall-clock time. If the target time for today has already passed, the video is scheduled for the following day.
+
+- **YouTube**: uploaded with `privacyStatus: private` + `publishAt`.
+- **Facebook video**: uploaded with `published: false` + `scheduled_publish_time`. First comment must be posted manually after it goes live.
+- **Facebook Reel**: uploaded with `video_state: SCHEDULED` + `scheduled_publish_time`. First comment must be posted manually after it goes live.
 
 ### Facebook publish
 
@@ -464,7 +472,7 @@ When a schedule is configured, the video is uploaded immediately (as `private`) 
 |----------|----------|---------|-------------|
 | `FACEBOOK_PAGE_ID` | yes | — | Facebook Page ID. |
 | `FACEBOOK_PAGE_ACCESS_TOKEN` | yes | — | Long-lived Page access token. See [docs.md](../docs.md) for setup. |
-| `FACEBOOK_PUBLISH_LIVE` | no | `false` | `true` to publish live; `false` for draft/unpublished. |
+| `FACEBOOK_PUBLISH_LIVE` | no | `false` | `true` to publish live; `false` for draft/unpublished. Ignored when `facebookSchedule` is set. |
 
 ### TikTok publish
 
