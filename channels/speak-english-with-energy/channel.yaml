@@ -143,6 +143,10 @@ publish:
   youtubeLongPlaylistId: PL2oWjiR82NaiofKkP5jO6ahmMGYG3
   youtubeShortPlaylistId: PL2oWjiR82Nai5yg3d5E27T4e9OnnN_MhS
   titleSuffix: " | English Podcast for Learning"
+  youtubeSchedule:
+    longTime: "11:30"
+    shortTime: "17:30"
+    timezone: "Asia/Ho_Chi_Minh"
   coreTags:
     - learn english
     - english podcast

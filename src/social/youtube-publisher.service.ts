@@ -12,6 +12,8 @@ export interface YouTubeUploadInput {
   tags: string[];
   pinnedComment: string;
   format: 'long' | 'short';
+  /** When set, the video is scheduled for this UTC time (privacyStatus becomes "private"). */
+  publishAt?: Date;
 }
 
 export class YouTubePublisherService {
@@ -32,8 +34,13 @@ export class YouTubePublisherService {
   async uploadVideo(input: YouTubeUploadInput): Promise<PublishResult> {
     const youtube = this.createClient();
     const label = input.format === 'short' ? 'YouTube Short' : 'YouTube video';
+    const scheduledLabel = input.publishAt
+      ? ` (scheduled for ${input.publishAt.toISOString()})`
+      : '';
 
-    logger.info(`Uploading ${label} → ${input.title}`);
+    logger.info(`Uploading ${label} → ${input.title}${scheduledLabel}`);
+
+    const privacyStatus = input.publishAt ? 'private' : this.config.privacy;
 
     const response = await youtube.videos.insert({
       part: ['snippet', 'status'],
@@ -45,7 +52,8 @@ export class YouTubePublisherService {
           categoryId: this.config.categoryId,
         },
         status: {
-          privacyStatus: this.config.privacy,
+          privacyStatus,
+          ...(input.publishAt ? { publishAt: input.publishAt.toISOString() } : {}),
           selfDeclaredMadeForKids: false,
           containsSyntheticMedia: false,
         },
@@ -61,7 +69,7 @@ export class YouTubePublisherService {
     }
 
     const url = `https://www.youtube.com/watch?v=${videoId}`;
-    logger.success(`${label} uploaded → ${url}`);
+    logger.success(`${label} uploaded → ${url}${scheduledLabel}`);
 
     await this.setCustomThumbnail(youtube, videoId, input.thumbnailPath);
 

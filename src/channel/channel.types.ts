@@ -143,6 +143,18 @@ export const PublishFacebookBlocksSchema = z.object({
   tiktokCta: z.string().min(1),
 });
 
+/** Optional YouTube scheduled-publish times. Times are wall-clock (HH:MM, 24-h). */
+export const YoutubeScheduleSchema = z.object({
+  /** Wall-clock publish time for long-form videos, e.g. "11:30" */
+  longTime: z.string().regex(/^\d{2}:\d{2}$/, 'Use HH:MM format').optional(),
+  /** Wall-clock publish time for Shorts, e.g. "17:30" */
+  shortTime: z.string().regex(/^\d{2}:\d{2}$/, 'Use HH:MM format').optional(),
+  /** IANA timezone name, e.g. "Asia/Ho_Chi_Minh". Defaults to "UTC". */
+  timezone: z.string().min(1).optional(),
+});
+
+export type YoutubeSchedule = z.infer<typeof YoutubeScheduleSchema>;
+
 export const ChannelPublishConfigSchema = z.object({
   youtubeChannelUrl: z.string().url(),
   facebookPageUrl: z.string().url(),
@@ -150,6 +162,7 @@ export const ChannelPublishConfigSchema = z.object({
   youtubeLongPlaylistId: z.string().min(1),
   youtubeShortPlaylistId: z.string().min(1),
   titleSuffix: z.string().min(1),
+  youtubeSchedule: YoutubeScheduleSchema.optional(),
   coreTags: z.array(z.string().min(1)).min(1),
   coreHashtags: z.array(z.string().min(1)).min(1),
   shortCoreHashtags: z.array(z.string().min(1)).min(1),
@@ -172,6 +185,7 @@ export interface ResolvedPublishCopy {
   youtubeShortPlaylistId: string;
   titleSuffix: string;
   titleBaseMax: number;
+  youtubeSchedule?: YoutubeSchedule;
   coreTags: readonly string[];
   coreHashtags: readonly string[];
   shortCoreHashtags: readonly string[];
@@ -253,6 +267,7 @@ export function resolvePublishCopy(
     youtubeShortPlaylistId: publish.youtubeShortPlaylistId,
     titleSuffix: publish.titleSuffix,
     titleBaseMax: titleMax - publish.titleSuffix.length,
+    youtubeSchedule: publish.youtubeSchedule,
     coreTags: publish.coreTags,
     coreHashtags: publish.coreHashtags,
     shortCoreHashtags: publish.shortCoreHashtags,

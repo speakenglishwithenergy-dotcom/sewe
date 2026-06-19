@@ -15,6 +15,7 @@ import {
   formatTikTokShortCaption,
 } from './social-metadata.normalize';
 import { getPublishOutputDir } from './social-metadata.export';
+import { nextScheduledTime } from './schedule.util';
 import { TikTokPublisherService } from './tiktok-publisher.service';
 import { YouTubePublisherService } from './youtube-publisher.service';
 
@@ -142,6 +143,14 @@ function isAlreadyPublished(
   return Boolean(status.facebook?.[format]?.id);
 }
 
+function resolvePublishAt(
+  timeHhmm: string | undefined,
+  timezone: string | undefined,
+): Date | undefined {
+  if (!timeHhmm) return undefined;
+  return nextScheduledTime(timeHhmm, timezone ?? 'UTC');
+}
+
 export class SocialPublisherService {
   async publishProject(
     ctx: ChannelContext,
@@ -181,6 +190,10 @@ export class SocialPublisherService {
     const status = await loadPublishStatus(projectDir);
     const results: PublishResult[] = [];
 
+    const schedule = pub.youtubeSchedule;
+    const longPublishAt = resolvePublishAt(schedule?.longTime, schedule?.timezone);
+    const shortPublishAt = resolvePublishAt(schedule?.shortTime, schedule?.timezone);
+
     if (formats.includes('long')) {
       const videoPath = await resolveLongVideoPath(projectDir, podcastScript);
       if (!videoPath) {
@@ -203,6 +216,7 @@ export class SocialPublisherService {
             tags: socialMeta.youtube.tags,
             pinnedComment: socialMeta.youtube.pinnedComment,
             format: 'long',
+            publishAt: longPublishAt,
           });
           results.push(result);
           await recordAndSaveResult(projectDir, status, result);
@@ -252,6 +266,7 @@ export class SocialPublisherService {
             tags: [],
             pinnedComment: socialMeta.youtubeShort.pinnedComment,
             format: 'short',
+            publishAt: shortPublishAt,
           });
           results.push(result);
           await recordAndSaveResult(projectDir, status, result);

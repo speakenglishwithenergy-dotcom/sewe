@@ -444,6 +444,20 @@ Variables read by the CLI and pipeline (set in `.env`):
 | `YOUTUBE_PUBLISH_PRIVACY` | no | `private` | `private`, `unlisted`, or `public`. |
 | `YOUTUBE_CATEGORY_ID` | no | `27` | YouTube category (27 = Education). |
 
+### YouTube scheduled publishing
+
+Set `youtubeSchedule` in `channel.yaml` under the `publish` key to automatically schedule uploads:
+
+```yaml
+publish:
+  youtubeSchedule:
+    longTime: "11:30"   # wall-clock time for long-form video (24-h HH:MM)
+    shortTime: "17:30"  # wall-clock time for Shorts
+    timezone: "Asia/Ho_Chi_Minh"  # IANA timezone (default: UTC)
+```
+
+When a schedule is configured, the video is uploaded immediately (as `private`) and YouTube publishes it at the next occurrence of the specified wall-clock time. If the target time for today has already passed, the video is scheduled for the following day.
+
 ### Facebook publish
 
 | Variable | Required | Default | Description |
