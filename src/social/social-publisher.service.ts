@@ -190,9 +190,13 @@ export class SocialPublisherService {
     const status = await loadPublishStatus(projectDir);
     const results: PublishResult[] = [];
 
-    const schedule = pub.youtubeSchedule;
-    const longPublishAt = resolvePublishAt(schedule?.longTime, schedule?.timezone);
-    const shortPublishAt = resolvePublishAt(schedule?.shortTime, schedule?.timezone);
+    const ytSchedule = pub.youtubeSchedule;
+    const longPublishAt = resolvePublishAt(ytSchedule?.longTime, ytSchedule?.timezone);
+    const shortPublishAt = resolvePublishAt(ytSchedule?.shortTime, ytSchedule?.timezone);
+
+    const fbSchedule = pub.facebookSchedule;
+    const fbLongPublishAt = resolvePublishAt(fbSchedule?.longTime, fbSchedule?.timezone);
+    const fbShortPublishAt = resolvePublishAt(fbSchedule?.shortTime, fbSchedule?.timezone);
 
     if (formats.includes('long')) {
       const videoPath = await resolveLongVideoPath(projectDir, podcastScript);
@@ -233,6 +237,7 @@ export class SocialPublisherService {
             caption: formatFacebookCaption(socialMeta.facebook, pub),
             firstComment: socialMeta.facebook.firstComment,
             format: 'long',
+            publishAt: fbLongPublishAt,
           });
           results.push(result);
           await recordAndSaveResult(projectDir, status, result);
@@ -283,6 +288,7 @@ export class SocialPublisherService {
             caption: formatFacebookShortCaption(socialMeta.facebookShort, pub),
             firstComment: socialMeta.facebookShort.firstComment,
             format: 'short',
+            publishAt: fbShortPublishAt,
           });
           results.push(result);
           await recordAndSaveResult(projectDir, status, result);

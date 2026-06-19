@@ -44,6 +44,8 @@ export interface FacebookUploadInput {
   caption: string;
   firstComment: string;
   format: 'long' | 'short';
+  /** When set, the video is scheduled for this UTC time. */
+  publishAt?: Date;
 }
 
 interface GraphErrorBody {
@@ -70,20 +72,27 @@ export class FacebookPublisherService {
   }
 
   private async uploadPageVideo(input: FacebookUploadInput): Promise<PublishResult> {
-    const visibility = this.publishLive ? 'public' : 'unpublished (private)';
+    const scheduled = input.publishAt != null;
+    const visibility = scheduled
+      ? `scheduled for ${input.publishAt!.toISOString()}`
+      : this.publishLive
+        ? 'public'
+        : 'unpublished (private)';
     logger.info(`Uploading Facebook video (${visibility}) → ${input.videoPath}`);
 
     const fileSize = (await fs.promises.stat(input.videoPath)).size;
     const { videoId, sessionId, startOffset, endOffset } = await this.startResumableUpload(fileSize);
     await this.transferResumableVideo(input.videoPath, fileSize, sessionId, startOffset, endOffset);
-    await this.finishResumableUpload(sessionId, input.caption);
+    await this.finishResumableUpload(sessionId, input.caption, input.publishAt);
 
     const url = `https://www.facebook.com/${videoId}`;
     logger.success(`Facebook video uploaded (${visibility}) → ${url}`);
 
     await this.setVideoThumbnail(videoId, input.thumbnailPath);
 
-    const commentPosted = await this.maybePostFirstComment(videoId, input.firstComment);
+    const commentPosted = scheduled
+      ? (logger.info('Skipping Facebook first comment — video is scheduled (post manually after it goes live)'), false)
+      : await this.maybePostFirstComment(videoId, input.firstComment);
 
     return {
       platform: 'facebook',
@@ -170,14 +179,23 @@ export class FacebookPublisherService {
     }
   }
 
-  private async finishResumableUpload(sessionId: string, caption: string): Promise<void> {
+  private async finishResumableUpload(
+    sessionId: string,
+    caption: string,
+    publishAt?: Date,
+  ): Promise<void> {
     const params = new URLSearchParams({
       access_token: this.config.accessToken,
       upload_phase: 'finish',
       upload_session_id: sessionId,
       description: caption,
-      published: this.publishLive ? 'true' : 'false',
+      published: 'false',
     });
+    if (publishAt) {
+      params.set('scheduled_publish_time', String(Math.floor(publishAt.getTime() / 1000)));
+    } else if (this.publishLive) {
+      params.set('published', 'true');
+    }
     await this.postUrlEncoded(`${GRAPH_VIDEO_BASE}/${this.config.pageId}/videos?${params.toString()}`);
   }
 
@@ -204,8 +222,13 @@ export class FacebookPublisherService {
   }
 
   private async uploadReel(input: FacebookUploadInput): Promise<PublishResult> {
-    const videoState = this.publishLive ? 'PUBLISHED' : 'DRAFT';
-    const visibility = this.publishLive ? 'public' : 'draft (private)';
+    const scheduled = input.publishAt != null;
+    const videoState = scheduled ? 'SCHEDULED' : this.publishLive ? 'PUBLISHED' : 'DRAFT';
+    const visibility = scheduled
+      ? `scheduled for ${input.publishAt!.toISOString()}`
+      : this.publishLive
+        ? 'public'
+        : 'draft (private)';
     logger.info(`Uploading Facebook Reel (${visibility}) → ${input.videoPath}`);
 
     const startParams = new URLSearchParams({
@@ -250,19 +273,24 @@ export class FacebookPublisherService {
       video_state: videoState,
       description: input.caption,
     });
+    if (input.publishAt) {
+      finishParams.set('scheduled_publish_time', String(Math.floor(input.publishAt.getTime() / 1000)));
+    }
     await this.postJson(
       `${GRAPH_BASE}/${this.config.pageId}/video_reels?${finishParams.toString()}`,
       {},
     );
 
-    const url = this.publishLive
+    const url = this.publishLive || scheduled
       ? `https://www.facebook.com/reel/${videoId}`
       : `https://www.facebook.com/${videoId}`;
     logger.success(`Facebook Reel uploaded (${visibility}) → ${url}`);
 
     await this.setVideoThumbnail(videoId, input.thumbnailPath);
 
-    const commentPosted = await this.maybePostFirstComment(videoId, input.firstComment);
+    const commentPosted = scheduled
+      ? (logger.info('Skipping Facebook first comment — Reel is scheduled (post manually after it goes live)'), false)
+      : await this.maybePostFirstComment(videoId, input.firstComment);
 
     return {
       platform: 'facebook',

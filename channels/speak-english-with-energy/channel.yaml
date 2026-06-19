@@ -140,10 +140,14 @@ publish:
   youtubeChannelUrl: https://www.youtube.com/@SpeakEnglishWithEnergyy
   facebookPageUrl: https://www.facebook.com/SpeakEnglishWithEnergy
   tiktokChannelUrl: https://www.tiktok.com/@speakenglishwithenergy
-  youtubeLongPlaylistId: PL2oWjiR82NaiofKkP5jO6ahmMGYG3
+  youtubeLongPlaylistId: PL2oWjiR82NaiofKkP5jO6ahmMGYG3-Qad
   youtubeShortPlaylistId: PL2oWjiR82Nai5yg3d5E27T4e9OnnN_MhS
   titleSuffix: " | English Podcast for Learning"
   youtubeSchedule:
+    longTime: "11:30"
+    shortTime: "17:30"
+    timezone: "Asia/Ho_Chi_Minh"
+  facebookSchedule:
     longTime: "11:30"
     shortTime: "17:30"
     timezone: "Asia/Ho_Chi_Minh"
