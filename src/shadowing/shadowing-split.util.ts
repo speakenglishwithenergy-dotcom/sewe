@@ -1,5 +1,6 @@
 import { DialogueLine } from '../types';
 import { DEFAULT_MAX_WORDS_PER_LINE } from './shadowing.constants';
+import { inferContinuesStory } from './shadowing-continues.util';
 
 function splitIntoSentences(text: string): string[] {
   const trimmed = text.trim();
@@ -32,6 +33,16 @@ export function splitDraftIntoLines(
 
   const lines: DialogueLine[] = [];
   let buffer = '';
+  let previousLineText: string | null = null;
+
+  const pushLine = (text: string): void => {
+    lines.push({
+      speaker,
+      text,
+      continuesStory: inferContinuesStory(previousLineText),
+    });
+    previousLineText = text;
+  };
 
   for (const sentence of sentences) {
     const combinedWords = buffer ? wordCount(`${buffer} ${sentence}`) : wordCount(sentence);
@@ -41,12 +52,12 @@ export function splitDraftIntoLines(
       continue;
     }
 
-    lines.push({ speaker, text: buffer });
+    pushLine(buffer);
     buffer = sentence;
   }
 
   if (buffer) {
-    lines.push({ speaker, text: buffer });
+    pushLine(buffer);
   }
 
   return lines;

@@ -10,7 +10,7 @@ import {
   isWavFilePlausible,
   prepareTextForTts,
 } from './tts-stability';
-import { pauseAfterLine } from './segment-pause.util';
+import { pauseAfterLine, SegmentPauseOptions } from './segment-pause.util';
 import { AudioSegment, DialogueLine } from '../types';
 import { logger } from '../utils/logger';
 
@@ -93,9 +93,12 @@ export class TTSService {
   async generateSegments(
     script: DialogueLine[],
     audioDir: string,
-    pauseBetweenSegments?: number,
+    pauseConfig?: number | SegmentPauseOptions,
   ): Promise<AudioSegment[]> {
-    const useAdaptivePause = pauseBetweenSegments === undefined;
+    const useAdaptivePause = pauseConfig === undefined || typeof pauseConfig === 'object';
+    const uniformPause = typeof pauseConfig === 'number' ? pauseConfig : undefined;
+    const adaptivePauseOptions =
+      typeof pauseConfig === 'object' ? pauseConfig : undefined;
     await fs.mkdir(audioDir, { recursive: true });
 
     logger.info(
@@ -136,8 +139,8 @@ export class TTSService {
       const duration = await this.ffmpeg.getAudioDuration(filePath);
 
       const pauseAfter = useAdaptivePause
-        ? pauseAfterLine(script, i)
-        : (i < script.length - 1 ? pauseBetweenSegments! : 0);
+        ? pauseAfterLine(script, i, adaptivePauseOptions)
+        : (i < script.length - 1 ? uniformPause! : 0);
 
       segments.push({
         index,

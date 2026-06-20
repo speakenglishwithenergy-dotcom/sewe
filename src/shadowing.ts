@@ -5,7 +5,7 @@ import { MediaRegenMode, ShadowingService } from './shadowing/shadowing.service'
 import { logger } from './utils/logger';
 
 type CliArgs =
-  | { mode: 'new'; draft: string; title?: string; force: boolean }
+  | { mode: 'new'; draft: string; title?: string; test: boolean; force: boolean }
   | {
       mode: 'resume';
       workspaceId: string;
@@ -13,7 +13,6 @@ type CliArgs =
       test: boolean;
       force: boolean;
       mediaRegen: MediaRegenMode;
-      review: boolean;
     }
   | { mode: 'list' };
 
@@ -55,7 +54,6 @@ function parseArgs(): CliArgs {
 
   const test = args.includes('--test');
   const force = args.includes('--force');
-  const review = args.includes('--review');
   const mediaRegen = parseMediaRegen(args);
 
   if (force && mediaRegen !== 'none') {
@@ -66,10 +64,6 @@ function parseArgs(): CliArgs {
     logger.error('Media regen flags cannot be combined with --test');
     process.exit(1);
   }
-  if (mediaRegen !== 'none' && review) {
-    logger.error('Media regen flags cannot be combined with --review');
-    process.exit(1);
-  }
 
   const titleArg = args.find((a) => a.startsWith('--title='));
   const title = titleArg?.replace('--title=', '').replace(/^["']|["']$/g, '').trim() || undefined;
@@ -78,14 +72,14 @@ function parseArgs(): CliArgs {
   const workspaceId = workspaceArg?.replace('--workspace=', '').replace(/^["']|["']$/g, '').trim();
 
   if (workspaceId) {
-    return { mode: 'resume', workspaceId, title, test, force, mediaRegen, review };
+    return { mode: 'resume', workspaceId, title, test, force, mediaRegen };
   }
 
   const draftArg = args.find((a) => a.startsWith('--draft='));
   const draft = draftArg?.replace('--draft=', '').replace(/^["']|["']$/g, '').trim();
 
   if (draft) {
-    return { mode: 'new', draft, title, force };
+    return { mode: 'new', draft, title, test, force };
   }
 
   logger.error('Missing required flag. Use --draft=PATH for a new workspace or --workspace=ID to resume.');
@@ -97,28 +91,25 @@ function printHelp(): void {
   console.log(`Usage:
   npm run shadowing -- --draft=./my-script.txt
   npm run shadowing -- --draft=./my-script.txt --title="Episode title"
+  npm run shadowing -- --draft=./my-script.txt --test
   npm run shadowing -- --workspace=20260616-230137
   npm run shadowing -- --workspace=20260616-230137 --test
   npm run shadowing -- --workspace=20260616-230137 --force
   npm run shadowing -- --workspace=20260616-230137 --force-audio
   npm run shadowing -- --workspace=20260616-230137 --force-subtitles
   npm run shadowing -- --workspace=20260616-230137 --force-media
-  npm run shadowing -- --workspace=20260616-230137 --review
-  npm run shadowing -- --workspace=20260616-230137 --review --force
   npm run shadowing -- --list
 
 Workflow:
-  1. --draft=PATH     Create workspace + AI writes script.md for you to review
-  2. Edit script.md   Change the "## Script" section; apply or ignore AI suggestions
-  3. --workspace=ID   Build script.json and render shadowing video
+  1. --draft=PATH     Create workspace from draft and generate shadowing video
+  2. --workspace=ID   Resume or regenerate an existing workspace
 
 Options:
-  --draft=PATH         Create a new workspace from a text draft (generates script.md only)
+  --draft=PATH         Create a new workspace from a text draft and run the full pipeline
   --workspace=ID       Continue an existing workspace (script.json + audio + video)
-  --review             Regenerate script.md from draft.txt (use with --workspace)
   --title=TEXT         Override episode title
   --test               Format script.json only — no audio or video
-  --force              Regenerate script.json + all media, or script.md with --review
+  --force              Regenerate script.json + all media from draft
   --force-audio        Regenerate TTS segments + podcast.mp3 only (keeps script.json)
   --force-subtitles    Regenerate subtitles.ass + shadowing.mp4 only (keeps script.json + audio)
   --force-media        Regenerate all media (audio + subtitles + video) — keeps script.json
@@ -154,15 +145,8 @@ async function main(): Promise<void> {
     }
 
     const workspace = await service.createWorkspace(resolved, args.title);
-    await service.generateReview(workspace.id, {
-      force: true,
-      title: args.title,
-    });
-    return;
-  }
-
-  if (args.review) {
-    await service.generateReview(args.workspaceId, {
+    await service.run(workspace.id, {
+      test: args.test,
       force: args.force,
       title: args.title,
     });

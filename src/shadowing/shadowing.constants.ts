@@ -5,7 +5,6 @@ export const DEFAULTS_DIR = 'defaults';
 export const WORKSPACES_DIR = 'workspaces';
 
 export const DRAFT_FILE = 'draft.txt';
-export const REVIEW_FILE = 'script.md';
 export const SCRIPT_FILE = 'script.json';
 export const WORKSPACE_META_FILE = 'workspace.json';
 
@@ -18,6 +17,9 @@ export const VIDEO_FILE = 'shadowing.mp4';
 export const PROFILE_FILE = 'profile.yaml';
 
 export const DEFAULT_MAX_WORDS_PER_LINE = 20;
+
+/** Shorter gap when a line continues the previous thought (mid-turn). */
+export const SHADOWING_SHORT_PAUSE_BETWEEN_SEGMENTS = 0.1;
 
 export function getShadowingRoot(rootDir = process.cwd()): string {
   return path.join(rootDir, SHADOWING_DIR);

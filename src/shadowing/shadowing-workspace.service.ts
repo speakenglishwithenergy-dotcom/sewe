@@ -3,7 +3,6 @@ import fs from 'fs/promises';
 import {
   DRAFT_FILE,
   getWorkspacesRoot,
-  REVIEW_FILE,
   SCRIPT_FILE,
   SHADOWING_OUTPUT_DIR,
   WORKSPACE_META_FILE,
@@ -27,10 +26,6 @@ export class ShadowingWorkspaceService {
 
   getDraftPath(workspace: Pick<ShadowingWorkspace, 'id'>): string {
     return path.join(this.getDir(workspace), DRAFT_FILE);
-  }
-
-  getReviewPath(workspace: Pick<ShadowingWorkspace, 'id'>): string {
-    return path.join(this.getDir(workspace), REVIEW_FILE);
   }
 
   getScriptPath(workspace: Pick<ShadowingWorkspace, 'id'>): string {
@@ -105,14 +100,6 @@ export class ShadowingWorkspaceService {
     return trimmed;
   }
 
-  async readReview(workspace: ShadowingWorkspace): Promise<string> {
-    const content = await fs.readFile(this.getReviewPath(workspace), 'utf-8');
-    const trimmed = content.trim();
-    if (!trimmed) {
-      throw new Error(`Review file is empty: ${this.getReviewPath(workspace)}`);
-    }
-    return trimmed;
-  }
 }
 
 function generateWorkspaceId(): string {

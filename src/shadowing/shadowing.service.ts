@@ -10,11 +10,12 @@ import { ChannelBranding } from '../channel/channel.types';
 import { SubtitleService } from '../subtitles/subtitle.service';
 import { resolveSubtitleStyle } from '../subtitles/subtitle-config.util';
 import { VideoService } from '../video/video.service';
-import { PodcastScript } from '../types';
+import { PAUSE_BETWEEN_SEGMENTS, PodcastScript } from '../types';
 import { logger } from '../utils/logger';
 import {
   AUDIO_DIR_NAME,
   PODCAST_AUDIO_FILE,
+  SHADOWING_SHORT_PAUSE_BETWEEN_SEGMENTS,
   SUBTITLES_FILE,
   VIDEO_FILE,
 } from './shadowing.constants';
@@ -34,11 +35,6 @@ export interface ShadowingRunOptions {
   test?: boolean;
   force?: boolean;
   mediaRegen?: MediaRegenMode;
-  title?: string;
-}
-
-export interface ShadowingReviewOptions {
-  force?: boolean;
   title?: string;
 }
 
@@ -63,43 +59,10 @@ export class ShadowingService {
     return workspace;
   }
 
-  async generateReview(
-    workspaceId: string,
-    options: ShadowingReviewOptions = {},
-  ): Promise<ShadowingWorkspace> {
-    const ctx = await this.profileService.loadDefaults();
-    const workspace = await this.workspaceService.load(workspaceId);
-    const reviewPath = this.workspaceService.getReviewPath(workspace);
-
-    if (!options.force && (await this.fileExists(reviewPath))) {
-      logger.info(`⏭  Review already exists — edit before continuing`);
-      this.printReviewSummary(workspace);
-      return workspace;
-    }
-
-    const draft = await this.workspaceService.readDraft(workspace);
-    const title = options.title ?? workspace.title;
-
-    logger.step(1, 1, 'Generating review markdown from draft...');
-    const openai = new OpenAIService();
-    const scriptService = new ShadowingScriptService(openai, ctx.speakerName);
-    const markdown = await scriptService.generateReviewFromDraft(draft, title);
-    await fs.writeFile(reviewPath, markdown, 'utf-8');
-    logger.info(`Review saved → ${reviewPath}`);
-
-    this.printReviewSummary(workspace);
-    return workspace;
-  }
-
   async run(workspaceId: string, options: ShadowingRunOptions = {}): Promise<void> {
     const ctx = await this.profileService.loadDefaults();
     const workspace = await this.workspaceService.load(workspaceId);
     const title = options.title ?? workspace.title;
-
-    const reviewReady = await this.ensureReviewReady(workspace, title, options.force ?? false);
-    if (!reviewReady) {
-      return;
-    }
 
     console.time('Shadowing pipeline');
 
@@ -141,27 +104,6 @@ export class ShadowingService {
     return this.workspaceService.list();
   }
 
-  private async ensureReviewReady(
-    workspace: ShadowingWorkspace,
-    title: string | undefined,
-    force: boolean,
-  ): Promise<boolean> {
-    const reviewPath = this.workspaceService.getReviewPath(workspace);
-    const scriptPath = this.workspaceService.getScriptPath(workspace);
-
-    if (await this.fileExists(reviewPath)) {
-      return true;
-    }
-
-    if (await this.fileExists(scriptPath)) {
-      return true;
-    }
-
-    logger.info('No script.md yet — generating review from draft first...');
-    await this.generateReview(workspace.id, { force, title });
-    return false;
-  }
-
   private async loadOrGenerateScript(
     ctx: ShadowingContext,
     workspace: ShadowingWorkspace,
@@ -169,7 +111,6 @@ export class ShadowingService {
     options: ShadowingRunOptions,
   ): Promise<PodcastScript> {
     const scriptPath = this.workspaceService.getScriptPath(workspace);
-    const reviewPath = this.workspaceService.getReviewPath(workspace);
 
     if (!options.force && !options.test) {
       try {
@@ -187,18 +128,11 @@ export class ShadowingService {
       }
     }
 
-    if (!(await this.fileExists(reviewPath))) {
-      throw new Error(
-        `Review file not found: ${reviewPath}\nRun review generation first, then edit script.md before continuing.`,
-      );
-    }
+    const draft = await this.workspaceService.readDraft(workspace);
 
-    const review = await this.workspaceService.readReview(workspace);
-
-    logger.step(1, options.test ? 1 : 4, 'Formatting review into script.json...');
-    const openai = new OpenAIService();
-    const scriptService = new ShadowingScriptService(openai, ctx.speakerName);
-    const script = await scriptService.generateFromReview(review, title);
+    logger.step(1, options.test ? 1 : 4, 'Formatting draft into script.json...');
+    const scriptService = new ShadowingScriptService(ctx.speakerName);
+    const script = await scriptService.generateFromDraft(draft, title);
     await fs.writeFile(scriptPath, JSON.stringify(script, null, 2), 'utf-8');
     logger.info(`Script saved → ${scriptPath}`);
     return script;
@@ -260,7 +194,10 @@ export class ShadowingService {
       await this.unlinkIfExists(videoPath);
     }
 
-    const segments = await ttsService.generateSegments(script.script, audioDir);
+    const segments = await ttsService.generateSegments(script.script, audioDir, {
+      shortPause: SHADOWING_SHORT_PAUSE_BETWEEN_SEGMENTS,
+      longPause: PAUSE_BETWEEN_SEGMENTS,
+    });
 
     let didAudio = false;
     if (!(await this.fileExists(podcastPath)) || regenAudio) {
@@ -309,24 +246,6 @@ export class ShadowingService {
 
   private getVideoPath(workspace: ShadowingWorkspace): string {
     return path.join(this.workspaceService.getShadowingDir(workspace), VIDEO_FILE);
-  }
-
-  private printReviewSummary(workspace: ShadowingWorkspace): void {
-    logger.info('');
-    logger.divider('═');
-    logger.success('Review ready — edit script.md, then continue.');
-    logger.divider('═');
-    console.log(`
-  Workspace : ${workspace.id}
-  Review    : ${this.workspaceService.getReviewPath(workspace)}
-
-  Next steps:
-    1. Open script.md and edit the "## Script" section (apply or ignore AI suggestions).
-    2. Preview script.json only:
-         npm run shadowing -- --workspace=${workspace.id} --test
-    3. Generate full video:
-         npm run shadowing -- --workspace=${workspace.id}
-`);
   }
 
   private printTestSummary(workspace: ShadowingWorkspace, script: PodcastScript): void {

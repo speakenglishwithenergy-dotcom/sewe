@@ -1,6 +1,6 @@
 # Why I Started a Programming Channel in English (Even Though I’m Not Fluent)
 
-## 🕒 Intro (0:00 – 0:20) — **Strong Question Hook**
+## 🕒 Intro — **Strong Question Hook**
 
 **Audio:**
 
@@ -24,7 +24,7 @@
 
 ---
 
-## về 🕒 Part 1 – I’m Not Good at English (0:20 – 0:50). Xxxxxxxc.
+## 🕒 Part 1 – I’m Not Good at English (0:20 – 0:50)
 
 **Audio:**
 
@@ -51,7 +51,7 @@
 
 ---
 
-## 🕒 Part 2 – Why English? (0:50 – 1:40)
+## 🕒 Part 2 – Why English?
 
 **Audio:**
 
@@ -60,9 +60,9 @@
 > 
 > First, because programming is written in English.
 > 
-> Yeah, if you clicked in this video, you may be a programmer.??
+> Yeah, if you clicked in this video, you may be a programmer, is it correct?
 > 
-> Most documentation, tutorials,
+> And you known, Most documentation, tutorials,
 > 
 > and programming languages
 > 
@@ -98,28 +98,34 @@
 
 ---
 
-## 🕒 Part 3 – This Channel Is My Practice (1:40 – 2:20)
+## 🕒 Part 3 – This Channel Is My Practice
 
 **Audio:**
 
-> This channel is not only about teaching programming.
 > 
 > 
-> It is also my personal practice.
 > 
-> Tôi đã thử rất nhiều cách để cải thiện khả năng tiếng anh của mình nhưng dường như tất cả đều không hiệu quả lắm. Tuy nhiên tôi cũng nhận ra rằng để học tốt tiếng anh thì cách duy nhất là lặp lại liên tục, và một điều nữa là tôi thích và ấp ủ làm một kênh youtube từ rất lâu nhưng tôi vẫn chưa bắt đầu thực hiện nó. Một điều khác nữa là tôi thích chia sẽ về những kiến thức về tech/lập trình hay đơn giản là kể chuyện/tám chuyện về lập trình. Vì vậy tôi đã quyết định kết hợp lại và tạo ra kênh youtube này, tôi tin rằng việc này sẽ giúp tôi cãi thiện và phát triển bản thân rất nhiều vì tôi tin rằng khi mình chia sẽ, mình sẽ học được thêm một lần nữa để nắm vững kiến thức và giúp tôi có thể tự tin hơn trước máy quay và nói chuyện một cách tốt hơn. và một điều nữa là tôi muốn thay đổi bản thân một cách tích cực hơn.
+> This channel is more than a place where I share programming knowledge, tell stories, or talk about life as a developer.
 > 
-> Share suy nghĩ và cảm xúc của bản thân
+> It's also my personal practice.
 > 
-> I practice explaining complex ideas simply.
+> Over the years, I've tried many different ways to improve my English. I watched videos, took courses, used language learning apps. Some of them helped, but I still don't feel that my English has improved as much as I hoped.
 > 
-> I practice thinking in English.
+> Eventually, I realized something simple: the only way to get better at English is through regular practice. Not for a few days or weeks, but continuously over a long period of time.
 > 
-> I practice being more confident on camera.
+> However, the challenge is staying motivated. How do you practice every day without getting bored or giving up?
 > 
-> I believe progress comes from doing,
+> At the same time, starting a YouTube channel had always been one of my goals. I spent years thinking about it, but I never found a topic I truly connected with—or the confidence to finally get started.
 > 
-> not from waiting to be perfect.
+> Then I realized that I could combine several things I genuinely enjoy: learning English, sharing knowledge about programming, technology, and creating content.
+> 
+> That's why I started this channel.
+> 
+> By talking about topics I'm passionate about, I can practice my English in a meaningful way while sharing ideas and experiences that may help other developers. I also believe that teaching is one of the best ways to learn. Every time I explain something, I understand it more deeply myself.
+> 
+> Beyond improving my English, this channel is also helping me become more confident, communicate better, and step outside of my comfort zone.
+> 
+> Most importantly, it's part of my effort to become a better version of myself—one video at a time.
 > 
 
 **Visual:**
@@ -130,7 +136,7 @@
 
 ---
 
-## 🕒 Part 4 – Message to Viewers (2:20 – 2:50)
+## 🕒 Part 4 – Message to Viewers
 
 **Audio:**
 
@@ -139,7 +145,7 @@
 > 
 > I want you to remember this:
 > 
-> Your English does not need to be perfect
+> Your English doesn’t need to be perfect
 > 
 > to be valuable.
 > 
@@ -157,7 +163,7 @@
 
 ---
 
-## 🕒 Outro (2:50 – 3:10)
+## 🕒 Outro
 
 **Audio:**
 
@@ -181,5 +187,3 @@
 
 - Fade out
 - Text: *“Coding • Learning • Growth”*
-
-Tại sao không kết hợp việc lặp đi lặp lại đó bằng cách đọc để tạo ra video bổ ích

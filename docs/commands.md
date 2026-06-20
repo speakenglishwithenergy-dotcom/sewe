@@ -320,7 +320,7 @@ npm run generate:conversations-audio -- --dir=output/basic-english-conversations
 
 ## `npm run shadowing`
 
-Shadowing pipeline with a human review step: AI rewrites your draft into an editable `script.md` (with add/edit/remove suggestions), then you continue to IPA, TTS, and MP4.
+Shadowing pipeline: parse your draft into speakable lines, then generate IPA, TTS, subtitles, and MP4. Script text is taken directly from draft **Audio** blocks when present, otherwise split deterministically without rewriting.
 
 **Entry point:** `src/shadowing.ts`
 
@@ -328,12 +328,11 @@ Workspaces live under `shadowing/workspaces/<timestamp>/`. Default profile and b
 
 ### Workflow
 
-1. **Draft → review** — create workspace and `script.md`:
+1. **Draft → video** — create workspace and render in one step:
    ```bash
    npm run shadowing -- --draft=./my-script.txt
    ```
-2. **Edit** — open `shadowing/workspaces/<id>/script.md`, revise the `## Script` section (apply or ignore `## AI Suggestions`).
-3. **Continue** — build `script.json` and render video:
+2. **Resume** — regenerate or continue an existing workspace:
    ```bash
    npm run shadowing -- --workspace=<id>
    ```
@@ -341,40 +340,39 @@ Workspaces live under `shadowing/workspaces/<timestamp>/`. Default profile and b
 Optional preview of formatted lines only (no audio/video):
 
 ```bash
-npm run shadowing -- --workspace=<id> --test
+npm run shadowing -- --draft=./my-script.txt --test
 ```
 
 ### Arguments
 
 | Flag | Required | Description |
 |------|----------|-------------|
-| `--draft=PATH` | Yes (new) | Text file with your script draft. Creates workspace + `script.md` only. |
+| `--draft=PATH` | Yes (new) | Text file with your script draft. Creates workspace and runs the full pipeline. |
 | `--workspace=ID` | Yes (resume) | Continue workspace (e.g. `20260616-230137`). |
-| `--review` | No | Regenerate `script.md` from `draft.txt` (use with `--workspace`). |
 | `--title=TEXT` | No | Override episode title. |
 | `--test` | No | Format `script.json` only — no IPA, audio, or video. |
-| `--force` | No | Regenerate `script.json` and all media, or `script.md` with `--review`. |
+| `--force` | No | Regenerate `script.json` and all media from `draft.txt`. |
 | `--force-audio` | No | Regenerate TTS + `podcast.mp3` only — keeps `script.json`, subtitles, and video. |
 | `--force-subtitles` | No | Regenerate `subtitles.ass` + `shadowing.mp4` only — keeps `script.json` and audio. |
 | `--force-media` | No | Regenerate all media (audio + subtitles + video) — keeps `script.json`. |
 | `--list` | — | List shadowing workspaces. |
 
-Pick one regen flag at a time (`--force-audio`, `--force-subtitles`, or `--force-media`). Mutually exclusive with `--force`, `--test`, and `--review`.
+Pick one regen flag at a time (`--force-audio`, `--force-subtitles`, or `--force-media`). Mutually exclusive with `--force` and `--test`.
 
 ### Examples
 
 ```bash
-# Step 1: new workspace + AI review markdown
+# New workspace + full video from draft
 npm run shadowing -- --draft=./my-script.txt
 
-# Step 2: preview script.json from edited script.md
-npm run shadowing -- --workspace=20260616-230137 --test
+# Preview script.json only
+npm run shadowing -- --draft=./my-script.txt --test
 
-# Step 3: full video
+# Resume existing workspace
 npm run shadowing -- --workspace=20260616-230137
 
-# Regenerate script.md from draft after you change draft.txt
-npm run shadowing -- --workspace=20260616-230137 --review --force
+# Regenerate script + media after editing draft.txt
+npm run shadowing -- --workspace=20260616-230137 --force
 
 # Regenerate TTS + podcast.mp3 only (keeps existing subtitles and video)
 npm run shadowing -- --workspace=20260617-001341 --force-audio
@@ -391,7 +389,6 @@ npm run shadowing -- --workspace=20260617-001341 --force-media
 ```
 shadowing/workspaces/<id>/
   draft.txt
-  script.md          # Human-editable script + AI suggestions (review here first)
   script.json
   shadowing/
     audio/001.wav …
