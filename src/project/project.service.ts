@@ -12,7 +12,7 @@ function channelProjectsDir(channelId: string): string {
 
 export class ProjectService {
   async create(topic: string, channelId: string): Promise<Project> {
-    const id = generateId();
+    const id = await generateId(channelId);
     const project: Project = {
       id,
       channelId,
@@ -143,10 +143,35 @@ export class ProjectService {
   }
 }
 
-function generateId(): string {
-  const now = new Date();
+function formatDate(now: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0');
-  const date = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
-  const time = `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-  return `${date}-${time}`;
+  return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
+}
+
+async function generateId(channelId: string): Promise<string> {
+  const date = formatDate(new Date());
+  const index = await nextDailyIndex(channelId, date);
+  return `${String(index).padStart(3, '0')}-${date}`;
+}
+
+async function nextDailyIndex(channelId: string, date: string): Promise<number> {
+  const projectsDir = channelProjectsDir(channelId);
+  let maxIndex = 0;
+
+  try {
+    const entries = await fs.readdir(projectsDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const indexFirst = entry.name.match(new RegExp(`^(\\d{3})-${date}$`));
+      const dateFirst = entry.name.match(new RegExp(`^${date}-(\\d{3})$`));
+      const match = indexFirst ?? dateFirst;
+      if (match) {
+        maxIndex = Math.max(maxIndex, Number.parseInt(match[1], 10));
+      }
+    }
+  } catch {
+    // channel projects dir may not exist yet
+  }
+
+  return maxIndex + 1;
 }
