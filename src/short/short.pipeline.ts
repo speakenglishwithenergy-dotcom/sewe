@@ -142,7 +142,7 @@ export async function runShortPipeline(
 
   // ── Step 4: Subtitles ────────────────────────────────────────────────────
   logger.step(4, totalSteps, 'Generating short subtitle file...');
-  await services.subtitleService.generateShort(segments, paths.shortSubtitlesPath, 28);
+  await services.subtitleService.generateShort(segments, paths.shortSubtitlesPath);
 
   // ── Step 5: Merge audio ──────────────────────────────────────────────────
   logger.step(5, totalSteps, 'Merging short audio segments...');

@@ -18,6 +18,25 @@ export const SUBTITLE_KEYWORD_COLOUR = SUBTITLE_SHORT_HOOK_BACK_COLOUR;
 /** Dark navy #0D1B3D — hook box border (ASS BGR). */
 export const SUBTITLE_SHORT_HOOK_OUTLINE_COLOUR = '&H003D1B0D';
 
+/** Default short-form caption layout (1080×1920) — outline-only body, compact hook box. */
+export const DEFAULT_SHORT_SUBTITLE_STYLE = {
+  fontName: 'Arial',
+  fontSize: 64,
+  hookFontSize: 80,
+  alignment: 2,
+  marginL: 30,
+  marginR: 30,
+  marginV: 260,
+  lineWidth: 32,
+  useBox: false,
+  hookUseBox: true,
+  outlineWidth: 3,
+  shadow: 2,
+  defaultBoxPadding: 14,
+  hookBoxPadding: 18,
+  boxAlpha: 128,
+} as const;
+
 /**
  * Podcast subtitle style — mirrors the former FFmpeg `force_style` settings.
  * Play resolution matches libass SRT defaults so fontsize/position/border scale identically.

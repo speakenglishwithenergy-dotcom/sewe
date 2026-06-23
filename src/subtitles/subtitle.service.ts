@@ -107,11 +107,11 @@ export class SubtitleService {
   async generateShort(
     segments: AudioSegment[],
     outputPath: string,
-    lineWidth = 28,
   ): Promise<void> {
     logger.info('Generating ASS subtitle file for short video...');
 
     const LINGER_SECONDS = 0.3;
+    const lineWidth = this.style.short.lineWidth;
 
     const dialogues = segments.map((segment, i) => {
       const wrapped = wrapSubtitleText(segment.text, lineWidth, this.nonBreakingPhrases);

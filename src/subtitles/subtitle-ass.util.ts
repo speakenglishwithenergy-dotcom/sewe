@@ -1,24 +1,9 @@
 import { SHORT_THUMB_HEIGHT, SHORT_THUMB_WIDTH } from '../ai/thumbnail-image.util';
-import { ResolvedSubtitleStyle } from './subtitle-config.util';
-import {
-  buildPodcastAssStyleLine,
-  SUBTITLE_PRIMARY_COLOUR,
-} from './subtitle-style';
+import { ResolvedShortSubtitleStyle, ResolvedSubtitleStyle } from './subtitle-config.util';
+import { buildPodcastAssStyleLine } from './subtitle-style';
 
 const ASS_STYLE_FORMAT =
   'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding';
-
-/** Bottom-center placement shared by hook and default short captions. */
-const SHORT_SUBTITLE_ALIGNMENT = 2;
-const SHORT_SUBTITLE_MARGIN_V = 400;
-const SHORT_SUBTITLE_MARGIN_LR = 30;
-
-const SHORT_DEFAULT_FONT_SIZE = 80;
-const SHORT_HOOK_FONT_SIZE = 100;
-
-/** Internal padding between text and the background box border (BorderStyle 3 & 4). */
-const SHORT_DEFAULT_BOX_PADDING = 18;
-const SHORT_HOOK_BOX_PADDING = 22;
 
 /** Top-right title badge on shadowing / podcast video. */
 const SHADOWING_TITLE_ALIGNMENT = 9;
@@ -147,48 +132,94 @@ ${events.join('\n')}
 `;
 }
 
+function buildShortDefaultAssStyleLine(short: ResolvedShortSubtitleStyle): string {
+  if (short.useBox) {
+    return [
+      'Style: Default',
+      short.fontName,
+      String(short.fontSize),
+      short.primaryColour,
+      '&H000000FF',
+      '&H00000000',
+      short.defaultBackColour,
+      '0', '0', '0', '0', '100', '100', '0', '0',
+      '3', String(short.defaultBoxPadding), '2',
+      String(short.alignment),
+      String(short.marginL),
+      String(short.marginR),
+      String(short.marginV),
+      '1',
+    ].join(',');
+  }
+
+  return [
+    'Style: Default',
+    short.fontName,
+    String(short.fontSize),
+    short.primaryColour,
+    '&H000000FF',
+    short.defaultOutlineColour,
+    '&H00000000',
+    '0', '0', '0', '0', '100', '100', '0', '0',
+    '1', String(short.outlineWidth), String(short.shadow),
+    String(short.alignment),
+    String(short.marginL),
+    String(short.marginR),
+    String(short.marginV),
+    '1',
+  ].join(',');
+}
+
+function buildShortHookAssStyleLine(short: ResolvedShortSubtitleStyle): string {
+  if (short.hookUseBox) {
+    return [
+      'Style: Hook',
+      short.fontName,
+      String(short.hookFontSize),
+      short.primaryColour,
+      '&H000000FF',
+      short.hookOutlineColour,
+      short.hookBackgroundColour,
+      '-1', '0', '0', '0', '100', '100', '0', '0',
+      '4', String(short.hookBoxPadding), '0',
+      String(short.alignment),
+      String(short.marginL),
+      String(short.marginR),
+      String(short.marginV),
+      '1',
+    ].join(',');
+  }
+
+  return [
+    'Style: Hook',
+    short.fontName,
+    String(short.hookFontSize),
+    short.primaryColour,
+    '&H000000FF',
+    short.hookOutlineColour,
+    '&H00000000',
+    '-1', '0', '0', '0', '100', '100', '0', '0',
+    '1', String(short.outlineWidth), String(short.shadow),
+    String(short.alignment),
+    String(short.marginL),
+    String(short.marginR),
+    String(short.marginV),
+    '1',
+  ].join(',');
+}
+
 /**
  * Build a full ASS subtitle document for short-form video.
- * Hook style: larger bold text, brand-orange box, same bottom placement as default.
- * Default style: bottom captions on a dark semi-transparent box.
+ * Hook style: larger bold text with optional brand-orange box.
+ * Default style: outline + shadow by default, or semi-transparent box when configured.
  */
 export function buildShortAssDocument(
   dialogues: AssDialogueLine[],
   style: ResolvedSubtitleStyle,
 ): string {
-  const defaultStyle = [
-    'Style: Default',
-    'Arial',
-    String(SHORT_DEFAULT_FONT_SIZE),
-    SUBTITLE_PRIMARY_COLOUR,
-    '&H000000FF',
-    '&H00000000',
-    '&HEE000000',
-    '0', '0', '0', '0', '100', '100', '0', '0',
-    '3', String(SHORT_DEFAULT_BOX_PADDING), '2',
-    String(SHORT_SUBTITLE_ALIGNMENT),
-    String(SHORT_SUBTITLE_MARGIN_LR),
-    String(SHORT_SUBTITLE_MARGIN_LR),
-    String(SHORT_SUBTITLE_MARGIN_V),
-    '1',
-  ].join(',');
-
-  const hookStyle = [
-    'Style: Hook',
-    'Arial',
-    String(SHORT_HOOK_FONT_SIZE),
-    SUBTITLE_PRIMARY_COLOUR,
-    '&H000000FF',
-    style.hookOutlineColour,
-    style.hookBackgroundColour,
-    '-1', '0', '0', '0', '100', '100', '0', '0',
-    '4', String(SHORT_HOOK_BOX_PADDING), '0',
-    String(SHORT_SUBTITLE_ALIGNMENT),
-    String(SHORT_SUBTITLE_MARGIN_LR),
-    String(SHORT_SUBTITLE_MARGIN_LR),
-    String(SHORT_SUBTITLE_MARGIN_V),
-    '1',
-  ].join(',');
+  const short = style.short;
+  const defaultStyle = buildShortDefaultAssStyleLine(short);
+  const hookStyle = buildShortHookAssStyleLine(short);
 
   const events = dialogues.map((line) => {
     const start = formatAssTime(line.startSeconds);

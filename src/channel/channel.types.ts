@@ -43,6 +43,30 @@ export const SubtitleColorsSchema = z.object({
   background: z.string().min(1),
 });
 
+/** Optional short-form (9:16) subtitle layout and typography overrides. */
+export const ShortSubtitleStyleSchema = z.object({
+  fontName: z.string().min(1).optional(),
+  fontSize: z.number().int().positive().optional(),
+  hookFontSize: z.number().int().positive().optional(),
+  /** Hex outline colour for outline-only default captions (defaults to subtitleColors.background). */
+  outline: z.string().min(1).optional(),
+  outlineWidth: z.number().int().min(0).optional(),
+  shadow: z.number().int().min(0).optional(),
+  /** ASS alignment 1–9: 1=bottom-left … 2=bottom-center … 8=top-center … 9=top-right */
+  alignment: z.number().int().min(1).max(9).optional(),
+  marginL: z.number().int().min(0).optional(),
+  marginR: z.number().int().min(0).optional(),
+  marginV: z.number().int().min(0).optional(),
+  /** Max characters per short subtitle line before wrapping (default 32). */
+  lineWidth: z.number().int().positive().optional(),
+  /** Semi-transparent box behind body captions (default false — outline + shadow). */
+  useBox: z.boolean().optional(),
+  /** Orange brand box on the hook beat (default true). */
+  hookUseBox: z.boolean().optional(),
+  /** ASS back-colour alpha 0–255 when useBox is true (default 128 ≈ 50%). */
+  boxAlpha: z.number().int().min(0).max(255).optional(),
+});
+
 /** Optional podcast subtitle layout and typography overrides (ASS style fields). */
 export const SubtitleStyleSchema = z.object({
   fontName: z.string().min(1).optional(),
@@ -98,6 +122,7 @@ export const ThumbnailBrandingSchema = z.object({
 export const ChannelBrandingSchema = z.object({
   subtitleColors: SubtitleColorsSchema,
   subtitleStyle: SubtitleStyleSchema.optional(),
+  shortSubtitleStyle: ShortSubtitleStyleSchema.optional(),
   waveVisualizer: WaveVisualizerSchema.optional(),
   thumbnail: ThumbnailBrandingSchema,
 });

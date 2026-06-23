@@ -73,6 +73,16 @@ branding:
     keyword: "#FF7A00"
     ipa: "#2ba6e1"
     background: "#0D1B3D"
+  shortSubtitleStyle:
+    fontSize: 64
+    hookFontSize: 80
+    marginV: 260
+    lineWidth: 32
+    useBox: false
+    hookUseBox: true
+    outline: "#0D1B3D"
+    outlineWidth: 8
+    shadow: 8
   waveVisualizer:
     y: 200
   thumbnail:
