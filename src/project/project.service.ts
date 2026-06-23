@@ -150,11 +150,11 @@ function formatDate(now: Date): string {
 
 async function generateId(channelId: string): Promise<string> {
   const date = formatDate(new Date());
-  const index = await nextDailyIndex(channelId, date);
+  const index = await nextProjectIndex(channelId);
   return `${String(index).padStart(3, '0')}-${date}`;
 }
 
-async function nextDailyIndex(channelId: string, date: string): Promise<number> {
+async function nextProjectIndex(channelId: string): Promise<number> {
   const projectsDir = channelProjectsDir(channelId);
   let maxIndex = 0;
 
@@ -162,8 +162,8 @@ async function nextDailyIndex(channelId: string, date: string): Promise<number> 
     const entries = await fs.readdir(projectsDir, { withFileTypes: true });
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
-      const indexFirst = entry.name.match(new RegExp(`^(\\d{3})-${date}$`));
-      const dateFirst = entry.name.match(new RegExp(`^${date}-(\\d{3})$`));
+      const indexFirst = entry.name.match(/^(\d{3})-\d{8}$/);
+      const dateFirst = entry.name.match(/^\d{8}-(\d{3})$/);
       const match = indexFirst ?? dateFirst;
       if (match) {
         maxIndex = Math.max(maxIndex, Number.parseInt(match[1], 10));

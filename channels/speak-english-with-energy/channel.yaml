@@ -64,8 +64,8 @@ short:
   enabled: true
   hookSpeaker: Victor
   bodySpeaker: Lisa
-  minLines: 5
-  maxLines: 12
+  minLines: 7
+  maxLines: 15
 
 branding:
   subtitleColors:

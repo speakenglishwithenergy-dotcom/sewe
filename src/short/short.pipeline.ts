@@ -39,7 +39,7 @@ export interface ShortPipelineServices {
   videoService: VideoService;
 }
 
-const SHORT_TARGET_MAX_SECONDS = 60;
+const SHORT_TARGET_MAX_SECONDS = 80;
 
 async function fileExists(filePath: string): Promise<boolean> {
   try {
