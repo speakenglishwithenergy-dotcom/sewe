@@ -110,6 +110,7 @@ type CliArgs =
       metadataRegen?: MetadataRegenMode;
       publish?: boolean;
       forcePublish?: boolean;
+      publishNow?: boolean;
     }
   | {
       mode: 'resume';
@@ -121,6 +122,7 @@ type CliArgs =
       metadataRegen?: MetadataRegenMode;
       publish?: boolean;
       forcePublish?: boolean;
+      publishNow?: boolean;
     }
   | { mode: 'list'; channelId?: string }
   | { mode: 'list-channels' };
@@ -224,6 +226,7 @@ function parseArgs(): CliArgs {
   const force = args.includes('--force');
   const publish = args.includes('--publish');
   const forcePublish = args.includes('--force-publish');
+  const publishNow = args.includes('--now');
   const metadataRegen = parseMetadataRegenArg(args);
 
   if (short && podcast) {
@@ -264,9 +267,9 @@ function parseArgs(): CliArgs {
       process.exit(1);
     }
     if (metadataRegen) {
-      return { mode: 'resume', projectId, test: false, short: false, podcast: false, force: false, metadataRegen, publish, forcePublish };
+      return { mode: 'resume', projectId, test: false, short: false, podcast: false, force: false, metadataRegen, publish, forcePublish, publishNow };
     }
-    return { mode: 'resume', projectId, test, short, podcast, force, publish, forcePublish };
+    return { mode: 'resume', projectId, test, short, podcast, force, publish, forcePublish, publishNow };
   }
 
   const topicArg = args.find((a) => a.startsWith('--topic='));
@@ -313,7 +316,7 @@ function parseArgs(): CliArgs {
     logger.error('--regenerate-metadata requires --project');
     process.exit(1);
   }
-  return { mode: 'new', channelId, topic, scriptFile, test, short, podcast, force, publish, forcePublish };
+  return { mode: 'new', channelId, topic, scriptFile, test, short, podcast, force, publish, forcePublish, publishNow };
 }
 
 async function resolveMetadataRegenerate(
@@ -351,7 +354,7 @@ async function maybePublishProject(
   socialMeta: Awaited<ReturnType<SocialMetadataService['loadOrGenerate']>>,
   podcastScript: PodcastScript,
   shortScript: ShortScript | undefined,
-  options: { publish?: boolean; forcePublish?: boolean; formats?: PublishFormat[] },
+  options: { publish?: boolean; forcePublish?: boolean; publishNow?: boolean; formats?: PublishFormat[] },
 ): Promise<void> {
   if (!options.publish) return;
 
@@ -363,7 +366,7 @@ async function maybePublishProject(
     projectDir,
     socialMeta,
     podcastScript,
-    { force: options.forcePublish, formats: options.formats },
+    { force: options.forcePublish, formats: options.formats, now: options.publishNow },
     shortScript,
   );
 
@@ -621,6 +624,7 @@ async function main(): Promise<void> {
     await maybePublishProject(channelCtx, PROJECT_DIR, socialMeta, podcastScript, shortScript, {
       publish: args.publish,
       forcePublish: args.forcePublish,
+      publishNow: args.publishNow,
     });
     console.timeEnd('Total execution time');
     return;
@@ -702,6 +706,7 @@ async function main(): Promise<void> {
     await maybePublishProject(channelCtx, PROJECT_DIR, socialMeta, podcastScript, shortScript, {
       publish: args.publish,
       forcePublish: args.forcePublish,
+      publishNow: args.publishNow,
       formats: ['short'],
     });
     console.timeEnd('Total execution time');
@@ -915,6 +920,7 @@ async function main(): Promise<void> {
   await maybePublishProject(channelCtx, PROJECT_DIR, socialMeta, podcastScript, shortScript, {
     publish: args.publish,
     forcePublish: args.forcePublish,
+    publishNow: args.publishNow,
   });
   console.timeEnd('Total execution time');
 }

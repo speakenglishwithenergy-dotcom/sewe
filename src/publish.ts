@@ -17,11 +17,13 @@ type PublishCliArgs = {
   targets: PublishTarget[];
   formats: PublishFormat[];
   force: boolean;
+  now: boolean;
 };
 
 function parsePublishArgs(): PublishCliArgs {
   const args = process.argv.slice(2);
   const force = args.includes('--force');
+  const now = args.includes('--now');
 
   const projectArg = args.find((a) => a.startsWith('--project='));
   if (!projectArg) {
@@ -34,6 +36,7 @@ function parsePublishArgs(): PublishCliArgs {
     logger.info('  npm run publish -- --project=20260614-180724 --long-only');
     logger.info('  npm run publish -- --project=20260614-180724 --short-only');
     logger.info('  npm run publish -- --project=20260614-180724 --force');
+    logger.info('  npm run publish -- --project=20260614-180724 --long-only --now');
     process.exit(1);
   }
 
@@ -68,7 +71,7 @@ function parsePublishArgs(): PublishCliArgs {
   if (longOnly) formats = ['long'];
   if (shortOnly) formats = ['short'];
 
-  return { projectId, targets, formats, force };
+  return { projectId, targets, formats, force, now };
 }
 
 async function main(): Promise<void> {
@@ -116,7 +119,7 @@ async function main(): Promise<void> {
     projectDir,
     socialMeta,
     podcastScript,
-    { targets: args.targets, formats: args.formats, force: args.force },
+    { targets: args.targets, formats: args.formats, force: args.force, now: args.now },
     shortScript,
   );
 

@@ -25,6 +25,8 @@ export interface PublishOptions {
   targets?: PublishTarget[];
   formats?: PublishFormat[];
   force?: boolean;
+  /** Skip channel schedule and publish immediately (uses env privacy settings). */
+  now?: boolean;
 }
 
 async function fileExists(filePath: string): Promise<boolean> {
@@ -190,13 +192,22 @@ export class SocialPublisherService {
     const status = await loadPublishStatus(projectDir);
     const results: PublishResult[] = [];
 
+    const skipSchedule = options.now ?? false;
     const ytSchedule = pub.youtubeSchedule;
-    const longPublishAt = resolvePublishAt(ytSchedule?.longTime, ytSchedule?.timezone);
-    const shortPublishAt = resolvePublishAt(ytSchedule?.shortTime, ytSchedule?.timezone);
+    const longPublishAt = skipSchedule
+      ? undefined
+      : resolvePublishAt(ytSchedule?.longTime, ytSchedule?.timezone);
+    const shortPublishAt = skipSchedule
+      ? undefined
+      : resolvePublishAt(ytSchedule?.shortTime, ytSchedule?.timezone);
 
     const fbSchedule = pub.facebookSchedule;
-    const fbLongPublishAt = resolvePublishAt(fbSchedule?.longTime, fbSchedule?.timezone);
-    const fbShortPublishAt = resolvePublishAt(fbSchedule?.shortTime, fbSchedule?.timezone);
+    const fbLongPublishAt = skipSchedule
+      ? undefined
+      : resolvePublishAt(fbSchedule?.longTime, fbSchedule?.timezone);
+    const fbShortPublishAt = skipSchedule
+      ? undefined
+      : resolvePublishAt(fbSchedule?.shortTime, fbSchedule?.timezone);
 
     if (formats.includes('long')) {
       const videoPath = await resolveLongVideoPath(projectDir, podcastScript);

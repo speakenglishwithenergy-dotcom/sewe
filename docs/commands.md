@@ -114,6 +114,7 @@ Metadata-only mode skips video generation. Cannot be combined with `--test`, `--
 |------|-------------|
 | `--publish` | After generation (or metadata regen), upload to configured platforms. |
 | `--force-publish` | Re-upload even if `publish/publish-status.json` shows a prior upload. |
+| `--now` | Publish immediately — skip channel schedule (uses env privacy settings). |
 
 `--publish` cannot be used with `--test` (no video is produced in test mode).
 
@@ -209,6 +210,7 @@ Upload videos and post captions/comments for an existing project. Does not re-re
 |------|----------|---------|-------------|
 | `--project=ID` | **Yes** | — | Project ID to publish. |
 | `--force` | No | off | Re-upload even if already published. |
+| `--now` | No | off | Publish immediately (skip channel schedule). Uses `YOUTUBE_PUBLISH_PRIVACY` / `FACEBOOK_PUBLISH_LIVE`. |
 | `--youtube-only` | No | all platforms | Publish to YouTube only. |
 | `--facebook-only` | No | all platforms | Publish to Facebook only. |
 | `--tiktok-only` | No | all platforms | Publish to TikTok only. |
@@ -227,6 +229,9 @@ npm run publish -- --project=20260614-185052
 
 # YouTube long-form only
 npm run publish -- --project=20260614-185052 --youtube-only --long-only
+
+# Publish long-form immediately (no schedule)
+npm run publish -- --project=20260614-185052 --long-only --now
 
 # Re-upload short to TikTok
 npm run publish -- --project=20260614-185052 --tiktok-only --short-only --force
@@ -458,6 +463,8 @@ publish:
 ```
 
 When a schedule is configured, the video is uploaded immediately and held as scheduled/private. The platform publishes it at the next occurrence of the specified wall-clock time. If the target time for today has already passed, the video is scheduled for the following day.
+
+Use `--now` on `npm run publish` or `npm run generate -- --publish` to skip scheduling and publish live immediately (respects `YOUTUBE_PUBLISH_PRIVACY` and `FACEBOOK_PUBLISH_LIVE`).
 
 - **YouTube**: uploaded with `privacyStatus: private` + `publishAt`.
 - **Facebook video**: uploaded with `published: false` + `scheduled_publish_time`. First comment must be posted manually after it goes live.
