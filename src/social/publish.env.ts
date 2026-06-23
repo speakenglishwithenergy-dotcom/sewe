@@ -21,6 +21,7 @@ export interface PublishEnvConfig {
     pageId: string;
     accessToken: string;
     published: boolean;
+    firstCommentEnabled: boolean;
   };
   tiktok: {
     clientKey: string;
@@ -141,6 +142,10 @@ export function loadPublishEnvConfig(
       published: parseBooleanEnv(
         readEnv(envPrefix, 'FACEBOOK_PUBLISH_LIVE', channelId),
         false,
+      ),
+      firstCommentEnabled: parseBooleanEnv(
+        readEnv(envPrefix, 'FACEBOOK_FIRST_COMMENT', channelId),
+        true,
       ),
     },
     tiktok: {

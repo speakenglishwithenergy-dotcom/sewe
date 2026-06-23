@@ -477,6 +477,7 @@ Use `--now` on `npm run publish` or `npm run generate -- --publish` to skip sche
 | `FACEBOOK_PAGE_ID` | yes | — | Facebook Page ID. |
 | `FACEBOOK_PAGE_ACCESS_TOKEN` | yes | — | Long-lived Page access token. See [docs.md](../docs.md) for setup. |
 | `FACEBOOK_PUBLISH_LIVE` | no | `false` | `true` to publish live; `false` for draft/unpublished. Ignored when `facebookSchedule` is set. |
+| `FACEBOOK_FIRST_COMMENT` | no | `true` | `true` to auto-post the first comment after live publish; `false` to skip (post manually). Ignored when video is scheduled or draft. |
 
 ### TikTok publish
 

@@ -321,6 +321,10 @@ export class FacebookPublisherService {
   }
 
   private async maybePostFirstComment(objectId: string, message: string): Promise<boolean> {
+    if (!this.config.firstCommentEnabled) {
+      logger.info('Skipping Facebook first comment — FACEBOOK_FIRST_COMMENT is disabled');
+      return false;
+    }
     if (!this.publishLive) {
       logger.info(
         'Skipping Facebook first comment — video is unpublished/draft (post manually after publishing)',
