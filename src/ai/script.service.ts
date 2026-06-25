@@ -22,6 +22,8 @@ const MAX_SECTION_ATTEMPTS = 3;
 const SYSTEM_PROMPT =
   'You are a professional podcast script writer. Respond only with valid JSON matching the requested structure exactly.';
 
+const PodcastMetadataFieldsSchema = PodcastMetadataSchema.omit({ title: true });
+
 export class ScriptService {
   private readonly speakers: [string, ...string[]];
 
@@ -40,22 +42,27 @@ export class ScriptService {
     );
 
     if (test) {
-      const script = await this.openai.generateJSON(
+      const fields = await this.openai.generateJSON(
         buildScriptPrompt(this.ctx, topic, true, customScript),
         SYSTEM_PROMPT,
-        (data) => buildPodcastScriptSchema(this.speakers, 10).parse(data),
+        (data) =>
+          PodcastMetadataFieldsSchema.extend({
+            script: buildPodcastScriptSchema(this.speakers, 10).shape.script,
+          }).parse(data),
       );
+      const script: PodcastScript = { ...fields, title: topic };
       logger.success(
         `Script ready — "${script.title}" (${script.script.length} lines, ${countScriptWords(script.script)} words)`,
       );
       return script;
     }
 
-    const metadata = await this.openai.generateJSON(
+    const metadataFields = await this.openai.generateJSON(
       buildMetadataPrompt(this.ctx, topic, customScript),
       SYSTEM_PROMPT,
-      (data) => PodcastMetadataSchema.parse(data),
+      (data) => PodcastMetadataFieldsSchema.parse(data),
     );
+    const metadata = { ...metadataFields, title: topic };
 
     const allLines: DialogueLine[] = [];
 

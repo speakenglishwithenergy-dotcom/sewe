@@ -68,7 +68,7 @@ Main pipeline: script → TTS → subtitles → video → social metadata (and o
 | Flag | Required | Description |
 |------|----------|-------------|
 | `--channel=ID` | Yes (new project) | Channel to generate for (see `--list-channels`). |
-| `--topic="..."` | Yes (new project) | Start a new project with this topic. Quotes optional. |
+| `--topic="..."` | Yes (new project) | Episode topic and title (used verbatim for `script.json` title and video filename). Quotes optional. |
 | `--project=ID` | Yes (resume) | Resume an existing project by ID (e.g. `20260614-185052`). |
 | `--list-channels` | — | List all configured channels and exit. |
 | `--list` | — | List all projects. Optional `--channel=ID` to filter. |

@@ -95,12 +95,11 @@ Channel niche: ${niche}
 
 ${hostsBlock}
 
-Create episode metadata for a podcast on this topic: "${topic}"
+Episode title (fixed — do NOT change): "${topic}"
 ${draftBlock}
 
-Return ONLY a valid JSON object (no markdown):
+Return ONLY a valid JSON object (no markdown). Do NOT include a "title" field — the episode title is already set.
 {
-  "title": "Episode title — catchy, YouTube-friendly, max 70 characters, main keyword near the front",
   "description": "YouTube SEO description using \\n line breaks:\\n1) Hook line ≤125 chars with main keyword\\n2) Blank line\\n3) 📌 In this episode you'll learn: + exactly 3 bullet takeaways (• prefix)\\n4) Blank line\\n5) Warm 2-sentence summary\\n6) 🔔 Subscribe CTA aligned with the channel niche",
   "thumbnailText": "Stacked headline — 4 lines max, ALL CAPS, 5–8 words total, use \\n between lines",
   "thumbnailScene": "Topic-specific changes only — host expressions, gestures, props, book spine titles (uppercase, topic-related)"
@@ -219,7 +218,7 @@ export function buildScriptPrompt(
   if (test) {
     return `You are a professional podcast script writer.
 
-Write a very short podcast script (TEST MODE) on this topic: "${topic}"
+Episode title (fixed — use exactly): "${topic}"
 ${draftBlock}
 Hosts: ${hostList}.
 
@@ -230,9 +229,8 @@ Requirements:
 - Include an "ipa" field for every line: General American English IPA in slashes
 ${getContinuesStoryRules()}
 
-Return ONLY a valid JSON object:
+Return ONLY a valid JSON object. Do NOT include a "title" field — the episode title is already set.
 {
-  "title": "Episode title",
   "description": "Short description.",
   "thumbnailText": "WHY\\nSMART\\nPEOPLE STAY\\nSTUCK?",
   "thumbnailScene": "Topic-specific scene for hosts.",
