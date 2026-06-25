@@ -359,7 +359,7 @@ async function maybePublishProject(
   if (!options.publish) return;
 
   logger.info('');
-  logger.info('Publishing to YouTube and Facebook...');
+  logger.info('Publishing to social platforms...');
   const publisher = new SocialPublisherService();
   const results = await publisher.publishProject(
     ctx,

@@ -9,12 +9,13 @@ import {
   loadSocialMetadata,
   SocialPublisherService,
 } from './social/social-publisher.service';
-import { DEFAULT_PUBLISH_TARGETS, PublishFormat, PublishTarget } from './social/publish.types';
+import { getDefaultPublishTargets } from './social/publish.env';
+import { PublishFormat, PublishTarget } from './social/publish.types';
 import { logger } from './utils/logger';
 
 type PublishCliArgs = {
   projectId: string;
-  targets: PublishTarget[];
+  explicitTargets?: PublishTarget[];
   formats: PublishFormat[];
   force: boolean;
   now: boolean;
@@ -62,16 +63,16 @@ function parsePublishArgs(): PublishCliArgs {
     process.exit(1);
   }
 
-  let targets: PublishTarget[] = [...DEFAULT_PUBLISH_TARGETS];
-  if (youtubeOnly) targets = ['youtube'];
-  if (facebookOnly) targets = ['facebook'];
-  if (tiktokOnly) targets = ['tiktok'];
+  let explicitTargets: PublishTarget[] | undefined;
+  if (youtubeOnly) explicitTargets = ['youtube'];
+  if (facebookOnly) explicitTargets = ['facebook'];
+  if (tiktokOnly) explicitTargets = ['tiktok'];
 
   let formats: PublishFormat[] = ['long', 'short'];
   if (longOnly) formats = ['long'];
   if (shortOnly) formats = ['short'];
 
-  return { projectId, targets, formats, force, now };
+  return { projectId, explicitTargets, formats, force, now };
 }
 
 async function main(): Promise<void> {
@@ -113,13 +114,17 @@ async function main(): Promise<void> {
   logger.info(`Channel : ${channelCtx.config.id}`);
   logger.info(`Title   : ${podcastScript.title}`);
 
+  const targets =
+    args.explicitTargets
+    ?? getDefaultPublishTargets(channelCtx.config.env.prefix, channelCtx.config.id);
+
   const publisher = new SocialPublisherService();
   const results = await publisher.publishProject(
     channelCtx,
     projectDir,
     socialMeta,
     podcastScript,
-    { targets: args.targets, formats: args.formats, force: args.force, now: args.now },
+    { targets, formats: args.formats, force: args.force, now: args.now },
     shortScript,
   );
 

@@ -6,7 +6,8 @@ import { buildPodcastVideoPath, buildShortVideoPath } from '../utils/filename.ut
 import { logger } from '../utils/logger';
 import { FacebookPublisherService } from './facebook-publisher.service';
 import { isPublishConfigured, loadPublishEnvConfig } from './publish.env';
-import { DEFAULT_PUBLISH_TARGETS, PublishFormat, PublishResult, PublishedVideoRecord, PublishStatus, PublishTarget } from './publish.types';
+import { PublishFormat, PublishResult, PublishedVideoRecord, PublishStatus, PublishTarget } from './publish.types';
+import { getDefaultPublishTargets } from './publish.env';
 import {
   formatChannelDescription,
   formatChannelShortCaption,
@@ -162,11 +163,11 @@ export class SocialPublisherService {
     options: PublishOptions = {},
     shortScript?: ShortScript,
   ): Promise<PublishResult[]> {
-    const targets = options.targets ?? DEFAULT_PUBLISH_TARGETS;
+    const envPrefix = ctx.config.env.prefix;
+    const targets = options.targets ?? getDefaultPublishTargets(envPrefix, ctx.config.id);
     const formats = options.formats ?? (shortScript ? ['long', 'short'] : ['long']);
     const force = options.force ?? false;
     const pub = ctx.publish;
-    const envPrefix = ctx.config.env.prefix;
 
     const missing = targets.filter((target) => !isPublishConfigured(target, envPrefix, ctx.config.id));
     if (missing.length > 0) {

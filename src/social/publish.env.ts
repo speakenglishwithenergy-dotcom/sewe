@@ -100,6 +100,21 @@ export function isPublishConfigured(target: PublishTarget, envPrefix: string, ch
   );
 }
 
+export function isTikTokPublishEnabled(envPrefix: string, channelId?: string): boolean {
+  return parseBooleanEnv(
+    readEnv(envPrefix, 'TIKTOK_PUBLISH_ENABLED', channelId),
+    false,
+  );
+}
+
+export function getDefaultPublishTargets(envPrefix: string, channelId?: string): PublishTarget[] {
+  const targets: PublishTarget[] = ['youtube', 'facebook'];
+  if (isTikTokPublishEnabled(envPrefix, channelId)) {
+    targets.push('tiktok');
+  }
+  return targets;
+}
+
 function parseBooleanEnv(value: string | undefined, fallback: boolean): boolean {
   const normalized = value?.trim().toLowerCase();
   if (!normalized) return fallback;

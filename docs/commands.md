@@ -483,6 +483,7 @@ Use `--now` on `npm run publish` or `npm run generate -- --publish` to skip sche
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
+| `TIKTOK_PUBLISH_ENABLED` | no | `false` | `true` to include TikTok in default publish (`npm run publish` and pipeline `--publish`). `--tiktok-only` still works when `false`. |
 | `TIKTOK_CLIENT_KEY` | yes | — | App client key. |
 | `TIKTOK_CLIENT_SECRET` | yes | — | App client secret. |
 | `TIKTOK_ACCESS_TOKEN` | one of* | — | Access token from `npm run tiktok:auth`. |
