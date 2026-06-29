@@ -12,12 +12,13 @@ And today, I'd like to talk about why I'm starting a programming YouTube channel
 
 ## 🕒 Part 1 – I’m Not Good at English (0:20 – 0:50)
 
+Let me be honest with you: I’m not fluent in English.
+
 I still make grammar mistakes.
 I don’t speak fast.
 And sometimes, I feel nervous when speaking in English
 But I don’t think imperfect English
 should stop me from sharing what I know.
-
 
 ---
 
@@ -27,39 +28,29 @@ So, why did I choose English?
 
 1. First, as a developer, English is Everywhere.
 From coding to documentation, all are in English.
-
 2. Second, the global tech community uses English.
 Developers from different countries
 communicate, learn, and help each other in English.
-
 3. Third, English opens up better opportunities.
-Right now, AI is moving incredibly fast. At the same time, layoffs are happening at many big tech companies.
-
-That made me think:
-"What if I lose my job one day?"
-"How do I stay competitive?"
-"How do I keep growing instead of falling behind?"
-
-I realized that improving my technical skills isn't enough. English is just as important.
-
-It helps me understand the best learning resources, read documentation faster, communicate with developers around the world, and apply for opportunities that simply aren't available if I only speak my native language.
-
-Yes, the competition becomes much bigger.
-But so do the opportunities.
-
-4. And finally... Speaking English gives me confidence.
-
-It helps me express my ideas more clearly, work with people from different countries, and become the kind of developer who can contribute anywhere in the world.
-
-That's the developer I want to become.
+    
+    With good English skills, you can access better job opportunities and earn higher salaries.
+    
+    Just take a look at job listings on LinkedIn. You'll notice that many positions require candidates to communicate confidently in English. The interview is often conducted in English, and in many international companies, your daily work, meetings, and collaboration with teammates are also in English.
+    
+    When you improve your English, you're not just learning a language—you're expanding your future.
+    
+4. And finally... Speaking English gives me more confidence.
+    
+    It helps me express my ideas more clearly, work with people from different countries, and become the kind of developer who can contribute anywhere in the world.
+    
+    That's the developer I want to become.
+    
 
 ---
 
-## 🕒 Part 3 – This Channel Is My Practice
+## 🕒 Part 3 – This Channel Is My Personal Practice
 
-
-
-This channel is more than a place where I share programming knowledge, tell stories, or talk about life as a developer.
+This channel is more than a place where I share programming knowledge or talk about life as a developer.
 
 It's also my personal practice.
 
@@ -69,40 +60,41 @@ Eventually, I realized that the only way to get better at English is through reg
 
 However, the one big challenge is, how to staying motivated. How do you practice every day without getting bored or giving up?
 
-At the same time, I'd always wanted to start a YouTube channel. I spent years thinking about it, but I never found a topic that I truly connected with—or the confidence to finally get started.
+At the same time, I'd always wanted to start a YouTube channel. I just never found a topic that felt meaningful enough to keep going.
 
-Then I realized that I could combine several things I genuinely enjoy: learning English, sharing knowledge about programming, technology, and creating content.
+Then I asked myself: Why I’m not combine the things I love? Learning English, programming, technology, and creating content.
 
-That's why I started this channel.
+So I decided to start this channel.
 
-By talking about topics I'm passionate about, I can practice my English in a meaningful way while sharing ideas and experiences that may help other developers. I also believe that teaching is one of the best ways to learn. Every time I explain something, I understand it more deeply myself.
+Every video helps me practice speaking English while sharing ideas that might help other developers. And as they say, the best way to learn is to teach.
 
-Beyond improving my English, this channel is also helping me become more confident, communicate better, and step outside of my comfort zone.
+More than improving my English, this channel is helping me become a better communicator, build confidence, and step outside my comfort zone.
 
-Most importantly, it's part of my effort to become a better version of myself—one video at a time.
-
-
----
-
-## 🕒 Part 4 – Message to Viewers
-
-If you are a non-native English speaker like me,
-I want you to remember this:
-Your English doesn’t need to be perfect
-to be valuable.
-If you have experience,
-if you have ideas,
-your voice matters.
+My goal isn't just to improve my English. It's to become a better version of myself—one video at a time.
 
 ---
 
-## 🕒 Outro
-
-Thank you for watching.
+## 🕒 Part 4 – A Message to You
 
 On this channel, I’ll share my experience in programming,
 building real projects,
 and growing step by step as a developer.
 If that sounds helpful to you,
 please subscribe.
+
+Your English doesn't have to be perfect to make an impact.
+
+If you have knowledge,
+if you have experience,
+if you have something worth sharing—
+your voice matters.
+
+Don't wait until your English is perfect.
+Start today, and improve along the way.
+
+---
+
+## 🕒 Outro
+
+Thank you for watching.
 See you in the next video.
