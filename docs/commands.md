@@ -17,7 +17,7 @@ npm run <script> -- [flags]
 | `npm run youtube:auth` | One-time YouTube OAuth setup |
 | `npm run tiktok:auth` | One-time TikTok OAuth setup |
 | `npm run generate:conversations-audio` | Generate TTS audio for basic-english-conversations episodes |
-| `npm run shadowing` | Format a draft script (Victor only) → IPA → audio → shadowing MP4 |
+| `npm run shadowing` | Read draft → TTS + IPA + subtitles + shadowing MP4 (workspace under `shadowing/workspaces/`) |
 | `npm run build` | Compile TypeScript to `dist/` |
 | `npm run typecheck` | Type-check without emitting files |
 
@@ -325,7 +325,7 @@ npm run generate:conversations-audio -- --dir=output/basic-english-conversations
 
 ## `npm run shadowing`
 
-Shadowing pipeline: parse your draft into speakable lines, then generate IPA, TTS, subtitles, and MP4. Script text is taken directly from draft **Audio** blocks when present, otherwise split deterministically without rewriting.
+Read a draft file verbatim, split into sentences for shadowing, then generate IPA, TTS audio, subtitles, and shadowing MP4. No text is dropped or rewritten — only sentence boundaries create new lines.
 
 **Entry point:** `src/shadowing.ts`
 
@@ -352,15 +352,18 @@ npm run shadowing -- --draft=./my-script.txt --test
 
 | Flag | Required | Description |
 |------|----------|-------------|
-| `--draft=PATH` | Yes (new) | Text file with your script draft. Creates workspace and runs the full pipeline. |
+| `--draft=PATH` | Yes (new) | Text file with your script draft (alias: `--file=PATH`). Creates workspace and runs the full pipeline. |
 | `--workspace=ID` | Yes (resume) | Continue workspace (e.g. `20260616-230137`). |
 | `--title=TEXT` | No | Override episode title. |
-| `--test` | No | Format `script.json` only — no IPA, audio, or video. |
+| `--voice=NAME` | No | Voice preset, e.g. `M1` or `F1` (default: `shadowing/defaults/profile.yaml`). |
+| `--speed=NUMBER` | No | Speech speed, `0.7`–`2.0` (default: `0.85`). |
+| `--test` | No | Build `script.json` only — no IPA, audio, or video. |
 | `--force` | No | Regenerate `script.json` and all media from `draft.txt`. |
 | `--force-audio` | No | Regenerate TTS + `podcast.mp3` only — keeps `script.json`, subtitles, and video. |
 | `--force-subtitles` | No | Regenerate `subtitles.ass` + `shadowing.mp4` only — keeps `script.json` and audio. |
 | `--force-media` | No | Regenerate all media (audio + subtitles + video) — keeps `script.json`. |
 | `--list` | — | List shadowing workspaces. |
+| `--list-voices` | — | List available Supertonic voice presets. |
 
 Pick one regen flag at a time (`--force-audio`, `--force-subtitles`, or `--force-media`). Mutually exclusive with `--force` and `--test`.
 
@@ -368,7 +371,10 @@ Pick one regen flag at a time (`--force-audio`, `--force-subtitles`, or `--force
 
 ```bash
 # New workspace + full video from draft
-npm run shadowing -- --draft=./my-script.txt
+npm run shadowing -- --draft=./draft-scripts/script.txt
+
+# Custom voice and speed
+npm run shadowing -- --draft=./draft-scripts/script.txt --voice=F1 --speed=1.0
 
 # Preview script.json only
 npm run shadowing -- --draft=./my-script.txt --test
@@ -379,14 +385,11 @@ npm run shadowing -- --workspace=20260616-230137
 # Regenerate script + media after editing draft.txt
 npm run shadowing -- --workspace=20260616-230137 --force
 
-# Regenerate TTS + podcast.mp3 only (keeps existing subtitles and video)
+# Regenerate TTS + podcast.mp3 only
 npm run shadowing -- --workspace=20260617-001341 --force-audio
 
-# Regenerate subtitles + video only (e.g. after subtitle styling fix)
-npm run shadowing -- --workspace=20260617-001341 --force-subtitles
-
-# Regenerate all media (audio + subtitles + video)
-npm run shadowing -- --workspace=20260617-001341 --force-media
+# List voices
+npm run shadowing -- --list-voices
 ```
 
 ### Output layout

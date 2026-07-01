@@ -2,7 +2,7 @@ import { DialogueLine } from '../types';
 import { DEFAULT_MAX_WORDS_PER_LINE } from './shadowing.constants';
 import { inferContinuesStory } from './shadowing-continues.util';
 
-function splitIntoSentences(text: string): string[] {
+export function splitIntoSentences(text: string): string[] {
   const trimmed = text.trim();
   if (!trimmed) {
     return [];

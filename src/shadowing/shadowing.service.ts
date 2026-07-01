@@ -28,6 +28,7 @@ const ROOT_DIR = process.cwd();
 const SUPERTONIC_DIR = path.join(ROOT_DIR, 'assets', 'supertonic-3');
 const SUPERTONIC_ONNX_DIR = process.env.SUPERTONIC_ONNX_DIR ?? path.join(SUPERTONIC_DIR, 'onnx');
 const SUPERTONIC_VOICES_DIR = process.env.SUPERTONIC_VOICES_DIR ?? path.join(SUPERTONIC_DIR, 'voice_styles');
+const DEFAULT_SPEED = 0.85;
 
 export type MediaRegenMode = 'none' | 'audio' | 'subtitles' | 'all';
 
@@ -36,6 +37,8 @@ export interface ShadowingRunOptions {
   force?: boolean;
   mediaRegen?: MediaRegenMode;
   title?: string;
+  voice?: string;
+  speed?: number;
 }
 
 export class ShadowingService {
@@ -45,6 +48,14 @@ export class ShadowingService {
   constructor(private readonly rootDir = process.cwd()) {
     this.profileService = new ShadowingProfileService(rootDir);
     this.workspaceService = new ShadowingWorkspaceService(rootDir);
+  }
+
+  async listVoices(): Promise<string[]> {
+    const files = await fs.readdir(SUPERTONIC_VOICES_DIR);
+    return files
+      .filter((file) => file.endsWith('.json'))
+      .map((file) => file.replace(/\.json$/, ''))
+      .sort();
   }
 
   async createWorkspace(draftPath: string, title?: string): Promise<ShadowingWorkspace> {
@@ -63,6 +74,14 @@ export class ShadowingService {
     const ctx = await this.profileService.loadDefaults();
     const workspace = await this.workspaceService.load(workspaceId);
     const title = options.title ?? workspace.title;
+    const voice = options.voice ?? ctx.voiceName;
+    const speed = options.speed ?? DEFAULT_SPEED;
+
+    if (speed < 0.7 || speed > 2) {
+      throw new Error(`Speed must be between 0.7 and 2.0 (got ${speed})`);
+    }
+
+    await this.validateVoice(voice);
 
     console.time('Shadowing pipeline');
 
@@ -78,7 +97,7 @@ export class ShadowingService {
 
     const mediaRegen: MediaRegenMode =
       (options.force ?? false) ? 'all' : (options.mediaRegen ?? 'none');
-    const result = await this.generateMedia(workspace, ctx, script, mediaRegen);
+    const result = await this.generateMedia(workspace, ctx, script, mediaRegen, voice, speed);
 
     logger.info('');
     logger.divider('═');
@@ -95,6 +114,8 @@ export class ShadowingService {
     console.log(`
   Workspace : ${workspace.id}
   Title     : ${script.title}
+  Voice     : ${voice}
+  Speed     : ${speed}
   Lines     : ${script.script.length}${result.video ? `\n  Video     : ${this.getVideoPath(workspace)}` : ''}${result.audio ? `\n  Audio     : ${path.join(this.workspaceService.getShadowingDir(workspace), PODCAST_AUDIO_FILE)}` : ''}${result.subtitles ? `\n  Subtitles : ${path.join(this.workspaceService.getShadowingDir(workspace), SUBTITLES_FILE)}` : ''}
 `);
     console.timeEnd('Shadowing pipeline');
@@ -130,7 +151,7 @@ export class ShadowingService {
 
     const draft = await this.workspaceService.readDraft(workspace);
 
-    logger.step(1, options.test ? 1 : 4, 'Formatting draft into script.json...');
+    logger.step(1, options.test ? 1 : 4, 'Reading draft into script.json...');
     const scriptService = new ShadowingScriptService(ctx.speakerName);
     const script = await scriptService.generateFromDraft(draft, title);
     await fs.writeFile(scriptPath, JSON.stringify(script, null, 2), 'utf-8');
@@ -143,6 +164,8 @@ export class ShadowingService {
     ctx: ShadowingContext,
     script: PodcastScript,
     mode: MediaRegenMode,
+    voice: string,
+    speed: number,
   ): Promise<{ audio: boolean; subtitles: boolean; video: boolean }> {
     const regenAudio = mode === 'all' || mode === 'audio';
     const regenSubtitles = mode === 'all' || mode === 'subtitles';
@@ -163,7 +186,7 @@ export class ShadowingService {
     await ffmpegService.checkDependencies();
 
     const supertonicService = new SupertonicService(SUPERTONIC_ONNX_DIR, SUPERTONIC_VOICES_DIR);
-    const voiceMap = { [ctx.speakerName]: ctx.voiceName };
+    const voiceMap = { [ctx.speakerName]: voice };
     const ttsService = new TTSService(supertonicService, ffmpegService, voiceMap);
     const openai = new OpenAIService();
     const ipaService = new IpaService(openai);
@@ -194,10 +217,15 @@ export class ShadowingService {
       await this.unlinkIfExists(videoPath);
     }
 
-    const segments = await ttsService.generateSegments(script.script, audioDir, {
-      shortPause: SHADOWING_SHORT_PAUSE_BETWEEN_SEGMENTS,
-      longPause: PAUSE_BETWEEN_SEGMENTS,
-    });
+    const segments = await ttsService.generateSegments(
+      script.script,
+      audioDir,
+      {
+        shortPause: SHADOWING_SHORT_PAUSE_BETWEEN_SEGMENTS,
+        longPause: PAUSE_BETWEEN_SEGMENTS,
+      },
+      speed,
+    );
 
     let didAudio = false;
     if (!(await this.fileExists(podcastPath)) || regenAudio) {
@@ -242,6 +270,16 @@ export class ShadowingService {
     }
 
     return { audio: didAudio, subtitles: didSubtitles, video: didVideo };
+  }
+
+  private async validateVoice(voice: string): Promise<void> {
+    const voices = await this.listVoices();
+    if (!voices.includes(voice)) {
+      throw new Error(
+        `Unknown voice "${voice}". Available: ${voices.join(', ')}\n` +
+          'Run: npm run shadowing -- --list-voices',
+      );
+    }
   }
 
   private getVideoPath(workspace: ShadowingWorkspace): string {

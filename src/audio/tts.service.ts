@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs/promises';
+import { prepareTextForIpa } from '../ai/ipa-text.util';
 import { SupertonicService } from './supertonic.service';
 import { FFmpegService } from '../ffmpeg/ffmpeg.service';
 import {
@@ -15,6 +16,7 @@ import { AudioSegment, DialogueLine } from '../types';
 import { logger } from '../utils/logger';
 
 const PODCAST_TTS_SPEED = 0.85;
+const NON_SPEECH_SILENCE_SECONDS = 0.3;
 
 export class TTSService {
   constructor(
@@ -94,6 +96,7 @@ export class TTSService {
     script: DialogueLine[],
     audioDir: string,
     pauseConfig?: number | SegmentPauseOptions,
+    speed = PODCAST_TTS_SPEED,
   ): Promise<AudioSegment[]> {
     const useAdaptivePause = pauseConfig === undefined || typeof pauseConfig === 'object';
     const uniformPause = typeof pauseConfig === 'number' ? pauseConfig : undefined;
@@ -120,20 +123,28 @@ export class TTSService {
       }
       const preview = prepareTextForTts(line.text);
       const previewText = `"${preview.slice(0, 60)}${preview.length > 60 ? '…' : ''}"`;
+      const isNonSpeech = prepareTextForIpa(line.text) === null;
 
       let cached = false;
       try {
         await fs.access(filePath);
-        cached = !(await this.needsRegeneration(line.text, filePath));
+        if (isNonSpeech) {
+          cached = true;
+        } else {
+          cached = !(await this.needsRegeneration(line.text, filePath, speed));
+        }
       } catch {
         // file does not exist — generate it
       }
 
       if (cached) {
         logger.info(`  [${index}/${script.length}] ⏭  ${line.speaker}: (cached) ${previewText}`);
+      } else if (isNonSpeech) {
+        logger.info(`  [${index}/${script.length}] ${line.speaker}: (silence) ${previewText}`);
+        await this.ffmpeg.generateSilence(filePath, NON_SPEECH_SILENCE_SECONDS);
       } else {
         logger.info(`  [${index}/${script.length}] ${line.speaker}: ${previewText}`);
-        await this.synthesizeWithStability(line.text, filePath, voiceName);
+        await this.synthesizeWithStability(line.text, filePath, voiceName, speed);
       }
 
       const duration = await this.ffmpeg.getAudioDuration(filePath);

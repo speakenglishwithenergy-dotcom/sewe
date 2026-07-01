@@ -18,6 +18,16 @@ export class ShadowingProfileService {
     return this.loadFromDir(getDefaultsDir(this.rootDir));
   }
 
+  async loadSpeakerDefaults(): Promise<{ speakerName: string; voiceName: string }> {
+    const configPath = path.join(getDefaultsDir(this.rootDir), PROFILE_FILE);
+    const raw = await fs.readFile(configPath, 'utf-8');
+    const profile = ShadowingProfileSchema.parse(parseYaml(raw));
+    return {
+      speakerName: profile.speaker.name,
+      voiceName: profile.speaker.voice,
+    };
+  }
+
   async loadFromDir(profileDir: string): Promise<ShadowingContext> {
     const configPath = path.join(profileDir, PROFILE_FILE);
     const raw = await fs.readFile(configPath, 'utf-8');

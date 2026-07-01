@@ -66,16 +66,21 @@ export class OpenAIService {
     const defaultMaxTokens = this.llmProvider === 'groq' ? 4_096 : 16_384;
     const maxTokens = options?.maxTokens ?? defaultMaxTokens;
 
-    const response = await this.chatClient.chat.completions.create({
-      model: this.model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: options?.temperature ?? 0.85,
-      max_tokens: maxTokens,
-    });
+    let response;
+    try {
+      response = await this.chatClient.chat.completions.create({
+        model: this.model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: options?.temperature ?? 0.85,
+        max_tokens: maxTokens,
+      });
+    } catch (error) {
+      throw new Error(formatChatCompletionError(this.llmProvider, error));
+    }
 
     const content = response.choices[0]?.message?.content;
     if (!content) {
@@ -187,4 +192,27 @@ export class OpenAIService {
 
     return Buffer.from(b64, 'base64');
   }
+}
+
+function formatChatCompletionError(provider: LlmProvider, error: unknown): string {
+  if (error && typeof error === 'object') {
+    const apiError = error as {
+      message?: string;
+      status?: number;
+      error?: { message?: string; failed_generation?: string };
+    };
+
+    const failedGeneration = apiError.error?.failed_generation;
+    const baseMessage = apiError.error?.message ?? apiError.message ?? String(error);
+
+    if (failedGeneration) {
+      return `${apiError.status ?? ''} ${baseMessage}\nfailed_generation: ${failedGeneration.slice(0, 500)}`.trim();
+    }
+
+    if (provider === 'groq' && apiError.status) {
+      return `${apiError.status} ${baseMessage}`;
+    }
+  }
+
+  return error instanceof Error ? error.message : String(error);
 }
