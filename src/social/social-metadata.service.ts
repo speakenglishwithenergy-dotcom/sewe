@@ -48,12 +48,12 @@ export class SocialMetadataService {
 
       if (merged === cached) {
         logger.info('⏭  Social metadata already exists — loading from cache');
-        await writeSocialMetadataExports(projectDir, cached, this.ctx.publish);
-        return normalizeSocialMetadata(cached, this.ctx.publish);
+        await writeSocialMetadataExports(projectDir, cached, this.ctx.publish, topic);
+        return normalizeSocialMetadata(cached, this.ctx.publish, topic);
       }
 
-      await writeSocialMetadataExports(projectDir, merged, this.ctx.publish);
-      return normalizeSocialMetadata(merged, this.ctx.publish);
+      await writeSocialMetadataExports(projectDir, merged, this.ctx.publish, topic);
+      return normalizeSocialMetadata(merged, this.ctx.publish, topic);
     }
 
     if (options?.regenerate) {
@@ -63,9 +63,9 @@ export class SocialMetadataService {
     }
 
     const meta = await this.generateAllMetadata(podcastScript, topic, options);
-    await writeSocialMetadataExports(projectDir, meta, this.ctx.publish);
+    await writeSocialMetadataExports(projectDir, meta, this.ctx.publish, topic);
     logger.success(`Social metadata saved → ${path.join(projectDir, 'publish')}`);
-    return normalizeSocialMetadata(meta, this.ctx.publish);
+    return normalizeSocialMetadata(meta, this.ctx.publish, topic);
   }
 
   private async fillMissingMetadata(

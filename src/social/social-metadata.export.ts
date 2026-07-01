@@ -153,8 +153,9 @@ export async function writeSocialMetadataExports(
   projectDir: string,
   meta: SocialMetadata,
   pub: ResolvedPublishCopy,
+  topic?: string,
 ): Promise<void> {
-  const normalized = normalizeSocialMetadata(meta, pub);
+  const normalized = normalizeSocialMetadata(meta, pub, topic);
   const publishDir = getPublishOutputDir(projectDir);
   await fs.mkdir(publishDir, { recursive: true });
   await removeLegacyPublishFiles(publishDir);

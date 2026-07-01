@@ -44,8 +44,8 @@ CHANNEL STANDARD (enforced automatically — do not duplicate in your output):
   "${pub.description.linksHeader}" with YouTube (${pub.youtubeChannelUrl}), Facebook (${pub.facebookPageUrl}), and TikTok (${pub.tiktokChannelUrl}) links
 
 RULES:
-- "title": max ${pub.titleBaseMax} characters (suffix added automatically), keyword-rich
-- "titleVariants": 2 alternative titles, same max length
+- "title": MUST be exactly "${topic}" — do not rephrase or shorten it (suffix added automatically)
+- "titleVariants": 2 alternative titles based on the same topic, max ${pub.titleBaseMax} characters each
 - "tags": up to ${PUBLISH_LIMITS.youtubeTagsMax - pub.coreTags.length} episode-specific tags (lowercase, no #)
 - "chapters": exactly ${pub.chapterLabels.length} entries with labels ${pub.chapterLabels.map((l) => `"${l}"`).join(', ')}
 - "pinnedComment": one engaging question (1–2 sentences). Do not include URLs.

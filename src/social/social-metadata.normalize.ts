@@ -240,7 +240,11 @@ export function formatFacebookShortCaption(
   return [caption, '', hashtags.join(' '), '', formatShortLinksFooter(pub)].join('\n').trim();
 }
 
-function normalizeYouTubeMetadata(meta: YouTubeMetadata, pub: ResolvedPublishCopy): YouTubeMetadata {
+function normalizeYouTubeMetadata(
+  meta: YouTubeMetadata,
+  pub: ResolvedPublishCopy,
+  topic?: string,
+): YouTubeMetadata {
   const hashtags = mergeUniqueHashtags(
     pub.coreHashtags,
     meta.hashtags,
@@ -248,7 +252,7 @@ function normalizeYouTubeMetadata(meta: YouTubeMetadata, pub: ResolvedPublishCop
   );
   const normalized: YouTubeMetadata = {
     ...meta,
-    title: formatYouTubeTitle(meta.title, pub),
+    title: formatYouTubeTitle(topic ?? meta.title, pub),
     titleVariants: meta.titleVariants.map((title) => formatYouTubeTitle(title, pub)),
     tags: mergeUniqueTags(pub.coreTags, meta.tags, PUBLISH_LIMITS.youtubeTagsMax),
     chapters: normalizeChapterLabels(meta.chapters, pub),
@@ -321,8 +325,9 @@ function normalizeFacebookShortMetadata(
 export function normalizeSocialMetadata(
   meta: SocialMetadata,
   pub: ResolvedPublishCopy,
+  topic?: string,
 ): SocialMetadata {
-  const youtube = normalizeYouTubeMetadata(meta.youtube, pub);
+  const youtube = normalizeYouTubeMetadata(meta.youtube, pub, topic);
   const youtubeShort = meta.youtubeShort
     ? normalizeYouTubeShortMetadata(meta.youtubeShort, pub)
     : undefined;

@@ -3,6 +3,7 @@ import { OpenAIService } from './ai/openai.service';
 import { ChannelService } from './channel/channel.service';
 import { ProjectService } from './project/project.service';
 import { SocialMetadataService } from './social/social-metadata.service';
+import { normalizeSocialMetadata } from './social/social-metadata.normalize';
 import {
   loadPodcastScript,
   loadShortScript,
@@ -96,7 +97,11 @@ async function main(): Promise<void> {
   const socialMetadataService = new SocialMetadataService(new OpenAIService(), channelCtx);
   let socialMeta;
   try {
-    socialMeta = await loadSocialMetadata(projectDir);
+    socialMeta = normalizeSocialMetadata(
+      await loadSocialMetadata(projectDir),
+      channelCtx.publish,
+      project.topic,
+    );
   } catch {
     logger.info('Social metadata cache missing — generating from script...');
     socialMeta = await socialMetadataService.loadOrGenerate(
