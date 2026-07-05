@@ -328,6 +328,22 @@ async function resolveMetadataRegenerate(
   return (await resolveSocialMetadataPath(projectDir)) === null;
 }
 
+function printPublishCommands(projectId: string, hasLong: boolean, hasShort: boolean): void {
+  logger.info('\nPublish commands:\n');
+  if (hasLong && hasShort) {
+    console.log(`  npm run publish -- --project=${projectId}`);
+    console.log(`  npm run publish -- --project=${projectId} --now`);
+    console.log(`  npm run publish -- --project=${projectId} --long-only --now`);
+    console.log(`  npm run publish -- --project=${projectId} --short-only`);
+  } else if (hasLong) {
+    console.log(`  npm run publish -- --project=${projectId} --long-only`);
+    console.log(`  npm run publish -- --project=${projectId} --long-only --now`);
+  } else if (hasShort) {
+    console.log(`  npm run publish -- --project=${projectId} --short-only`);
+    console.log(`  npm run publish -- --project=${projectId} --short-only --now`);
+  }
+}
+
 function printSocialMetadataSummary(projectDir: string, hasShort: boolean): void {
   const publishDir = getPublishOutputDir(projectDir);
   console.log(`
@@ -703,6 +719,7 @@ async function main(): Promise<void> {
     console.log(`
   `);
     printSocialMetadataPreview(socialMeta, channelCtx.publish);
+    printPublishCommands(project.id, false, true);
     await maybePublishProject(channelCtx, PROJECT_DIR, socialMeta, podcastScript, shortScript, {
       publish: args.publish,
       forcePublish: args.forcePublish,
@@ -917,6 +934,7 @@ async function main(): Promise<void> {
   console.log(`
   `);
   printSocialMetadataPreview(socialMeta, channelCtx.publish);
+  printPublishCommands(project.id, true, !!shortScript);
   await maybePublishProject(channelCtx, PROJECT_DIR, socialMeta, podcastScript, shortScript, {
     publish: args.publish,
     forcePublish: args.forcePublish,
