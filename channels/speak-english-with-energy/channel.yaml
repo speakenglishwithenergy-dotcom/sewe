@@ -78,8 +78,10 @@ branding:
     hookFontSize: 80
     marginV: 260
     lineWidth: 32
-    useBox: false
+    useBox: true
     hookUseBox: true
+    boxPadding: 28
+    hookBoxPadding: 32
     outline: "#0D1B3D"
     outlineWidth: 8
     shadow: 8

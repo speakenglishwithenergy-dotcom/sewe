@@ -65,6 +65,10 @@ export const ShortSubtitleStyleSchema = z.object({
   hookUseBox: z.boolean().optional(),
   /** ASS back-colour alpha 0–255 when useBox is true (default 128 ≈ 50%). */
   boxAlpha: z.number().int().min(0).max(255).optional(),
+  /** Horizontal padding (left/right) for body caption box — ASS BorderStyle 3 outline (default 14). */
+  boxPadding: z.number().int().min(0).optional(),
+  /** Horizontal padding (left/right) for hook caption box (default 18). */
+  hookBoxPadding: z.number().int().min(0).optional(),
 });
 
 /** Optional podcast subtitle layout and typography overrides (ASS style fields). */

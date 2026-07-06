@@ -122,8 +122,8 @@ function resolveShortSubtitleStyle(branding: ChannelBranding): ResolvedShortSubt
     hookUseBox: shortStyle?.hookUseBox ?? defaults.hookUseBox,
     outlineWidth: shortStyle?.outlineWidth ?? defaults.outlineWidth,
     shadow: shortStyle?.shadow ?? defaults.shadow,
-    defaultBoxPadding: defaults.defaultBoxPadding,
-    hookBoxPadding: defaults.hookBoxPadding,
+    defaultBoxPadding: shortStyle?.boxPadding ?? defaults.defaultBoxPadding,
+    hookBoxPadding: shortStyle?.hookBoxPadding ?? defaults.hookBoxPadding,
   };
 }
 
