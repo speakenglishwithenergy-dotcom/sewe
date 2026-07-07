@@ -43,7 +43,7 @@ CONTENT QUALITY — make every beat count:
 - Sound confident and direct — like a friend who just figured something out, not a textbook
 
 SPEAKER & PACING RULES:
-- Target length: 45–80 seconds (~110–200 words total across ALL beats)
+- Target length: 90–120 seconds (~150–220 words total across ALL beats)
 - ${short.minLines}–${short.maxLines} beats — split the monologue into natural sentence groups; use the upper half of the range when the insight needs room to land
 - Beat 1 ONLY: ${hookSpeaker} — ONE short sentence (6–14 words max). Name the topic ("${topic}") and spark curiosity — question, bold claim, or surprising stat
 - Beats 2 through the last: ${bodySpeaker} only
@@ -66,6 +66,9 @@ Return ONLY a valid JSON object (no markdown, no code blocks):
     { "speaker": "${bodySpeaker}", "text": "Third teaching beat — concrete example or hidden cost" },
     { "speaker": "${bodySpeaker}", "text": "Fourth teaching beat — flip the assumption or myth-bust" },
     { "speaker": "${bodySpeaker}", "text": "Fifth teaching beat — one clear actionable takeaway" },
+    { "speaker": "${bodySpeaker}", "text": "Sixth teaching beat — concrete scenario the viewer recognizes" },
+    { "speaker": "${bodySpeaker}", "text": "Seventh teaching beat — flip or deepen the payoff" },
+    { "speaker": "${bodySpeaker}", "text": "Eighth teaching beat — land one memorable takeaway" },
     { "speaker": "${bodySpeaker}", "text": "Subscribe for more Shorts like this — I'll see you in the next one." }
   ]
 }
@@ -95,7 +98,7 @@ DRAFT JSON:
 ${draftJson}
 
 REVISION CHECKLIST:
-1. NOT TOO SHORT — ~110–200 words total, ${short.minLines}–${short.maxLines} beats. If under ~110 words, add beats by splitting thin sentences — never pad with filler.
+1. NOT TOO SHORT — ~150–220 words total, ${short.minLines}–${short.maxLines} beats. If under ~150 words, add beats by splitting thin sentences — never pad with filler.
 2. SHARP INSIGHTS — each teaching beat must earn its place: distinct reframe, contrast, or concrete example. Cut generic lines; rewrite weak beats to hit harder.
 3. NOT STIFF — natural spoken English (${ctx.config.script.languageLevel}).
 4. CONNECTED — every beat must logically lead to the next; tension builds toward one memorable payoff.

@@ -68,8 +68,8 @@ short:
   enabled: false
   hookSpeaker: Alex
   bodySpeaker: Mia
-  minLines: 7
-  maxLines: 15
+  minLines: 10
+  maxLines: 20
 
 perEpisodeBackground: true
 

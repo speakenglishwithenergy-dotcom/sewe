@@ -39,7 +39,8 @@ export interface ShortPipelineServices {
   videoService: VideoService;
 }
 
-const SHORT_TARGET_MAX_SECONDS = 80;
+const SHORT_TARGET_MIN_SECONDS = 90;
+const SHORT_TARGET_MAX_SECONDS = 120;
 
 async function fileExists(filePath: string): Promise<boolean> {
   try {
@@ -134,7 +135,11 @@ export async function runShortPipeline(
     (sum, s) => sum + s.duration + s.pauseAfter,
     0,
   );
-  if (totalDuration > SHORT_TARGET_MAX_SECONDS) {
+  if (totalDuration < SHORT_TARGET_MIN_SECONDS) {
+    logger.warn(
+      `Short audio is ${totalDuration.toFixed(1)}s — below ${SHORT_TARGET_MIN_SECONDS}s target`,
+    );
+  } else if (totalDuration > SHORT_TARGET_MAX_SECONDS) {
     logger.warn(
       `Short audio is ${totalDuration.toFixed(1)}s — exceeds ${SHORT_TARGET_MAX_SECONDS}s target`,
     );
