@@ -1,0 +1,316 @@
+import 'dotenv/config';
+import { OpenAIService } from './ai/openai.service';
+import { TopicSuggestService } from './ai/topic-suggest.service';
+import { runGenerateProjectWithLog } from './batch/batch-generate.util';
+import {
+  askBatchCountInteractive,
+  reviewScheduleInteractive,
+  reviewTopicsInteractive,
+} from './batch/batch-prompt.util';
+import { BatchCount, isBatchCount } from './batch/batch.types';
+import { ChannelService } from './channel/channel.service';
+import { ProjectService } from './project/project.service';
+import { SocialMetadataService } from './social/social-metadata.service';
+import { normalizeSocialMetadata } from './social/social-metadata.normalize';
+import {
+  BatchScheduleSlot,
+  formatBatchScheduleSlot,
+  isScheduleDateValid,
+  nextMonWedFriDates,
+  parseScheduleDateInput,
+  scheduledTimeOnDate,
+} from './social/schedule.util';
+import {
+  loadPodcastScript,
+  loadShortScript,
+  loadSocialMetadata,
+  SocialPublisherService,
+} from './social/social-publisher.service';
+import { TopicRegistryService } from './topic/topic-registry.service';
+import { logger } from './utils/logger';
+
+const DEFAULT_CHANNEL_ID = 'speak-english-with-energy';
+
+type BatchCliArgs = {
+  channelId: string;
+  count?: BatchCount;
+  dates?: string[];
+};
+
+function parseCountArg(args: string[]): BatchCount | undefined {
+  const countArg = args.find((arg) => arg.startsWith('--count='));
+  if (!countArg) return undefined;
+
+  const raw = Number.parseInt(countArg.replace('--count=', '').trim(), 10);
+  if (!isBatchCount(raw)) {
+    logger.error('--count must be 2 or 3');
+    process.exit(1);
+  }
+
+  return raw;
+}
+
+function parseDatesArg(args: string[]): string[] | undefined {
+  const datesArg = args.find((arg) => arg.startsWith('--dates='));
+  if (!datesArg) return undefined;
+
+  const raw = datesArg.replace('--dates=', '').trim();
+  const parts = raw.split(',').map((part) => part.trim()).filter(Boolean);
+  if (parts.length !== 2 && parts.length !== 3) {
+    logger.error('--dates must contain 2 or 3 comma-separated values: weekday 2-8 or YYYY-MM-DD');
+    process.exit(1);
+  }
+
+  return parts;
+}
+
+function parseBatchArgs(): BatchCliArgs {
+  const args = process.argv.slice(2);
+  const channelArg = args.find((arg) => arg.startsWith('--channel='));
+  const channelId = channelArg?.replace('--channel=', '').trim() || DEFAULT_CHANNEL_ID;
+
+  if (!channelId) {
+    logger.error('--channel value cannot be empty');
+    process.exit(1);
+  }
+
+  if (args.includes('--help') || args.includes('-h')) {
+    console.log('Usage:');
+    console.log('  npm run batch -- --channel=speak-english-with-energy');
+    console.log('  npm run batch -- --channel=speak-english-with-energy --count=2');
+    console.log('  npm run batch -- --channel=speak-english-with-energy --dates=2,4,6');
+    console.log('  npm run batch -- --channel=speak-english-with-energy --dates=2026-07-21,2026-07-23');
+    console.log('  npm run batch -- --channel=speak-english-with-energy --count=3 --dates=2026-07-21,2026-07-23,2026-07-25');
+    process.exit(0);
+  }
+
+  const dates = parseDatesArg(args);
+  const count = parseCountArg(args);
+
+  if (count && dates && count !== dates.length) {
+    logger.error(`--count=${count} does not match ${dates.length} date(s) in --dates`);
+    process.exit(1);
+  }
+
+  return { channelId, count: count ?? (dates?.length as BatchCount | undefined), dates };
+}
+
+function resolveScheduleSlots(
+  timezone: string,
+  count: BatchCount,
+  cliDates: string[] | undefined,
+): BatchScheduleSlot[] {
+  if (!cliDates) {
+    return nextMonWedFriDates(new Date(), timezone, count);
+  }
+
+  const slots: BatchScheduleSlot[] = [];
+  for (const dateInput of cliDates) {
+    const slot = parseScheduleDateInput(dateInput, timezone);
+    if (!slot) {
+      logger.error(`Invalid date: ${dateInput} (use weekday 2-8 or YYYY-MM-DD)`);
+      process.exit(1);
+    }
+    if (!isScheduleDateValid(slot.dateIso, timezone)) {
+      logger.error(`Date must be today or later (${timezone}): ${slot.dateIso}`);
+      process.exit(1);
+    }
+    slots.push(slot);
+  }
+
+  const unique = new Set(slots.map((slot) => slot.dateIso));
+  if (unique.size !== count) {
+    logger.error(`All ${count} publish dates must be distinct`);
+    process.exit(1);
+  }
+
+  return slots;
+}
+
+function formatPublishTime(date: Date, timezone: string): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: timezone,
+    weekday: 'short',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date);
+}
+
+async function publishWithSchedule(
+  channelId: string,
+  projectId: string,
+  longAt: Date,
+  shortAt: Date,
+): Promise<void> {
+  const channelService = new ChannelService();
+  const projectService = new ProjectService();
+  const channelCtx = await channelService.loadChannel(channelId);
+  const project = await projectService.load(projectId, channelId);
+  const projectDir = projectService.getDir(project);
+  const podcastScript = await loadPodcastScript(projectDir);
+  const shortScript = await loadShortScript(projectDir);
+
+  const socialMetadataService = new SocialMetadataService(new OpenAIService(), channelCtx);
+  let socialMeta;
+  try {
+    socialMeta = normalizeSocialMetadata(
+      await loadSocialMetadata(projectDir),
+      channelCtx.publish,
+      project.topic,
+    );
+  } catch {
+    socialMeta = await socialMetadataService.loadOrGenerate(
+      projectDir,
+      podcastScript,
+      project.topic,
+      shortScript ? { shortScript } : undefined,
+    );
+  }
+
+  const publisher = new SocialPublisherService();
+  const results = await publisher.publishProject(
+    channelCtx,
+    projectDir,
+    socialMeta,
+    podcastScript,
+    { scheduleOverrides: { long: longAt, short: shortAt } },
+    shortScript,
+  );
+
+  if (results.length === 0) {
+    logger.info('Nothing new published (already uploaded).');
+    return;
+  }
+
+  logger.success(`Published ${results.length} video(s) for ${projectId}:`);
+  for (const result of results) {
+    console.log(`  ${result.platform} ${result.format}: ${result.url}`);
+  }
+}
+
+async function main(): Promise<void> {
+  const args = parseBatchArgs();
+  const channelService = new ChannelService();
+  const projectService = new ProjectService();
+  const topicRegistry = new TopicRegistryService(channelService, projectService);
+
+  let channelCtx;
+  try {
+    channelCtx = await channelService.loadChannel(args.channelId);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(message);
+    process.exit(1);
+  }
+
+  const timezone =
+    channelCtx.publish.youtubeSchedule?.timezone
+    ?? channelCtx.publish.facebookSchedule?.timezone
+    ?? 'Asia/Ho_Chi_Minh';
+
+  const count = args.count ?? await askBatchCountInteractive();
+
+  logger.divider('═');
+  console.log(`  📅  ${channelCtx.config.name} — Weekly Batch (${count} episodes)`);
+  logger.divider('═');
+  logger.info(`Channel   : ${channelCtx.config.id}`);
+  logger.info(`Timezone  : ${timezone}`);
+  logger.info(`Batch size: ${count}`);
+
+  const registry = await topicRegistry.migrateFromProjects(args.channelId);
+  const pastTopics = topicRegistry.listTopicStrings(registry);
+  logger.info(`Past topics: ${pastTopics.length}`);
+
+  const defaultScheduleSlots = resolveScheduleSlots(timezone, count, args.dates);
+
+  const openai = new OpenAIService();
+  const topicSuggest = new TopicSuggestService(openai, channelCtx);
+
+  const regenerate = async (): Promise<string[]> =>
+    topicSuggest.suggest(pastTopics, count);
+
+  const initialTopics = await regenerate();
+  const confirmedTopics = await reviewTopicsInteractive(initialTopics, regenerate);
+
+  if (!confirmedTopics) {
+    logger.info('Batch cancelled.');
+    return;
+  }
+
+  const scheduleSlots = args.dates
+    ? defaultScheduleSlots
+    : await reviewScheduleInteractive(defaultScheduleSlots, timezone);
+
+  if (!scheduleSlots) {
+    logger.info('Batch cancelled.');
+    return;
+  }
+
+  await topicRegistry.addPendingBatch(
+    args.channelId,
+    confirmedTopics.map((topic, index) => ({
+      topic,
+      scheduledDate: scheduleSlots[index].dateIso,
+      weekday: scheduleSlots[index].weekday,
+    })),
+  );
+
+  const longTime = channelCtx.publish.youtubeSchedule?.longTime ?? '11:30';
+  const shortTime = channelCtx.publish.youtubeSchedule?.shortTime ?? '17:30';
+
+  logger.info('\nStarting batch generation + publish...\n');
+
+  for (let index = 0; index < confirmedTopics.length; index++) {
+    const topic = confirmedTopics[index];
+    const slot = scheduleSlots[index];
+    const longAt = scheduledTimeOnDate(longTime, timezone, slot.date);
+    const shortAt = scheduledTimeOnDate(shortTime, timezone, slot.date);
+
+    logger.divider('═');
+    logger.info(`Batch item ${index + 1}/${count} — ${topic}`);
+    logger.info(`Scheduled : long ${formatPublishTime(longAt, timezone)}, short ${formatPublishTime(shortAt, timezone)}`);
+    logger.divider('═');
+
+    const project = await projectService.create(topic, args.channelId);
+    await topicRegistry.updateRecord(args.channelId, topic, {
+      projectId: project.id,
+      status: 'generating',
+    });
+
+    try {
+      await runGenerateProjectWithLog(project.id, topic);
+      await topicRegistry.setStatus(args.channelId, topic, 'generated');
+
+      logger.info('Publishing with fixed schedule...');
+      await publishWithSchedule(args.channelId, project.id, longAt, shortAt);
+      await topicRegistry.setStatus(args.channelId, topic, 'published');
+
+      logger.success(`Done: ${project.id} → ${slot.dateIso}`);
+    } catch (err) {
+      await topicRegistry.setStatus(args.channelId, topic, 'failed');
+      throw err;
+    }
+  }
+
+  logger.info('');
+  logger.divider('═');
+  logger.success('Weekly batch complete!');
+  logger.divider('═');
+  console.log('\nSummary:');
+  confirmedTopics.forEach((topic, index) => {
+    const slot = scheduleSlots[index];
+    console.log(`  ${index + 1}. ${topic}`);
+    console.log(`     ${formatBatchScheduleSlot(slot, timezone)} — long ${longTime}, short ${shortTime}`);
+  });
+  console.log(`\nTopic registry: channels/${args.channelId}/topics.json\n`);
+}
+
+main().catch((err: unknown) => {
+  const message = err instanceof Error ? err.message : String(err);
+  logger.error(`Fatal: ${message}`);
+  process.exit(1);
+});

@@ -5,6 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "generate": "tsx src/index.ts",
+    "batch": "tsx src/batch.ts",
     "publish": "tsx src/publish.ts",
     "youtube:auth": "tsx scripts/youtube-oauth.ts",
     "tiktok:auth": "tsx scripts/tiktok-oauth.ts",

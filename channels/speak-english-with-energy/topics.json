@@ -1,0 +1,67 @@
+{
+  "topics": [
+    {
+      "topic": "Why Most Advice Fails",
+      "projectId": "20260617-104706",
+      "scheduledDate": "2026-06-17",
+      "weekday": "monday",
+      "createdAt": "2026-06-17T03:47:06.009Z",
+      "status": "published"
+    },
+    {
+      "topic": "Why Life Feels Different After 25",
+      "projectId": "20260619-083916",
+      "scheduledDate": "2026-06-19",
+      "weekday": "monday",
+      "createdAt": "2026-06-19T01:39:16.179Z",
+      "status": "published"
+    },
+    {
+      "topic": "Successful People Protect Their Energy",
+      "projectId": "003-20260626",
+      "scheduledDate": "2026-06-26",
+      "weekday": "monday",
+      "createdAt": "2026-06-26T08:43:34.339Z",
+      "status": "published"
+    },
+    {
+      "topic": "The Confidence Trick Fluent Speakers Use",
+      "projectId": "012-20260716",
+      "scheduledDate": "2026-07-15",
+      "weekday": "monday",
+      "createdAt": "2026-07-15T17:20:43.323Z",
+      "status": "published"
+    },
+    {
+      "topic": "How I Use ChatGPT to Learn English Every Day",
+      "projectId": "013-20260718",
+      "scheduledDate": "2026-07-18",
+      "weekday": "monday",
+      "createdAt": "2026-07-18T08:08:53.645Z",
+      "status": "published"
+    },
+    {
+      "topic": "The AI Method That Makes English Easy",
+      "projectId": "014-20260720",
+      "scheduledDate": "2026-07-20",
+      "weekday": "monday",
+      "createdAt": "2026-07-20T09:26:00.686Z",
+      "status": "published"
+    },
+    {
+      "topic": "Morning Routines to Boost Your Day",
+      "scheduledDate": "2026-07-22",
+      "weekday": "wednesday",
+      "createdAt": "2026-07-20T11:14:08.536Z",
+      "status": "generating",
+      "projectId": "015-20260720"
+    },
+    {
+      "topic": "English Phrases to Order Food Like a Local",
+      "scheduledDate": "2026-07-24",
+      "weekday": "friday",
+      "createdAt": "2026-07-20T11:14:08.536Z",
+      "status": "pending"
+    }
+  ]
+}

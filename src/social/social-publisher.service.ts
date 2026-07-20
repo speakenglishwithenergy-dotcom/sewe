@@ -28,6 +28,11 @@ export interface PublishOptions {
   force?: boolean;
   /** Skip channel schedule and publish immediately (uses env privacy settings). */
   now?: boolean;
+  /** Override auto-computed schedule times (e.g. batch Mon/Wed/Fri publish). */
+  scheduleOverrides?: {
+    long?: Date;
+    short?: Date;
+  };
 }
 
 async function fileExists(filePath: string): Promise<boolean> {
@@ -194,21 +199,22 @@ export class SocialPublisherService {
     const results: PublishResult[] = [];
 
     const skipSchedule = options.now ?? false;
+    const overrides = options.scheduleOverrides;
     const ytSchedule = pub.youtubeSchedule;
     const longPublishAt = skipSchedule
       ? undefined
-      : resolvePublishAt(ytSchedule?.longTime, ytSchedule?.timezone);
+      : overrides?.long ?? resolvePublishAt(ytSchedule?.longTime, ytSchedule?.timezone);
     const shortPublishAt = skipSchedule
       ? undefined
-      : resolvePublishAt(ytSchedule?.shortTime, ytSchedule?.timezone);
+      : overrides?.short ?? resolvePublishAt(ytSchedule?.shortTime, ytSchedule?.timezone);
 
     const fbSchedule = pub.facebookSchedule;
     const fbLongPublishAt = skipSchedule
       ? undefined
-      : resolvePublishAt(fbSchedule?.longTime, fbSchedule?.timezone);
+      : overrides?.long ?? resolvePublishAt(fbSchedule?.longTime, fbSchedule?.timezone);
     const fbShortPublishAt = skipSchedule
       ? undefined
-      : resolvePublishAt(fbSchedule?.shortTime, fbSchedule?.timezone);
+      : overrides?.short ?? resolvePublishAt(fbSchedule?.shortTime, fbSchedule?.timezone);
 
     if (formats.includes('long')) {
       const videoPath = await resolveLongVideoPath(projectDir, podcastScript);

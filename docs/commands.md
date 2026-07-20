@@ -13,6 +13,7 @@ npm run <script> -- [flags]
 | Command | Purpose |
 |---------|---------|
 | `npm run generate` | Create or resume a podcast/short video project |
+| `npm run batch` | Weekly batch: AI topics → generate 2–3 episodes → schedule publish dates |
 | `npm run publish` | Upload an existing project to YouTube, Facebook, and/or TikTok |
 | `npm run youtube:auth` | One-time YouTube OAuth setup |
 | `npm run tiktok:auth` | One-time TikTok OAuth setup |
@@ -54,6 +55,51 @@ npm run generate -- --list --channel=speak-english-with-energy
 5. Run `npm run youtube:auth -- --channel=<new-id>` and `npm run tiktok:auth -- --channel=<new-id>`
 
 Set `short.enabled: false` in `channel.yaml` to disable short-form generation for a channel.
+
+---
+
+## `npm run batch`
+
+Weekly batch workflow: generate and schedule **2 or 3** episodes per run.
+
+**Entry point:** `src/batch.ts`
+
+```bash
+npm run batch -- --channel=speak-english-with-energy
+npm run batch -- --channel=speak-english-with-energy --count=2
+npm run batch -- --channel=speak-english-with-energy --dates=2,4
+npm run batch -- --channel=speak-english-with-energy --dates=2026-07-21,2026-07-23
+npm run batch -- --channel=speak-english-with-energy --count=3 --dates=2,4,6
+```
+
+### What it does
+
+1. Choose batch size: **2 or 3** episodes (`--count=2|3`, inferred from `--dates`, or interactive prompt)
+2. Loads topic history from `channels/<channel-id>/topics.json` (imports existing projects on first run)
+3. AI suggests 2 or 3 new topics that do not overlap with past topics
+4. Interactive topic review in the terminal:
+   - `[1-2]` or `[1-3]` edit a topic
+   - `[r]` regenerate suggestions
+   - `[y]` confirm
+   - `[q]` quit
+5. Interactive publish-date review (defaults to next Mon/Wed or Mon/Wed/Fri):
+   - `[1-2]` or `[1-3]` change date by **weekday number** or `YYYY-MM-DD`
+   - Weekday numbers: `2`=Thứ hai, `3`=Thứ ba, `4`=Thứ tư, `5`=Thứ năm, `6`=Thứ sáu, `7`=Thứ bảy, `8`=Chủ nhật
+   - Entering `2` picks the **next** Thứ hai from today (including today)
+   - `[d]` reset defaults
+   - `[y]` confirm and start
+   - `[q]` quit
+6. Generates projects sequentially (full `generate` pipeline)
+7. Publishes each project on its chosen date — long at `youtubeSchedule.longTime`, short at `youtubeSchedule.shortTime`
+8. Saves every topic to `channels/<channel-id>/topics.json` (persists even if you delete project folders later)
+
+Publish dates accept weekday numbers (`2`–`8`) or `YYYY-MM-DD`. CLI example: `--dates=2,4,6` schedules next Mon / Wed / Fri.
+
+Times and timezone come from `publish.youtubeSchedule` / `publish.facebookSchedule` in `channel.yaml`.
+
+### Topic registry
+
+Past topics live in `channels/<channel-id>/topics.json`, not in project folders. The batch command uses this file to avoid duplicate AI suggestions.
 
 ---
 
