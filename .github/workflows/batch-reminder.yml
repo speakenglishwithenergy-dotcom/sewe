@@ -1,0 +1,29 @@
+name: Batch reminder
+
+on:
+  schedule:
+    # Monday 08:00 Asia/Ho_Chi_Minh (UTC+7) = Monday 01:00 UTC
+    - cron: '0 1 * * 1'
+  workflow_dispatch:
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Send batch reminder email
+        env:
+          REMINDER_EMAIL_TO: ${{ secrets.REMINDER_EMAIL_TO }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          REMINDER_EMAIL_FROM: ${{ secrets.REMINDER_EMAIL_FROM }}
+          REMINDER_TIMEZONE: ${{ secrets.REMINDER_TIMEZONE }}
+          REMINDER_CHANNEL_ID: ${{ secrets.REMINDER_CHANNEL_ID }}
+        run: npm run remind

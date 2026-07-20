@@ -6,6 +6,8 @@
   "scripts": {
     "generate": "tsx src/index.ts",
     "batch": "tsx src/batch.ts",
+    "remind": "tsx src/remind.ts",
+    "remind:install": "bash scripts/install-batch-reminder.sh",
     "publish": "tsx src/publish.ts",
     "youtube:auth": "tsx scripts/youtube-oauth.ts",
     "tiktok:auth": "tsx scripts/tiktok-oauth.ts",

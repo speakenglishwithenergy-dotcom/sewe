@@ -7,6 +7,9 @@ dist/
 # Environment variables
 .env
 
+# Local runtime state
+.sewe/
+
 # Generated output (keep structure, ignore generated files)
 output
 shadowing/workspaces

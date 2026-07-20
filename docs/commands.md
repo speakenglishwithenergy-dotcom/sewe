@@ -14,6 +14,8 @@ npm run <script> -- [flags]
 |---------|---------|
 | `npm run generate` | Create or resume a podcast/short video project |
 | `npm run batch` | Weekly batch: AI topics → generate 2–3 episodes → schedule publish dates |
+| `npm run remind` | Send Monday batch reminder email |
+| `npm run remind:install` | Install macOS launchd job for weekly Monday reminder |
 | `npm run publish` | Upload an existing project to YouTube, Facebook, and/or TikTok |
 | `npm run youtube:auth` | One-time YouTube OAuth setup |
 | `npm run tiktok:auth` | One-time TikTok OAuth setup |
@@ -100,6 +102,71 @@ Times and timezone come from `publish.youtubeSchedule` / `publish.facebookSchedu
 ### Topic registry
 
 Past topics live in `channels/<channel-id>/topics.json`, not in project folders. The batch command uses this file to avoid duplicate AI suggestions.
+
+---
+
+## `npm run remind`
+
+Email reminder every **Monday morning** to run the weekly batch.
+
+**Entry point:** `src/remind.ts`
+
+### Setup (one time)
+
+**Option A — GitHub Actions (recommended)** — không cần Mac bật lúc 8h sáng.
+
+1. Push repo lên GitHub
+2. Vào **Settings → Secrets and variables → Actions**, thêm secrets:
+
+| Secret | Required | Example |
+|--------|----------|---------|
+| `REMINDER_EMAIL_TO` | yes | `you@gmail.com` |
+| `RESEND_API_KEY` | yes | `re_...` |
+| `REMINDER_EMAIL_FROM` | no | `SEWE Reminder <onboarding@resend.dev>` |
+| `REMINDER_TIMEZONE` | no | `Asia/Ho_Chi_Minh` |
+| `REMINDER_CHANNEL_ID` | no | `speak-english-with-energy` |
+
+3. Workflow `.github/workflows/batch-reminder.yml` chạy **mỗi thứ 2 lúc 8:00 sáng** (giờ Việt Nam)
+4. Test thủ công: **Actions → Batch reminder → Run workflow**
+
+**Option B — macOS launchd** — chạy local, Mac phải bật lúc 8h sáng.
+
+1. Create a free account at [resend.com](https://resend.com) and get an API key
+2. Add to `.env`:
+
+```bash
+REMINDER_EMAIL_TO=you@gmail.com
+RESEND_API_KEY=re_...
+REMINDER_EMAIL_FROM=SEWE Reminder <onboarding@resend.dev>
+REMINDER_TIMEZONE=Asia/Ho_Chi_Minh
+```
+
+3. Test:
+
+```bash
+npm run remind -- --dry-run
+npm run remind -- --force
+```
+
+4. Install schedule:
+
+```bash
+npm run remind:install
+
+# Custom time
+REMINDER_HOUR=7 REMINDER_MINUTE=30 npm run remind:install
+```
+
+Uses `launchd` — runs even when Terminal is closed (Mac must be on and awake).
+
+### Commands
+
+| Flag | Description |
+|------|-------------|
+| `--dry-run` | Preview email without sending |
+| `--force` | Send even if not Monday or already sent today |
+
+Logs: `.sewe/reminder.log`
 
 ---
 
