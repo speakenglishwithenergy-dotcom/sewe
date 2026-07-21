@@ -216,6 +216,8 @@ export interface ResolvedPublishCopy {
   youtubeChannelUrl: string;
   facebookPageUrl: string;
   tiktokChannelUrl: string;
+  /** When false, meta generation/export omits TikTok files and link/CTA lines. */
+  includeTikTok: boolean;
   youtubeLongPlaylistId: string;
   youtubeShortPlaylistId: string;
   titleSuffix: string;
@@ -292,6 +294,7 @@ export function buildClosingText(template: string, channelName: string): string 
 export function resolvePublishCopy(
   publish: ChannelPublishConfig,
   titleMax = 70,
+  includeTikTok = false,
 ): ResolvedPublishCopy {
   const { youtubeChannelUrl, facebookPageUrl, tiktokChannelUrl } = publish;
 
@@ -299,6 +302,7 @@ export function resolvePublishCopy(
     youtubeChannelUrl,
     facebookPageUrl,
     tiktokChannelUrl,
+    includeTikTok,
     youtubeLongPlaylistId: publish.youtubeLongPlaylistId,
     youtubeShortPlaylistId: publish.youtubeShortPlaylistId,
     titleSuffix: publish.titleSuffix,

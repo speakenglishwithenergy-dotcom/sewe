@@ -348,7 +348,11 @@ function printPublishCommands(projectId: string, hasLong: boolean, hasShort: boo
   }
 }
 
-function printSocialMetadataSummary(projectDir: string, hasShort: boolean): void {
+function printSocialMetadataSummary(
+  projectDir: string,
+  hasShort: boolean,
+  includeTikTok: boolean,
+): void {
   const publishDir = getPublishOutputDir(projectDir);
   console.log(`
   Publish Meta  : ${publishDir}
@@ -359,12 +363,15 @@ function printSocialMetadataSummary(projectDir: string, hasShort: boolean): void
   FB Long Cap   : ${path.join(publishDir, FACEBOOK_LONG_CAPTION)}
   FB Long Pin   : ${path.join(publishDir, FACEBOOK_LONG_FIRST_COMMENT)}`);
   if (hasShort) {
-    console.log(`  YT Short Title: ${path.join(publishDir, YOUTUBE_SHORT_TITLE)}
+    let shortSummary = `  YT Short Title: ${path.join(publishDir, YOUTUBE_SHORT_TITLE)}
   YT Short Cap  : ${path.join(publishDir, YOUTUBE_SHORT_CAPTION)}
   YT Short Pin  : ${path.join(publishDir, YOUTUBE_SHORT_PINNED_COMMENT)}
   FB Short Cap  : ${path.join(publishDir, FACEBOOK_SHORT_CAPTION)}
-  FB Short Pin  : ${path.join(publishDir, FACEBOOK_SHORT_FIRST_COMMENT)}
-  TikTok Cap    : ${path.join(publishDir, TIKTOK_SHORT_CAPTION)}`);
+  FB Short Pin  : ${path.join(publishDir, FACEBOOK_SHORT_FIRST_COMMENT)}`;
+    if (includeTikTok) {
+      shortSummary += `\n  TikTok Cap    : ${path.join(publishDir, TIKTOK_SHORT_CAPTION)}`;
+    }
+    console.log(shortSummary);
   }
 }
 
@@ -663,7 +670,7 @@ async function main(): Promise<void> {
     console.log(`
   Project ID : ${project.id}
   Title      : ${podcastScript.title}`);
-    printSocialMetadataSummary(PROJECT_DIR, !!shortScript);
+    printSocialMetadataSummary(PROJECT_DIR, !!shortScript, channelCtx.publish.includeTikTok);
     console.log(`
   `);
     printSocialMetadataPreview(socialMeta, channelCtx.publish);
@@ -693,7 +700,7 @@ async function main(): Promise<void> {
   Thumbnail  : ${podcastScript.thumbnailText}
   Lines      : ${podcastScript.script.length} dialogue lines
   Script     : ${SCRIPT_PATH}`);
-    printSocialMetadataSummary(PROJECT_DIR, false);
+    printSocialMetadataSummary(PROJECT_DIR, false, channelCtx.publish.includeTikTok);
     console.log(`
   `);
     console.log('First 3 lines:');
@@ -747,7 +754,7 @@ async function main(): Promise<void> {
   Short Audio     : ${shortPaths.shortAudioPath}
   Short Subtitles : ${shortPaths.shortSubtitlesPath}
   Short Video     : ${shortPaths.shortVideoPath}`);
-    printSocialMetadataSummary(PROJECT_DIR, true);
+    printSocialMetadataSummary(PROJECT_DIR, true, channelCtx.publish.includeTikTok);
     console.log(`
   `);
     printSocialMetadataPreview(socialMeta, channelCtx.publish);
@@ -963,7 +970,7 @@ async function main(): Promise<void> {
   Short Thumbnail : ${shortPaths.shortThumbnailPath}
   Short Video     : ${shortPaths.shortVideoPath}`);
   }
-  printSocialMetadataSummary(PROJECT_DIR, !!shortScript);
+  printSocialMetadataSummary(PROJECT_DIR, !!shortScript, channelCtx.publish.includeTikTok);
   console.log(`
   `);
   printSocialMetadataPreview(socialMeta, channelCtx.publish);

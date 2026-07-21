@@ -130,9 +130,9 @@ export function formatYouTubeTags(tags: string[]): string {
 }
 
 function formatShortLinksFooter(pub: ResolvedPublishCopy): string {
-  return [pub.shortLinks.youtubeLine, pub.shortLinks.facebookLine, pub.shortLinks.tiktokLine].join(
-    '\n',
-  );
+  const lines = [pub.shortLinks.youtubeLine, pub.shortLinks.facebookLine];
+  if (pub.includeTikTok) lines.push(pub.shortLinks.tiktokLine);
+  return lines.join('\n');
 }
 
 export function formatChannelDescription(meta: YouTubeMetadata, pub: ResolvedPublishCopy): string {
@@ -148,6 +148,9 @@ export function formatChannelDescription(meta: YouTubeMetadata, pub: ResolvedPub
   const chapterBlock = chapters.map((chapter) => `${chapter.time} ${chapter.label}`).join('\n');
   const bulletBlock = bullets.map((bullet) => `• ${bullet}`).join('\n');
 
+  const linkLines = [desc.youtubeLinkLine, desc.facebookLinkLine];
+  if (pub.includeTikTok) linkLines.push(desc.tiktokLinkLine);
+
   return [
     hook,
     '',
@@ -161,9 +164,7 @@ export function formatChannelDescription(meta: YouTubeMetadata, pub: ResolvedPub
     desc.shortCta,
     '',
     desc.linksHeader,
-    desc.youtubeLinkLine,
-    desc.facebookLinkLine,
-    desc.tiktokLinkLine,
+    ...linkLines,
     '',
     hashtags.join(' '),
   ]
@@ -210,15 +211,16 @@ export function formatFacebookCaption(meta: FacebookMetadata, pub: ResolvedPubli
   );
   const bulletBlock = bullets.map((bullet) => `• ${bullet}`).join('\n');
 
+  const ctaLines = [fb.followCta, fb.youtubeCta];
+  if (pub.includeTikTok) ctaLines.push(fb.tiktokCta);
+
   return [
     hook,
     '',
     fb.learnHeader,
     bulletBlock,
     '',
-    fb.followCta,
-    fb.youtubeCta,
-    fb.tiktokCta,
+    ...ctaLines,
     '',
     hashtags.join(' '),
   ]

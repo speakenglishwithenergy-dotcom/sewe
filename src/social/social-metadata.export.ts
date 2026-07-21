@@ -121,7 +121,9 @@ export function buildExportBundle(meta: SocialMetadata, pub: ResolvedPublishCopy
     files[YOUTUBE_SHORT_TITLE] = meta.youtubeShort.title;
     files[YOUTUBE_SHORT_CAPTION] = formatChannelShortCaption(meta.youtubeShort, pub);
     files[YOUTUBE_SHORT_PINNED_COMMENT] = meta.youtubeShort.pinnedComment;
-    files[TIKTOK_SHORT_CAPTION] = formatTikTokShortCaption(meta.youtubeShort, pub);
+    if (pub.includeTikTok) {
+      files[TIKTOK_SHORT_CAPTION] = formatTikTokShortCaption(meta.youtubeShort, pub);
+    }
   }
 
   if (meta.facebook) {
@@ -149,6 +151,14 @@ async function removeLegacyPublishFiles(publishDir: string): Promise<void> {
   );
 }
 
+async function removeTikTokPublishFiles(publishDir: string): Promise<void> {
+  try {
+    await fs.rm(path.join(publishDir, PUBLISH_TIKTOK_SHORT_DIR), { recursive: true, force: true });
+  } catch {
+    // ignore
+  }
+}
+
 export async function writeSocialMetadataExports(
   projectDir: string,
   meta: SocialMetadata,
@@ -159,6 +169,9 @@ export async function writeSocialMetadataExports(
   const publishDir = getPublishOutputDir(projectDir);
   await fs.mkdir(publishDir, { recursive: true });
   await removeLegacyPublishFiles(publishDir);
+  if (!pub.includeTikTok) {
+    await removeTikTokPublishFiles(publishDir);
+  }
 
   await fs.writeFile(
     path.join(publishDir, SOCIAL_METADATA_JSON),

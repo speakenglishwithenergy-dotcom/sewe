@@ -12,6 +12,7 @@ import {
 } from './channel.types';
 import { CHANNELS_DIR } from './constants';
 import { PUBLISH_LIMITS } from '../social/publish.limits';
+import { isTikTokPublishEnabled } from '../social/publish.env';
 
 export class ChannelService {
   private readonly rootDir: string;
@@ -82,7 +83,11 @@ export class ChannelService {
       assets,
       speakers,
       voiceMap,
-      publish: resolvePublishCopy(config.publish, PUBLISH_LIMITS.youtubeTitleMax),
+      publish: resolvePublishCopy(
+        config.publish,
+        PUBLISH_LIMITS.youtubeTitleMax,
+        isTikTokPublishEnabled(config.env.prefix, config.id),
+      ),
       closingText: buildClosingText(config.script.closingTemplate, config.name),
     };
   }
