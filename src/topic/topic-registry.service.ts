@@ -7,8 +7,19 @@ import { TopicRecord, TopicRegistryFile, TopicStatus } from './topic.types';
 
 const REGISTRY_FILENAME = 'topics.json';
 
+const INCOMPLETE_STATUSES: ReadonlySet<TopicStatus> = new Set([
+  'pending',
+  'generating',
+  'generated',
+  'failed',
+]);
+
 function normalizeTopic(topic: string): string {
   return topic.trim().toLowerCase();
+}
+
+export function isIncompleteTopicStatus(status: TopicStatus): boolean {
+  return INCOMPLETE_STATUSES.has(status);
 }
 
 export class TopicRegistryService {
@@ -155,5 +166,32 @@ export class TopicRegistryService {
 
   async setStatus(channelId: string, topic: string, status: TopicStatus): Promise<void> {
     await this.updateRecord(channelId, topic, { status });
+  }
+
+  /**
+   * Latest batch group (same createdAt) that still has unfinished topics.
+   * Returns every record in that group, including already-published siblings.
+   */
+  findLatestIncompleteBatch(registry: TopicRegistryFile): TopicRecord[] | null {
+    const byCreatedAt = new Map<string, TopicRecord[]>();
+
+    for (const record of registry.topics) {
+      const group = byCreatedAt.get(record.createdAt) ?? [];
+      group.push(record);
+      byCreatedAt.set(record.createdAt, group);
+    }
+
+    const incompleteCreatedAts = [...byCreatedAt.entries()]
+      .filter(([, records]) => records.some((record) => isIncompleteTopicStatus(record.status)))
+      .map(([createdAt]) => createdAt)
+      .sort((a, b) => b.localeCompare(a));
+
+    const latestCreatedAt = incompleteCreatedAts[0];
+    if (!latestCreatedAt) return null;
+
+    const group = byCreatedAt.get(latestCreatedAt);
+    if (!group) return null;
+
+    return [...group].sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate));
   }
 }

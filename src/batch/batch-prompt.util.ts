@@ -7,6 +7,8 @@ import {
   isScheduleDateValid,
   parseScheduleDateInput,
 } from '../social/schedule.util';
+import { TopicRecord } from '../topic/topic.types';
+import { isIncompleteTopicStatus } from '../topic/topic-registry.service';
 import { BatchCount } from './batch.types';
 
 function createInterface(): readline.Interface {
@@ -36,6 +38,39 @@ export async function askBatchCountInteractive(): Promise<BatchCount> {
       if (answer === '2' || answer === 'two') return 2;
 
       console.log('Invalid input. Enter 2 or 3.');
+    }
+  } finally {
+    rl.close();
+  }
+}
+
+export function printIncompleteBatch(records: TopicRecord[]): void {
+  const remaining = records.filter((record) => isIncompleteTopicStatus(record.status));
+  console.log('\nIncomplete batch detected:');
+  records.forEach((record, index) => {
+    const project = record.projectId ? ` · ${record.projectId}` : '';
+    console.log(
+      `  ${index + 1}. [${record.status}] ${record.topic} · ${record.scheduledDate}${project}`,
+    );
+  });
+  console.log(`\n  ${remaining.length} episode(s) still need generate/publish.`);
+}
+
+/** Returns true to resume, false to start a new batch. */
+export async function askResumeBatchInteractive(records: TopicRecord[]): Promise<boolean> {
+  const rl = createInterface();
+
+  try {
+    printIncompleteBatch(records);
+    console.log('\nResume this batch?');
+    console.log('  [y] resume incomplete episodes');
+    console.log('  [n] start a new batch instead');
+
+    while (true) {
+      const answer = (await askQuestion(rl, '> ')).toLowerCase();
+      if (answer === 'y' || answer === 'yes') return true;
+      if (answer === 'n' || answer === 'no') return false;
+      console.log('Invalid input. Enter y or n.');
     }
   } finally {
     rl.close();

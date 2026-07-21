@@ -4,6 +4,8 @@ import { TopicSuggestService } from './ai/topic-suggest.service';
 import { runGenerateProjectWithLog } from './batch/batch-generate.util';
 import {
   askBatchCountInteractive,
+  askResumeBatchInteractive,
+  printIncompleteBatch,
   reviewScheduleInteractive,
   reviewTopicsInteractive,
 } from './batch/batch-prompt.util';
@@ -14,6 +16,7 @@ import { SocialMetadataService } from './social/social-metadata.service';
 import { normalizeSocialMetadata } from './social/social-metadata.normalize';
 import {
   BatchScheduleSlot,
+  buildScheduleSlotFromIso,
   formatBatchScheduleSlot,
   isScheduleDateValid,
   nextMonWedFriDates,
@@ -26,7 +29,11 @@ import {
   loadSocialMetadata,
   SocialPublisherService,
 } from './social/social-publisher.service';
-import { TopicRegistryService } from './topic/topic-registry.service';
+import {
+  isIncompleteTopicStatus,
+  TopicRegistryService,
+} from './topic/topic-registry.service';
+import { TopicRecord } from './topic/topic.types';
 import { logger } from './utils/logger';
 
 const DEFAULT_CHANNEL_ID = 'speak-english-with-energy';
@@ -35,6 +42,7 @@ type BatchCliArgs = {
   channelId: string;
   count?: BatchCount;
   dates?: string[];
+  resume: boolean;
 };
 
 function parseCountArg(args: string[]): BatchCount | undefined {
@@ -68,6 +76,7 @@ function parseBatchArgs(): BatchCliArgs {
   const args = process.argv.slice(2);
   const channelArg = args.find((arg) => arg.startsWith('--channel='));
   const channelId = channelArg?.replace('--channel=', '').trim() || DEFAULT_CHANNEL_ID;
+  const resume = args.includes('--resume');
 
   if (!channelId) {
     logger.error('--channel value cannot be empty');
@@ -81,6 +90,7 @@ function parseBatchArgs(): BatchCliArgs {
     console.log('  npm run batch -- --channel=speak-english-with-energy --dates=2,4,6');
     console.log('  npm run batch -- --channel=speak-english-with-energy --dates=2026-07-21,2026-07-23');
     console.log('  npm run batch -- --channel=speak-english-with-energy --count=3 --dates=2026-07-21,2026-07-23,2026-07-25');
+    console.log('  npm run batch -- --channel=speak-english-with-energy --resume');
     process.exit(0);
   }
 
@@ -92,7 +102,11 @@ function parseBatchArgs(): BatchCliArgs {
     process.exit(1);
   }
 
-  return { channelId, count: count ?? (dates?.length as BatchCount | undefined), dates };
+  if (resume && (count || dates)) {
+    logger.info('--resume ignores --count / --dates (uses topics.json schedule)');
+  }
+
+  return { channelId, count: count ?? (dates?.length as BatchCount | undefined), dates, resume };
 }
 
 function resolveScheduleSlots(
@@ -138,6 +152,14 @@ function formatPublishTime(date: Date, timezone: string): string {
     minute: '2-digit',
     hour12: false,
   }).format(date);
+}
+
+function slotFromTopicRecord(record: TopicRecord, timezone: string): BatchScheduleSlot {
+  const slot = buildScheduleSlotFromIso(record.scheduledDate, timezone);
+  if (!slot) {
+    throw new Error(`Invalid scheduledDate in topics.json: ${record.scheduledDate}`);
+  }
+  return slot;
 }
 
 async function publishWithSchedule(
@@ -192,6 +214,226 @@ async function publishWithSchedule(
   }
 }
 
+async function processBatchEpisode(input: {
+  channelId: string;
+  topic: string;
+  projectId?: string;
+  slot: BatchScheduleSlot;
+  timezone: string;
+  longTime: string;
+  shortTime: string;
+  index: number;
+  total: number;
+  projectService: ProjectService;
+  topicRegistry: TopicRegistryService;
+}): Promise<string> {
+  const {
+    channelId,
+    topic,
+    slot,
+    timezone,
+    longTime,
+    shortTime,
+    index,
+    total,
+    projectService,
+    topicRegistry,
+  } = input;
+
+  const longAt = scheduledTimeOnDate(longTime, timezone, slot.date);
+  const shortAt = scheduledTimeOnDate(shortTime, timezone, slot.date);
+
+  logger.divider('═');
+  logger.info(`Batch item ${index}/${total} — ${topic}`);
+  logger.info(`Scheduled : long ${formatPublishTime(longAt, timezone)}, short ${formatPublishTime(shortAt, timezone)}`);
+  logger.divider('═');
+
+  let projectId = input.projectId;
+  if (!projectId) {
+    const project = await projectService.create(topic, channelId);
+    projectId = project.id;
+  }
+
+  await topicRegistry.updateRecord(channelId, topic, {
+    projectId,
+    status: 'generating',
+  });
+
+  try {
+    await runGenerateProjectWithLog(projectId, topic);
+    await topicRegistry.setStatus(channelId, topic, 'generated');
+
+    logger.info('Publishing with fixed schedule...');
+    await publishWithSchedule(channelId, projectId, longAt, shortAt);
+    await topicRegistry.setStatus(channelId, topic, 'published');
+
+    logger.success(`Done: ${projectId} → ${slot.dateIso}`);
+    return projectId;
+  } catch (err) {
+    await topicRegistry.setStatus(channelId, topic, 'failed');
+    throw err;
+  }
+}
+
+async function resumeIncompleteBatch(input: {
+  channelId: string;
+  records: TopicRecord[];
+  timezone: string;
+  longTime: string;
+  shortTime: string;
+  projectService: ProjectService;
+  topicRegistry: TopicRegistryService;
+}): Promise<void> {
+  const { channelId, records, timezone, longTime, shortTime, projectService, topicRegistry } = input;
+  const remaining = records.filter((record) => isIncompleteTopicStatus(record.status));
+
+  logger.divider('═');
+  console.log(`  ♻️  Resuming incomplete batch (${remaining.length}/${records.length} left)`);
+  logger.divider('═');
+  printIncompleteBatch(records);
+
+  logger.info('\nStarting batch resume (generate + publish)...\n');
+
+  for (let index = 0; index < remaining.length; index++) {
+    const record = remaining[index];
+    const slot = slotFromTopicRecord(record, timezone);
+
+    await processBatchEpisode({
+      channelId,
+      topic: record.topic,
+      projectId: record.projectId,
+      slot,
+      timezone,
+      longTime,
+      shortTime,
+      index: index + 1,
+      total: remaining.length,
+      projectService,
+      topicRegistry,
+    });
+  }
+
+  const refreshed = await topicRegistry.load(channelId);
+  const createdAt = records[0]?.createdAt;
+  const summaryRecords = createdAt
+    ? refreshed.topics
+      .filter((record) => record.createdAt === createdAt)
+      .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate))
+    : records;
+
+  logger.info('');
+  logger.divider('═');
+  logger.success('Batch resume complete!');
+  logger.divider('═');
+  console.log('\nSummary:');
+  summaryRecords.forEach((record, index) => {
+    console.log(`  ${index + 1}. [${record.status}] ${record.topic}`);
+    console.log(`     ${record.scheduledDate} — long ${longTime}, short ${shortTime}`);
+  });
+  console.log(`\nTopic registry: channels/${channelId}/topics.json\n`);
+}
+
+async function runNewBatch(input: {
+  channelId: string;
+  channelName: string;
+  timezone: string;
+  count: BatchCount;
+  dates: string[] | undefined;
+  longTime: string;
+  shortTime: string;
+  pastTopics: string[];
+  projectService: ProjectService;
+  topicRegistry: TopicRegistryService;
+  channelCtx: Awaited<ReturnType<ChannelService['loadChannel']>>;
+}): Promise<void> {
+  const {
+    channelId,
+    channelName,
+    timezone,
+    count,
+    dates,
+    longTime,
+    shortTime,
+    pastTopics,
+    projectService,
+    topicRegistry,
+    channelCtx,
+  } = input;
+
+  logger.divider('═');
+  console.log(`  📅  ${channelName} — Weekly Batch (${count} episodes)`);
+  logger.divider('═');
+  logger.info(`Channel   : ${channelId}`);
+  logger.info(`Timezone  : ${timezone}`);
+  logger.info(`Batch size: ${count}`);
+  logger.info(`Past topics: ${pastTopics.length}`);
+
+  const defaultScheduleSlots = resolveScheduleSlots(timezone, count, dates);
+  const openai = new OpenAIService();
+  const topicSuggest = new TopicSuggestService(openai, channelCtx);
+
+  const regenerate = async (): Promise<string[]> =>
+    topicSuggest.suggest(pastTopics, count);
+
+  const initialTopics = await regenerate();
+  const confirmedTopics = await reviewTopicsInteractive(initialTopics, regenerate);
+
+  if (!confirmedTopics) {
+    logger.info('Batch cancelled.');
+    return;
+  }
+
+  const scheduleSlots = dates
+    ? defaultScheduleSlots
+    : await reviewScheduleInteractive(defaultScheduleSlots, timezone);
+
+  if (!scheduleSlots) {
+    logger.info('Batch cancelled.');
+    return;
+  }
+
+  await topicRegistry.addPendingBatch(
+    channelId,
+    confirmedTopics.map((topic, index) => ({
+      topic,
+      scheduledDate: scheduleSlots[index].dateIso,
+      weekday: scheduleSlots[index].weekday,
+    })),
+  );
+
+  logger.info('\nStarting batch generation + publish...\n');
+
+  for (let index = 0; index < confirmedTopics.length; index++) {
+    const topic = confirmedTopics[index];
+    const slot = scheduleSlots[index];
+
+    await processBatchEpisode({
+      channelId,
+      topic,
+      slot,
+      timezone,
+      longTime,
+      shortTime,
+      index: index + 1,
+      total: count,
+      projectService,
+      topicRegistry,
+    });
+  }
+
+  logger.info('');
+  logger.divider('═');
+  logger.success('Weekly batch complete!');
+  logger.divider('═');
+  console.log('\nSummary:');
+  confirmedTopics.forEach((topic, index) => {
+    const slot = scheduleSlots[index];
+    console.log(`  ${index + 1}. ${topic}`);
+    console.log(`     ${formatBatchScheduleSlot(slot, timezone)} — long ${longTime}, short ${shortTime}`);
+  });
+  console.log(`\nTopic registry: channels/${channelId}/topics.json\n`);
+}
+
 async function main(): Promise<void> {
   const args = parseBatchArgs();
   const channelService = new ChannelService();
@@ -212,101 +454,51 @@ async function main(): Promise<void> {
     ?? channelCtx.publish.facebookSchedule?.timezone
     ?? 'Asia/Ho_Chi_Minh';
 
-  const count = args.count ?? await askBatchCountInteractive();
-
-  logger.divider('═');
-  console.log(`  📅  ${channelCtx.config.name} — Weekly Batch (${count} episodes)`);
-  logger.divider('═');
-  logger.info(`Channel   : ${channelCtx.config.id}`);
-  logger.info(`Timezone  : ${timezone}`);
-  logger.info(`Batch size: ${count}`);
-
-  const registry = await topicRegistry.migrateFromProjects(args.channelId);
-  const pastTopics = topicRegistry.listTopicStrings(registry);
-  logger.info(`Past topics: ${pastTopics.length}`);
-
-  const defaultScheduleSlots = resolveScheduleSlots(timezone, count, args.dates);
-
-  const openai = new OpenAIService();
-  const topicSuggest = new TopicSuggestService(openai, channelCtx);
-
-  const regenerate = async (): Promise<string[]> =>
-    topicSuggest.suggest(pastTopics, count);
-
-  const initialTopics = await regenerate();
-  const confirmedTopics = await reviewTopicsInteractive(initialTopics, regenerate);
-
-  if (!confirmedTopics) {
-    logger.info('Batch cancelled.');
-    return;
-  }
-
-  const scheduleSlots = args.dates
-    ? defaultScheduleSlots
-    : await reviewScheduleInteractive(defaultScheduleSlots, timezone);
-
-  if (!scheduleSlots) {
-    logger.info('Batch cancelled.');
-    return;
-  }
-
-  await topicRegistry.addPendingBatch(
-    args.channelId,
-    confirmedTopics.map((topic, index) => ({
-      topic,
-      scheduledDate: scheduleSlots[index].dateIso,
-      weekday: scheduleSlots[index].weekday,
-    })),
-  );
-
   const longTime = channelCtx.publish.youtubeSchedule?.longTime ?? '11:30';
   const shortTime = channelCtx.publish.youtubeSchedule?.shortTime ?? '17:30';
 
-  logger.info('\nStarting batch generation + publish...\n');
+  const registry = await topicRegistry.migrateFromProjects(args.channelId);
+  const incompleteBatch = topicRegistry.findLatestIncompleteBatch(registry);
 
-  for (let index = 0; index < confirmedTopics.length; index++) {
-    const topic = confirmedTopics[index];
-    const slot = scheduleSlots[index];
-    const longAt = scheduledTimeOnDate(longTime, timezone, slot.date);
-    const shortAt = scheduledTimeOnDate(shortTime, timezone, slot.date);
-
-    logger.divider('═');
-    logger.info(`Batch item ${index + 1}/${count} — ${topic}`);
-    logger.info(`Scheduled : long ${formatPublishTime(longAt, timezone)}, short ${formatPublishTime(shortAt, timezone)}`);
-    logger.divider('═');
-
-    const project = await projectService.create(topic, args.channelId);
-    await topicRegistry.updateRecord(args.channelId, topic, {
-      projectId: project.id,
-      status: 'generating',
-    });
-
-    try {
-      await runGenerateProjectWithLog(project.id, topic);
-      await topicRegistry.setStatus(args.channelId, topic, 'generated');
-
-      logger.info('Publishing with fixed schedule...');
-      await publishWithSchedule(args.channelId, project.id, longAt, shortAt);
-      await topicRegistry.setStatus(args.channelId, topic, 'published');
-
-      logger.success(`Done: ${project.id} → ${slot.dateIso}`);
-    } catch (err) {
-      await topicRegistry.setStatus(args.channelId, topic, 'failed');
-      throw err;
+  let shouldResume = args.resume;
+  if (args.resume) {
+    if (!incompleteBatch) {
+      logger.error('No incomplete batch found in topics.json (nothing to --resume)');
+      process.exit(1);
     }
+  } else if (incompleteBatch) {
+    shouldResume = await askResumeBatchInteractive(incompleteBatch);
   }
 
-  logger.info('');
-  logger.divider('═');
-  logger.success('Weekly batch complete!');
-  logger.divider('═');
-  console.log('\nSummary:');
-  confirmedTopics.forEach((topic, index) => {
-    const slot = scheduleSlots[index];
-    console.log(`  ${index + 1}. ${topic}`);
-    console.log(`     ${formatBatchScheduleSlot(slot, timezone)} — long ${longTime}, short ${shortTime}`);
+  if (shouldResume && incompleteBatch) {
+    await resumeIncompleteBatch({
+      channelId: args.channelId,
+      records: incompleteBatch,
+      timezone,
+      longTime,
+      shortTime,
+      projectService,
+      topicRegistry,
+    });
+    return;
+  }
+
+  const count = args.count ?? await askBatchCountInteractive();
+  const pastTopics = topicRegistry.listTopicStrings(registry);
+
+  await runNewBatch({
+    channelId: args.channelId,
+    channelName: channelCtx.config.name,
+    timezone,
+    count,
+    dates: args.dates,
+    longTime,
+    shortTime,
+    pastTopics,
+    projectService,
+    topicRegistry,
+    channelCtx,
   });
-  console.log(`\nTopic registry: channels/${args.channelId}/topics.json\n`);
 }
 
 main().catch((err: unknown) => {
