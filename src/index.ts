@@ -44,10 +44,14 @@ import { PublishFormat } from './social/publish.types';
 import { PodcastScript, Project, ShortScript } from './types';
 import { buildPodcastVideoPath, buildShortVideoPath } from './utils/filename.util';
 import { logger } from './utils/logger';
+import { TopicRegistryService } from './topic/topic-registry.service';
 
 // ─── Paths ───────────────────────────────────────────────────────────────────
 
 const ROOT_DIR = process.cwd();
+
+/** When set, fatal errors mark this topic as `failed` in topics.json. */
+let pendingTopicRegistryFailure: { channelId: string; topic: string } | null = null;
 const SUPERTONIC_DIR = path.join(ROOT_DIR, 'assets', 'supertonic-3');
 const SUPERTONIC_ONNX_DIR = process.env.SUPERTONIC_ONNX_DIR ?? path.join(SUPERTONIC_DIR, 'onnx');
 const SUPERTONIC_VOICES_DIR = process.env.SUPERTONIC_VOICES_DIR ?? path.join(SUPERTONIC_DIR, 'voice_styles');
@@ -513,6 +517,29 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  const topicRegistry = new TopicRegistryService(channelService, projectService);
+  const trackTopicInRegistry = args.mode === 'new';
+
+  if (trackTopicInRegistry) {
+    const timezone =
+      channelCtx.publish.youtubeSchedule?.timezone
+      ?? channelCtx.publish.facebookSchedule?.timezone
+      ?? 'UTC';
+    await topicRegistry.registerNewGenerate(project.channelId, {
+      topic: project.topic,
+      projectId: project.id,
+      createdAt: project.createdAt,
+      timezone,
+    });
+    pendingTopicRegistryFailure = { channelId: project.channelId, topic: project.topic };
+  }
+
+  async function markTopicGenerated(): Promise<void> {
+    if (!trackTopicInRegistry) return;
+    await topicRegistry.setStatus(project.channelId, project.topic, 'generated');
+    pendingTopicRegistryFailure = null;
+  }
+
   logger.divider('═');
   console.log(`  🎙  ${channelCtx.config.name} — Podcast Generator`);
   logger.divider('═');
@@ -529,6 +556,9 @@ async function main(): Promise<void> {
   }
   logger.info(`Channel          : ${channelCtx.config.id}`);
   logger.info(`Topic            : "${project.topic}"`);
+  if (trackTopicInRegistry) {
+    logger.info(`Topic registry   : channels/${project.channelId}/topics.json`);
+  }
   if (args.test) logger.info('Mode             : TEST (script only)');
   if (args.short) logger.info('Mode             : SHORT only');
   if (args.podcast) logger.info('Mode             : PODCAST only');
@@ -643,6 +673,7 @@ async function main(): Promise<void> {
       publishNow: args.publishNow,
     });
     console.timeEnd('Total execution time');
+    await markTopicGenerated();
     return;
   }
   if (args.test) {
@@ -668,6 +699,7 @@ async function main(): Promise<void> {
     console.log('First 3 lines:');
     podcastScript.script.slice(0, 3).forEach((l) => console.log(`  ${l.speaker}: ${l.text}`));
     printSocialMetadataPreview(socialMeta, channelCtx.publish);
+    await markTopicGenerated();
     return;
   }
 
@@ -727,6 +759,7 @@ async function main(): Promise<void> {
       formats: ['short'],
     });
     console.timeEnd('Total execution time');
+    await markTopicGenerated();
     return;
   }
   const totalSteps = 6;
@@ -940,10 +973,23 @@ async function main(): Promise<void> {
     forcePublish: args.forcePublish,
     publishNow: args.publishNow,
   });
+  await markTopicGenerated();
   console.timeEnd('Total execution time');
 }
 
-main().catch((err: unknown) => {
+main().catch(async (err: unknown) => {
+  if (pendingTopicRegistryFailure) {
+    try {
+      await new TopicRegistryService().setStatus(
+        pendingTopicRegistryFailure.channelId,
+        pendingTopicRegistryFailure.topic,
+        'failed',
+      );
+    } catch (registryErr) {
+      const registryMessage = registryErr instanceof Error ? registryErr.message : String(registryErr);
+      logger.error(`Failed to update topic registry: ${registryMessage}`);
+    }
+  }
   const message = err instanceof Error ? err.message : String(err);
   logger.error(`Fatal: ${message}`);
   if (err instanceof Error && err.stack) {

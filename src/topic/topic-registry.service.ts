@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { ChannelService } from '../channel/channel.service';
 import { ProjectService } from '../project/project.service';
-import { WeekdayName } from '../social/schedule.util';
+import { datePartsInTimezone, WeekdayName } from '../social/schedule.util';
 import { TopicRecord, TopicRegistryFile, TopicStatus } from './topic.types';
 
 const REGISTRY_FILENAME = 'topics.json';
@@ -95,6 +95,43 @@ export class TopicRegistryService {
 
     await this.save(channelId, registry);
     return registry;
+  }
+
+  /**
+   * Register a topic created via `npm run generate` (new project only).
+   * Upserts by topic string: sets status `generating` and attaches projectId.
+   */
+  async registerNewGenerate(
+    channelId: string,
+    input: {
+      topic: string;
+      projectId: string;
+      createdAt: string;
+      timezone: string;
+    },
+  ): Promise<void> {
+    const registry = await this.load(channelId);
+    const { dateIso, weekday } = datePartsInTimezone(new Date(input.createdAt), input.timezone);
+    const normalized = normalizeTopic(input.topic);
+    const existing = registry.topics.find((item) => normalizeTopic(item.topic) === normalized);
+
+    if (existing) {
+      existing.projectId = input.projectId;
+      existing.scheduledDate = dateIso;
+      existing.weekday = weekday;
+      existing.status = 'generating';
+    } else {
+      registry.topics.push({
+        topic: input.topic,
+        projectId: input.projectId,
+        scheduledDate: dateIso,
+        weekday,
+        createdAt: input.createdAt,
+        status: 'generating',
+      });
+    }
+
+    await this.save(channelId, registry);
   }
 
   async updateRecord(

@@ -160,6 +160,19 @@ function calendarDateToIso(date: CalendarDate): string {
   return `${date.year}-${month}-${day}`;
 }
 
+/** Calendar date + weekday for an instant in an IANA timezone. */
+export function datePartsInTimezone(
+  date: Date,
+  timezone: string,
+): { dateIso: string; weekday: WeekdayName } {
+  const cal = getCalendarDateInTimezone(date, timezone);
+  const dayNumber = getWeekdayInTimezone(date, timezone);
+  return {
+    dateIso: calendarDateToIso(cal),
+    weekday: WEEKDAY_NAMES[dayNumber] ?? 'monday',
+  };
+}
+
 function weekdayLabel(dayNumber: number): BatchWeekday {
   if (dayNumber === 1) return 'monday';
   if (dayNumber === 3) return 'wednesday';

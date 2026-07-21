@@ -101,7 +101,10 @@ Times and timezone come from `publish.youtubeSchedule` / `publish.facebookSchedu
 
 ### Topic registry
 
-Past topics live in `channels/<channel-id>/topics.json`, not in project folders. The batch command uses this file to avoid duplicate AI suggestions.
+Past topics live in `channels/<channel-id>/topics.json`, not in project folders.
+
+- `npm run batch` reads this file to avoid duplicate AI suggestions, and writes status through the batch lifecycle.
+- `npm run generate` (new project only: `--channel` + `--topic`) also upserts a record: `generating` → `generated` / `failed`. Resume (`--project`) does not touch the registry.
 
 ---
 
