@@ -118,6 +118,7 @@ Behavior:
 - Groups topics by shared `createdAt` (one weekly batch run)
 - Skips episodes already `published`
 - Same 3 phases: create missing folders → generate unfinished episodes → publish remaining
+- Skips generate when long + short videos already exist on disk (marks status `generated`)
 - Reuses existing `projectId` when present (`generate --project=...`), then publishes with the stored schedule
 - `--resume` ignores `--count` / `--dates`
 

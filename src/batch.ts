@@ -10,6 +10,7 @@ import {
   reviewTopicsInteractive,
 } from './batch/batch-prompt.util';
 import { BatchCount, isBatchCount } from './batch/batch.types';
+import { projectHasReadyVideos } from './batch/batch-videos.util';
 import { ChannelService } from './channel/channel.service';
 import { ProjectService } from './project/project.service';
 import { SocialMetadataService } from './social/social-metadata.service';
@@ -233,11 +234,37 @@ function needsPublish(status: TopicRecord['status'] | undefined): boolean {
   return status !== 'published';
 }
 
+async function markReadyFromDisk(
+  item: BatchEpisodeWorkItem,
+  projectService: ProjectService,
+  topicRegistry: TopicRegistryService,
+  shortRequired: boolean,
+): Promise<BatchEpisodeWorkItem | null> {
+  if (!item.projectId || item.status === 'published') return null;
+
+  const projectDir = projectService.getDir({
+    id: item.projectId,
+    channelId: item.channelId,
+  });
+  const ready = await projectHasReadyVideos(projectDir, shortRequired);
+  if (!ready) return null;
+
+  if (item.status !== 'generated') {
+    await topicRegistry.updateRecord(item.channelId, item.topic, {
+      projectId: item.projectId,
+      status: 'generated',
+    });
+  }
+
+  return { ...item, status: 'generated' };
+}
+
 /** Phase 1 — create project folders for every episode that does not have one yet. */
 async function createBatchFolders(
   items: BatchEpisodeWorkItem[],
   projectService: ProjectService,
   topicRegistry: TopicRegistryService,
+  shortRequired: boolean,
 ): Promise<BatchEpisodeWorkItem[]> {
   logger.divider('═');
   logger.info(`Phase 1/3 — Create folders (${items.length})`);
@@ -257,12 +284,20 @@ async function createBatchFolders(
       logger.info(`[${index + 1}/${items.length}] Reusing folder ${projectId} — ${item.topic}`);
     }
 
+    const withProject = { ...item, projectId };
+    const ready = await markReadyFromDisk(withProject, projectService, topicRegistry, shortRequired);
+    if (ready) {
+      logger.info(`⏭  Videos already ready — marked generated: ${projectId}`);
+      withFolders.push(ready);
+      continue;
+    }
+
     await topicRegistry.updateRecord(item.channelId, item.topic, {
       projectId,
       status: needsGenerate(item.status) ? 'pending' : item.status,
     });
 
-    withFolders.push({ ...item, projectId });
+    withFolders.push(withProject);
   }
 
   return withFolders;
@@ -271,20 +306,39 @@ async function createBatchFolders(
 /** Phase 2 — generate project files for every episode that is not already generated/published. */
 async function generateBatchFiles(
   items: BatchEpisodeWorkItem[],
+  projectService: ProjectService,
   topicRegistry: TopicRegistryService,
+  shortRequired: boolean,
 ): Promise<BatchEpisodeWorkItem[]> {
-  const toGenerate = items.filter((item) => needsGenerate(item.status));
+  logger.divider('═');
+  logger.info(`Phase 2/3 — Generate files`);
+  logger.divider('═');
 
-  logger.divider('═');
-  logger.info(`Phase 2/3 — Generate files (${toGenerate.length}/${items.length})`);
-  logger.divider('═');
+  const updated = new Map(items.map((item) => [item.topic, item]));
+  const toGenerate: BatchEpisodeWorkItem[] = [];
+
+  for (const item of items) {
+    if (!needsGenerate(item.status)) {
+      logger.info(`⏭  Skip generate (status=${item.status}): ${item.projectId} — ${item.topic}`);
+      continue;
+    }
+
+    const ready = await markReadyFromDisk(item, projectService, topicRegistry, shortRequired);
+    if (ready) {
+      logger.info(`⏭  Skip generate (long+short videos exist): ${item.projectId} — ${item.topic}`);
+      updated.set(item.topic, ready);
+      continue;
+    }
+
+    toGenerate.push(item);
+  }
 
   if (toGenerate.length === 0) {
     logger.info('All episodes already generated — skipping.');
-    return items;
+    return items.map((item) => updated.get(item.topic) ?? item);
   }
 
-  const updated = new Map(items.map((item) => [item.topic, item]));
+  logger.info(`Generating ${toGenerate.length}/${items.length} episode(s)...`);
 
   for (let index = 0; index < toGenerate.length; index++) {
     const item = toGenerate[index];
@@ -359,9 +413,10 @@ async function runBatchPhases(
   items: BatchEpisodeWorkItem[],
   projectService: ProjectService,
   topicRegistry: TopicRegistryService,
+  shortRequired: boolean,
 ): Promise<void> {
-  const withFolders = await createBatchFolders(items, projectService, topicRegistry);
-  const generated = await generateBatchFiles(withFolders, topicRegistry);
+  const withFolders = await createBatchFolders(items, projectService, topicRegistry, shortRequired);
+  const generated = await generateBatchFiles(withFolders, projectService, topicRegistry, shortRequired);
   await publishBatchEpisodes(generated, topicRegistry);
 }
 
@@ -371,10 +426,20 @@ async function resumeIncompleteBatch(input: {
   timezone: string;
   longTime: string;
   shortTime: string;
+  shortRequired: boolean;
   projectService: ProjectService;
   topicRegistry: TopicRegistryService;
 }): Promise<void> {
-  const { channelId, records, timezone, longTime, shortTime, projectService, topicRegistry } = input;
+  const {
+    channelId,
+    records,
+    timezone,
+    longTime,
+    shortTime,
+    shortRequired,
+    projectService,
+    topicRegistry,
+  } = input;
   const remaining = records.filter((record) => isIncompleteTopicStatus(record.status));
 
   logger.divider('═');
@@ -395,7 +460,7 @@ async function resumeIncompleteBatch(input: {
     shortTime,
   }));
 
-  await runBatchPhases(items, projectService, topicRegistry);
+  await runBatchPhases(items, projectService, topicRegistry, shortRequired);
 
   const refreshed = await topicRegistry.load(channelId);
   const createdAt = records[0]?.createdAt;
@@ -497,7 +562,7 @@ async function runNewBatch(input: {
     shortTime,
   }));
 
-  await runBatchPhases(items, projectService, topicRegistry);
+  await runBatchPhases(items, projectService, topicRegistry, channelCtx.config.short.enabled);
 
   logger.info('');
   logger.divider('═');
@@ -555,6 +620,7 @@ async function main(): Promise<void> {
       timezone,
       longTime,
       shortTime,
+      shortRequired: channelCtx.config.short.enabled,
       projectService,
       topicRegistry,
     });
