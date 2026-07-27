@@ -95,9 +95,11 @@ npm run batch -- --channel=speak-english-with-energy --resume
    - `[d]` reset defaults
    - `[y]` confirm and start
    - `[q]` quit
-7. Generates projects sequentially (full `generate` pipeline)
-8. Publishes each project on its chosen date — long at `youtubeSchedule.longTime`, short at `youtubeSchedule.shortTime`
-9. Saves every topic to `channels/<channel-id>/topics.json` (persists even if you delete project folders later)
+7. Runs in 3 phases across all episodes:
+   1. **Create folders** — project dirs under `output/<channel-id>/projects/`
+   2. **Generate files** — full `generate` pipeline for each project
+   3. **Publish** — schedule each project on its chosen date (long at `youtubeSchedule.longTime`, short at `youtubeSchedule.shortTime`)
+8. Saves every topic to `channels/<channel-id>/topics.json` (persists even if you delete project folders later)
 
 Publish dates accept weekday numbers (`2`–`8`) or `YYYY-MM-DD`. CLI example: `--dates=2,4,6` schedules next Mon / Wed / Fri.
 
@@ -115,6 +117,7 @@ Behavior:
 
 - Groups topics by shared `createdAt` (one weekly batch run)
 - Skips episodes already `published`
+- Same 3 phases: create missing folders → generate unfinished episodes → publish remaining
 - Reuses existing `projectId` when present (`generate --project=...`), then publishes with the stored schedule
 - `--resume` ignores `--count` / `--dates`
 

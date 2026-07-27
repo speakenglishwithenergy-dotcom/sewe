@@ -214,65 +214,155 @@ async function publishWithSchedule(
   }
 }
 
-async function processBatchEpisode(input: {
+type BatchEpisodeWorkItem = {
   channelId: string;
   topic: string;
   projectId?: string;
+  status?: TopicRecord['status'];
   slot: BatchScheduleSlot;
   timezone: string;
   longTime: string;
   shortTime: string;
-  index: number;
-  total: number;
-  projectService: ProjectService;
-  topicRegistry: TopicRegistryService;
-}): Promise<string> {
-  const {
-    channelId,
-    topic,
-    slot,
-    timezone,
-    longTime,
-    shortTime,
-    index,
-    total,
-    projectService,
-    topicRegistry,
-  } = input;
+};
 
-  const longAt = scheduledTimeOnDate(longTime, timezone, slot.date);
-  const shortAt = scheduledTimeOnDate(shortTime, timezone, slot.date);
+function needsGenerate(status: TopicRecord['status'] | undefined): boolean {
+  return status !== 'generated' && status !== 'published';
+}
 
+function needsPublish(status: TopicRecord['status'] | undefined): boolean {
+  return status !== 'published';
+}
+
+/** Phase 1 — create project folders for every episode that does not have one yet. */
+async function createBatchFolders(
+  items: BatchEpisodeWorkItem[],
+  projectService: ProjectService,
+  topicRegistry: TopicRegistryService,
+): Promise<BatchEpisodeWorkItem[]> {
   logger.divider('═');
-  logger.info(`Batch item ${index}/${total} — ${topic}`);
-  logger.info(`Scheduled : long ${formatPublishTime(longAt, timezone)}, short ${formatPublishTime(shortAt, timezone)}`);
+  logger.info(`Phase 1/3 — Create folders (${items.length})`);
   logger.divider('═');
 
-  let projectId = input.projectId;
-  if (!projectId) {
-    const project = await projectService.create(topic, channelId);
-    projectId = project.id;
+  const withFolders: BatchEpisodeWorkItem[] = [];
+
+  for (let index = 0; index < items.length; index++) {
+    const item = items[index];
+    let projectId = item.projectId;
+
+    if (!projectId) {
+      const project = await projectService.create(item.topic, item.channelId);
+      projectId = project.id;
+      logger.success(`[${index + 1}/${items.length}] Created folder ${projectId} — ${item.topic}`);
+    } else {
+      logger.info(`[${index + 1}/${items.length}] Reusing folder ${projectId} — ${item.topic}`);
+    }
+
+    await topicRegistry.updateRecord(item.channelId, item.topic, {
+      projectId,
+      status: needsGenerate(item.status) ? 'pending' : item.status,
+    });
+
+    withFolders.push({ ...item, projectId });
   }
 
-  await topicRegistry.updateRecord(channelId, topic, {
-    projectId,
-    status: 'generating',
-  });
+  return withFolders;
+}
 
-  try {
-    await runGenerateProjectWithLog(projectId, topic);
-    await topicRegistry.setStatus(channelId, topic, 'generated');
+/** Phase 2 — generate project files for every episode that is not already generated/published. */
+async function generateBatchFiles(
+  items: BatchEpisodeWorkItem[],
+  topicRegistry: TopicRegistryService,
+): Promise<BatchEpisodeWorkItem[]> {
+  const toGenerate = items.filter((item) => needsGenerate(item.status));
 
-    logger.info('Publishing with fixed schedule...');
-    await publishWithSchedule(channelId, projectId, longAt, shortAt);
-    await topicRegistry.setStatus(channelId, topic, 'published');
+  logger.divider('═');
+  logger.info(`Phase 2/3 — Generate files (${toGenerate.length}/${items.length})`);
+  logger.divider('═');
 
-    logger.success(`Done: ${projectId} → ${slot.dateIso}`);
-    return projectId;
-  } catch (err) {
-    await topicRegistry.setStatus(channelId, topic, 'failed');
-    throw err;
+  if (toGenerate.length === 0) {
+    logger.info('All episodes already generated — skipping.');
+    return items;
   }
+
+  const updated = new Map(items.map((item) => [item.topic, item]));
+
+  for (let index = 0; index < toGenerate.length; index++) {
+    const item = toGenerate[index];
+    const projectId = item.projectId;
+    if (!projectId) {
+      throw new Error(`Missing projectId for topic "${item.topic}" before generate`);
+    }
+
+    logger.info(`Generating ${index + 1}/${toGenerate.length} — ${item.topic}`);
+    await topicRegistry.updateRecord(item.channelId, item.topic, {
+      projectId,
+      status: 'generating',
+    });
+
+    try {
+      await runGenerateProjectWithLog(projectId, item.topic);
+      await topicRegistry.setStatus(item.channelId, item.topic, 'generated');
+      updated.set(item.topic, { ...item, projectId, status: 'generated' });
+      logger.success(`Generated: ${projectId}`);
+    } catch (err) {
+      await topicRegistry.setStatus(item.channelId, item.topic, 'failed');
+      throw err;
+    }
+  }
+
+  return items.map((item) => updated.get(item.topic) ?? item);
+}
+
+/** Phase 3 — publish every episode that is not already published. */
+async function publishBatchEpisodes(
+  items: BatchEpisodeWorkItem[],
+  topicRegistry: TopicRegistryService,
+): Promise<void> {
+  const toPublish = items.filter((item) => needsPublish(item.status));
+
+  logger.divider('═');
+  logger.info(`Phase 3/3 — Publish (${toPublish.length}/${items.length})`);
+  logger.divider('═');
+
+  if (toPublish.length === 0) {
+    logger.info('All episodes already published — skipping.');
+    return;
+  }
+
+  for (let index = 0; index < toPublish.length; index++) {
+    const item = toPublish[index];
+    const projectId = item.projectId;
+    if (!projectId) {
+      throw new Error(`Missing projectId for topic "${item.topic}" before publish`);
+    }
+
+    const longAt = scheduledTimeOnDate(item.longTime, item.timezone, item.slot.date);
+    const shortAt = scheduledTimeOnDate(item.shortTime, item.timezone, item.slot.date);
+
+    logger.divider('─');
+    logger.info(`Publishing ${index + 1}/${toPublish.length} — ${item.topic}`);
+    logger.info(`Scheduled : long ${formatPublishTime(longAt, item.timezone)}, short ${formatPublishTime(shortAt, item.timezone)}`);
+    logger.divider('─');
+
+    try {
+      await publishWithSchedule(item.channelId, projectId, longAt, shortAt);
+      await topicRegistry.setStatus(item.channelId, item.topic, 'published');
+      logger.success(`Published: ${projectId} → ${item.slot.dateIso}`);
+    } catch (err) {
+      await topicRegistry.setStatus(item.channelId, item.topic, 'failed');
+      throw err;
+    }
+  }
+}
+
+async function runBatchPhases(
+  items: BatchEpisodeWorkItem[],
+  projectService: ProjectService,
+  topicRegistry: TopicRegistryService,
+): Promise<void> {
+  const withFolders = await createBatchFolders(items, projectService, topicRegistry);
+  const generated = await generateBatchFiles(withFolders, topicRegistry);
+  await publishBatchEpisodes(generated, topicRegistry);
 }
 
 async function resumeIncompleteBatch(input: {
@@ -292,26 +382,20 @@ async function resumeIncompleteBatch(input: {
   logger.divider('═');
   printIncompleteBatch(records);
 
-  logger.info('\nStarting batch resume (generate + publish)...\n');
+  logger.info('\nStarting batch resume (folders → generate → publish)...\n');
 
-  for (let index = 0; index < remaining.length; index++) {
-    const record = remaining[index];
-    const slot = slotFromTopicRecord(record, timezone);
+  const items: BatchEpisodeWorkItem[] = remaining.map((record) => ({
+    channelId,
+    topic: record.topic,
+    projectId: record.projectId,
+    status: record.status,
+    slot: slotFromTopicRecord(record, timezone),
+    timezone,
+    longTime,
+    shortTime,
+  }));
 
-    await processBatchEpisode({
-      channelId,
-      topic: record.topic,
-      projectId: record.projectId,
-      slot,
-      timezone,
-      longTime,
-      shortTime,
-      index: index + 1,
-      total: remaining.length,
-      projectService,
-      topicRegistry,
-    });
-  }
+  await runBatchPhases(items, projectService, topicRegistry);
 
   const refreshed = await topicRegistry.load(channelId);
   const createdAt = records[0]?.createdAt;
@@ -401,25 +485,19 @@ async function runNewBatch(input: {
     })),
   );
 
-  logger.info('\nStarting batch generation + publish...\n');
+  logger.info('\nStarting batch (folders → generate → publish)...\n');
 
-  for (let index = 0; index < confirmedTopics.length; index++) {
-    const topic = confirmedTopics[index];
-    const slot = scheduleSlots[index];
+  const items: BatchEpisodeWorkItem[] = confirmedTopics.map((topic, index) => ({
+    channelId,
+    topic,
+    status: 'pending',
+    slot: scheduleSlots[index],
+    timezone,
+    longTime,
+    shortTime,
+  }));
 
-    await processBatchEpisode({
-      channelId,
-      topic,
-      slot,
-      timezone,
-      longTime,
-      shortTime,
-      index: index + 1,
-      total: count,
-      projectService,
-      topicRegistry,
-    });
-  }
+  await runBatchPhases(items, projectService, topicRegistry);
 
   logger.info('');
   logger.divider('═');
