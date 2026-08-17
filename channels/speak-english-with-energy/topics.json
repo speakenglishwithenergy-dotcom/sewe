@@ -69,7 +69,7 @@
       "scheduledDate": "2026-07-27",
       "weekday": "monday",
       "createdAt": "2026-07-27T01:04:05.670Z",
-      "status": "generated",
+      "status": "published",
       "projectId": "017-20260727"
     },
     {
@@ -77,7 +77,7 @@
       "scheduledDate": "2026-07-29",
       "weekday": "wednesday",
       "createdAt": "2026-07-27T01:04:05.670Z",
-      "status": "generated",
+      "status": "published",
       "projectId": "018-20260727"
     },
     {
@@ -85,8 +85,80 @@
       "scheduledDate": "2026-07-31",
       "weekday": "friday",
       "createdAt": "2026-07-27T01:04:05.670Z",
-      "status": "failed",
+      "status": "published",
       "projectId": "019-20260727"
+    },
+    {
+      "topic": "Stop Memorizing Interview Answers",
+      "projectId": "020-20260803",
+      "scheduledDate": "2026-08-03",
+      "weekday": "monday",
+      "createdAt": "2026-08-03T08:24:37.831Z",
+      "status": "failed"
+    },
+    {
+      "topic": "How to Sound Professional in English",
+      "scheduledDate": "2026-08-05",
+      "weekday": "wednesday",
+      "createdAt": "2026-08-04T03:03:52.514Z",
+      "status": "published",
+      "projectId": "021-20260804"
+    },
+    {
+      "topic": "The Secret to Passing an English Interview",
+      "scheduledDate": "2026-08-07",
+      "weekday": "friday",
+      "createdAt": "2026-08-04T03:03:52.514Z",
+      "status": "published",
+      "projectId": "022-20260804"
+    },
+    {
+      "topic": "What Great Candidates Do Before Saying a Word",
+      "projectId": "024-20260810",
+      "scheduledDate": "2026-08-10",
+      "weekday": "monday",
+      "createdAt": "2026-08-10T04:42:22.974Z",
+      "status": "generated"
+    },
+    {
+      "topic": "You Know English, But You Freeze in Interviews",
+      "scheduledDate": "2026-08-12",
+      "weekday": "wednesday",
+      "createdAt": "2026-08-10T04:43:42.762Z",
+      "status": "published",
+      "projectId": "025-20260810"
+    },
+    {
+      "topic": "What to Say When You Don’t Understand the Interviewer",
+      "scheduledDate": "2026-08-14",
+      "weekday": "friday",
+      "createdAt": "2026-08-10T04:43:42.762Z",
+      "status": "published",
+      "projectId": "026-20260810"
+    },
+    {
+      "topic": "How to Buy Time Without Saying “Umm…”",
+      "projectId": "001-20260817",
+      "scheduledDate": "2026-08-17",
+      "weekday": "monday",
+      "createdAt": "2026-08-17T04:14:19.285Z",
+      "status": "generated"
+    },
+    {
+      "topic": "How to Sound Professional Without Using Difficult English",
+      "scheduledDate": "2026-08-19",
+      "weekday": "wednesday",
+      "createdAt": "2026-08-17T04:23:33.059Z",
+      "status": "published",
+      "projectId": "002-20260817"
+    },
+    {
+      "topic": "English Phrases That Make You Sound More Confident",
+      "scheduledDate": "2026-08-21",
+      "weekday": "friday",
+      "createdAt": "2026-08-17T04:23:33.059Z",
+      "status": "published",
+      "projectId": "003-20260817"
     }
   ]
 }
