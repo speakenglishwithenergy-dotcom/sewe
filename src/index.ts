@@ -10,6 +10,7 @@ import { ShortScriptService } from './ai/short-script.service';
 import { ThumbnailService } from './ai/thumbnail.service';
 import { DISABLE_THUMBNAIL_GENERATION } from './ai/thumbnail.config';
 import { TTSService } from './audio/tts.service';
+import { formatTopicForSpeech } from './audio/speech-text.util';
 import { SupertonicService } from './audio/supertonic.service';
 import { SubtitleService } from './subtitles/subtitle.service';
 import { resolveSubtitleStyle } from './subtitles/subtitle-config.util';
@@ -591,6 +592,7 @@ async function main(): Promise<void> {
   const SCRIPT_PATH = path.join(PROJECT_DIR, 'script.json');
   const SECTIONS_PATH = getSectionsPath(PROJECT_DIR);
   const PODCAST_AUDIO_PATH = path.join(PROJECT_DIR, 'podcast.mp3');
+  const TOPIC_AUDIO_PATH = path.join(AUDIO_DIR, '000-topic.wav');
   const SUBTITLES_PATH = path.join(PROJECT_DIR, 'subtitles.ass');
   const THUMBNAIL_PATH = path.join(PROJECT_DIR, 'thumbnail.png');
   const BACKGROUND_PATH = path.join(PROJECT_DIR, 'background.png');
@@ -877,6 +879,17 @@ async function main(): Promise<void> {
     logger.success(`Podcast audio saved → ${PODCAST_AUDIO_PATH}`);
   }
 
+  const narratorHost = channelCtx.config.hosts[0];
+  const narratorVoice = channelCtx.voiceMap[narratorHost.name];
+  if (!narratorVoice) {
+    throw new Error(`No voice mapping for narrator host "${narratorHost.name}"`);
+  }
+  await ttsService.generateNarration(
+    formatTopicForSpeech(project.topic),
+    TOPIC_AUDIO_PATH,
+    narratorVoice,
+  );
+
   // ── Step 6: Final video (+ short unless --podcast) ───────────────────────
   logger.step(
     6,
@@ -918,6 +931,7 @@ async function main(): Promise<void> {
       channelAssets.outro,
       FINAL_VIDEO_PATH,
       podcastBackground.mode,
+      TOPIC_AUDIO_PATH,
     );
   } else {
     const shortPaths = buildShortPaths(PROJECT_DIR);
@@ -946,6 +960,7 @@ async function main(): Promise<void> {
         channelAssets.outro,
         FINAL_VIDEO_PATH,
         podcastBackground.mode,
+        TOPIC_AUDIO_PATH,
       );
     } else {
       // Run sequentially — parallel FFmpeg encodes freeze most machines.
@@ -967,6 +982,7 @@ async function main(): Promise<void> {
         channelAssets.outro,
         FINAL_VIDEO_PATH,
         podcastBackground.mode,
+        TOPIC_AUDIO_PATH,
       );
     }
   }

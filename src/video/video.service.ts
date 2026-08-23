@@ -19,7 +19,6 @@ const VIDEO_WIDTH = 1920;
 const VIDEO_HEIGHT = 1080;
 const SHORT_VIDEO_WIDTH = SHORT_THUMB_WIDTH;
 const SHORT_VIDEO_HEIGHT = SHORT_THUMB_HEIGHT;
-const THUMBNAIL_VIDEO_DURATION = 5;
 
 interface ResolvedPodcastBackground {
   path: string;
@@ -104,6 +103,7 @@ export class VideoService {
     outroPath: string,
     outputPath: string,
     backgroundMode: 'image' | 'slideshow' = 'image',
+    thumbnailAudioPath?: string,
   ): Promise<void> {
     if (backgroundMode === 'image') {
       await this.ensureBackground(backgroundPath);
@@ -117,15 +117,26 @@ export class VideoService {
       subtitlesPath,
       outroPath,
       outputPath,
-      THUMBNAIL_VIDEO_DURATION,
       backgroundMode,
+      thumbnailAudioPath,
     );
 
     logger.success(`Final video saved → ${outputPath}`);
   }
 
-  async generateThumbnailVideo(thumbnailPath: string, outputPath: string): Promise<void> {
-    await this.ffmpeg.generateImageVideo(thumbnailPath, outputPath, THUMBNAIL_VIDEO_DURATION);
+  async generateThumbnailVideo(
+    thumbnailPath: string,
+    outputPath: string,
+    thumbnailAudioPath?: string,
+  ): Promise<void> {
+    await this.ffmpeg.generateImageVideo(
+      thumbnailPath,
+      outputPath,
+      undefined,
+      undefined,
+      undefined,
+      thumbnailAudioPath,
+    );
     logger.success(`Thumbnail video saved → ${outputPath}`);
   }
 
@@ -137,7 +148,7 @@ export class VideoService {
     outputPath: string,
   ): Promise<void> {
     await this.ffmpeg.composeFinalVideo(
-      [introPath, thumbnailVideoPath, podcastVideoPath, outroPath],
+      [thumbnailVideoPath, introPath, podcastVideoPath, outroPath],
       outputPath,
     );
     logger.success(`Final video saved → ${outputPath}`);

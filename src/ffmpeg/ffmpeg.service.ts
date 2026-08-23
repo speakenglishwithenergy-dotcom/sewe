@@ -17,8 +17,14 @@ const PODCAST_VOLUME = 2.0;
 /** Crossfade duration between final-video segments. */
 const FADE_DURATION = 0.5;
 
-/** Thumbnail still shown at the start of the final video (seconds). */
-const THUMBNAIL_VIDEO_DURATION = 5;
+/** Silence before topic narration on the thumbnail segment (seconds). */
+const THUMBNAIL_LEAD_SECONDS = 0.5;
+
+/** Silence after topic narration before fading to intro (seconds). */
+const THUMBNAIL_TRAIL_SECONDS = 1;
+
+/** Fallback thumbnail still duration when no topic audio is provided. */
+const THUMBNAIL_VIDEO_DURATION = THUMBNAIL_LEAD_SECONDS + THUMBNAIL_TRAIL_SECONDS;
 
 const VIDEO_WIDTH = 1920;
 const VIDEO_HEIGHT = 1080;
@@ -336,35 +342,57 @@ export class FFmpegService {
 
   /**
    * Create a short H.264 clip from a static image (e.g. YouTube thumbnail).
+   * With audio: 2s lead silence → full narration → 1s trail silence.
    */
   async generateImageVideo(
     imagePath: string,
     outputPath: string,
-    durationSeconds: number,
+    durationSeconds?: number,
     width = VIDEO_WIDTH,
     height = VIDEO_HEIGHT,
+    audioPath?: string,
   ): Promise<void> {
-    logger.info(`Creating ${durationSeconds}s thumbnail video (${width}x${height})...`);
+    let duration = durationSeconds ?? THUMBNAIL_VIDEO_DURATION;
+    if (audioPath) {
+      const topicDur = await this.getMediaDuration(audioPath);
+      duration = THUMBNAIL_LEAD_SECONDS + topicDur + THUMBNAIL_TRAIL_SECONDS;
+    }
 
-    await execFileAsync(
-      this.ffmpegBin,
-      [
-        '-loop', '1',
-        '-i', imagePath,
-        '-f', 'lavfi',
-        '-i', 'anullsrc=r=44100:cl=stereo',
-        '-t', String(durationSeconds),
-        '-vf', `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=${VIDEO_FPS},format=yuv420p`,
-        ...this.getVideoEncodeArgs(),
-        '-c:a', 'aac',
-        '-b:a', '192k',
-        '-shortest',
-        '-movflags', '+faststart',
-        '-y',
-        outputPath,
-      ],
-      { maxBuffer: 64 * 1024 * 1024 },
+    logger.info(`Creating ${duration.toFixed(1)}s thumbnail video (${width}x${height})...`);
+
+    const audioInput = audioPath
+      ? ['-i', audioPath]
+      : ['-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo'];
+
+    const leadMs = Math.round(THUMBNAIL_LEAD_SECONDS * 1000);
+    const audioFilter = audioPath
+      ? `[1:a]aformat=sample_rates=44100:channel_layouts=stereo,` +
+        `adelay=${leadMs}|${leadMs}:all=1,apad=whole_dur=${duration},atrim=0:${duration}[aout]`
+      : undefined;
+
+    const ffmpegArgs = [
+      '-loop', '1',
+      '-i', imagePath,
+      ...audioInput,
+      '-t', String(duration),
+      '-vf', `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=${VIDEO_FPS},format=yuv420p`,
+    ];
+
+    if (audioFilter) {
+      ffmpegArgs.push('-filter_complex', audioFilter, '-map', '0:v', '-map', '[aout]');
+    }
+
+    ffmpegArgs.push(
+      ...this.getVideoEncodeArgs(),
+      '-c:a', 'aac',
+      '-b:a', '192k',
+      '-shortest',
+      '-movflags', '+faststart',
+      '-y',
+      outputPath,
     );
+
+    await execFileAsync(this.ffmpegBin, ffmpegArgs, { maxBuffer: 64 * 1024 * 1024 });
   }
 
   /**
@@ -450,7 +478,8 @@ export class FFmpegService {
   }
 
   /**
-   * Single-pass final video: intro + thumbnail + podcast body + outro with crossfades.
+   * Single-pass final video: thumbnail → intro → podcast body → outro with crossfades.
+   * Thumbnail segment: 2s hold → topic narration (full) → 1s hold → fade to intro.
    * Renders the podcast segment (background, waveform, burned-in ASS) inline — no
    * intermediate podcast-video.mp4 encode.
    */
@@ -462,20 +491,25 @@ export class FFmpegService {
     subtitlesPath: string,
     outroPath: string,
     outputPath: string,
-    thumbnailDurationSeconds = THUMBNAIL_VIDEO_DURATION,
     backgroundMode: 'image' | 'slideshow' = 'image',
+    thumbnailAudioPath?: string,
   ): Promise<void> {
     const fade = FADE_DURATION;
-    const thumbDur = thumbnailDurationSeconds;
 
-    const [introDur, podcastDur, outroDur] = await Promise.all([
+    const [introDur, podcastDur, outroDur, topicDur] = await Promise.all([
       this.getMediaDuration(introPath),
       this.getMediaDuration(audioPath),
       this.getMediaDuration(outroPath),
+      thumbnailAudioPath ? this.getMediaDuration(thumbnailAudioPath) : Promise.resolve(0),
     ]);
 
-    const segmentDurations = [introDur, thumbDur, podcastDur, outroDur];
-    const segmentNames = ['intro', 'thumbnail', 'podcast', 'outro'];
+    const thumbDur = thumbnailAudioPath
+      ? THUMBNAIL_LEAD_SECONDS + topicDur + THUMBNAIL_TRAIL_SECONDS
+      : THUMBNAIL_VIDEO_DURATION;
+
+    // Order on timeline: thumbnail → intro → podcast → outro
+    const segmentDurations = [thumbDur, introDur, podcastDur, outroDur];
+    const segmentNames = ['thumbnail', 'intro', 'podcast', 'outro'];
 
     for (let i = 0; i < segmentDurations.length; i++) {
       if (segmentDurations[i] <= fade) {
@@ -486,8 +520,11 @@ export class FFmpegService {
     }
 
     logger.info(
-      `Rendering final video (single-pass): intro ${introDur.toFixed(1)}s + thumb ${thumbDur}s + ` +
-        `podcast ${podcastDur.toFixed(1)}s + outro ${outroDur.toFixed(1)}s...`,
+      `Rendering final video (single-pass): thumb ${thumbDur.toFixed(1)}s` +
+        (thumbnailAudioPath
+          ? ` (${THUMBNAIL_LEAD_SECONDS}s hold + ${topicDur.toFixed(1)}s topic + ${THUMBNAIL_TRAIL_SECONDS}s hold)`
+          : '') +
+        ` + intro ${introDur.toFixed(1)}s + podcast ${podcastDur.toFixed(1)}s + outro ${outroDur.toFixed(1)}s...`,
     );
 
     const safeSubs = subtitlesPath.replace(/\\/g, '\\\\').replace(/:/g, '\\:');
@@ -500,6 +537,11 @@ export class FFmpegService {
     const normalizeAudio = (index: number, label: string): string =>
       `[${index}:a]aformat=sample_rates=44100:channel_layouts=stereo[${label}]`;
 
+    const leadMs = Math.round(THUMBNAIL_LEAD_SECONDS * 1000);
+    const fitThumbAudio = (index: number, label: string): string =>
+      `[${index}:a]aformat=sample_rates=44100:channel_layouts=stereo,` +
+      `adelay=${leadMs}|${leadMs}:all=1,apad=whole_dur=${thumbDur},atrim=0:${thumbDur}[${label}]`;
+
     const waveFilters = buildWaveOverlayFilters(this.wave);
     const { x: waveX, y: waveY } = this.wave.podcast;
     // Slideshow concat is finite; end with audio waveform then clone last frame for xfade→outro.
@@ -508,11 +550,13 @@ export class FFmpegService {
     const podcastVideoPad = isSlideshow
       ? `,tpad=stop_mode=clone:stop_duration=${fade}`
       : '';
+    // Inputs: 0=intro, 1=thumb image, 2=thumb audio, 3=bg, 4=podcast audio, 5=outro
+    // Labels follow timeline order: v0/a0=thumb, v1/a1=intro, v2/a2=podcast, v3/a3=outro
     const filters: string[] = [
-      normalizeVideo(0, 'v0'),
-      normalizeAudio(0, 'a0'),
-      normalizeVideo(1, 'v1'),
-      normalizeAudio(2, 'a1'),
+      normalizeVideo(1, 'v0'),
+      thumbnailAudioPath ? fitThumbAudio(2, 'a0') : normalizeAudio(2, 'a0'),
+      normalizeVideo(0, 'v1'),
+      normalizeAudio(0, 'a1'),
       `[3:v]scale=${VIDEO_WIDTH}:${VIDEO_HEIGHT},fps=${VIDEO_FPS}[bg]`,
       `[4:a]volume=${PODCAST_VOLUME},asplit=2[apod][awave]`,
       ...waveFilters,
@@ -543,10 +587,14 @@ export class FFmpegService {
       cumulativeDuration += segmentDurations[i];
     }
 
+    const thumbAudioInput = thumbnailAudioPath
+      ? ['-i', thumbnailAudioPath]
+      : ['-f', 'lavfi', '-t', String(thumbDur), '-i', 'anullsrc=r=44100:cl=stereo'];
+
     const ffmpegArgs = [
       '-i', introPath,
       '-loop', '1', '-t', String(thumbDur), '-i', thumbnailPath,
-      '-f', 'lavfi', '-t', String(thumbDur), '-i', 'anullsrc=r=44100:cl=stereo',
+      ...thumbAudioInput,
       ...this.backgroundInputArgs(backgroundPath, backgroundMode),
       '-i', audioPath,
       '-i', outroPath,
