@@ -12,7 +12,6 @@ import {
   isQuotaError,
   resolveChatBackends,
   type ChatBackendConfig,
-  type ChatProvider,
 } from './llm-providers';
 
 const JSON_VALIDATE_ATTEMPTS = 3;
@@ -22,8 +21,8 @@ type ChatBackend = ChatBackendConfig & { client: OpenAI };
 export class OpenAIService {
   /** Chat / JSON completions (Gemini → Groq → Cerebras, or a pinned provider). */
   private readonly backends: ChatBackend[];
-  /** Providers that hit quota during this process — skip on later calls. */
-  private readonly quotaSkipped = new Set<ChatProvider>();
+  /** Backend ids that hit quota during this process — skip on later calls. */
+  private readonly quotaSkipped = new Set<string>();
   /** TTS and image APIs — OpenAI only. */
   private readonly mediaClient: OpenAI | null;
   private readonly ttsModel: string;
@@ -153,10 +152,13 @@ export class OpenAIService {
     validator: (data: unknown) => T,
     options?: { temperature?: number; maxTokens?: number },
   ): Promise<T> {
-    logger.info(`Calling ${backend.name}/${backend.model} for JSON generation...`);
+    logger.info(`Calling ${backend.id}/${backend.model} for JSON generation...`);
 
     const maxTokens = options?.maxTokens ?? backend.defaultMaxTokens;
-    const groqExtras = backend.name === 'groq' ? groqJsonModeExtras(backend.model) : {};
+    const jsonExtras =
+      backend.name === 'groq' || backend.name === 'cerebras'
+        ? groqJsonModeExtras(backend.model)
+        : {};
 
     let response;
     let lastError: unknown;
@@ -171,7 +173,7 @@ export class OpenAIService {
           response_format: { type: 'json_object' },
           temperature: options?.temperature ?? 0.85,
           max_tokens: maxTokens,
-          ...groqExtras,
+          ...jsonExtras,
         });
         lastError = undefined;
         break;
@@ -179,7 +181,7 @@ export class OpenAIService {
         lastError = error;
         if (isJsonValidateFailed(error) && attempt < JSON_VALIDATE_ATTEMPTS) {
           logger.warn(
-            `${backend.name} JSON validation failed (attempt ${attempt}/${JSON_VALIDATE_ATTEMPTS}) — retrying...`,
+            `${backend.id} JSON validation failed (attempt ${attempt}/${JSON_VALIDATE_ATTEMPTS}) — retrying...`,
           );
           continue;
         }
@@ -211,7 +213,7 @@ export class OpenAIService {
     systemPrompt: string,
     options?: { temperature?: number; maxTokens?: number },
   ): Promise<string> {
-    logger.info(`Calling ${backend.name}/${backend.model} for text generation...`);
+    logger.info(`Calling ${backend.id}/${backend.model} for text generation...`);
 
     const maxTokens = options?.maxTokens ?? backend.defaultMaxTokens;
 

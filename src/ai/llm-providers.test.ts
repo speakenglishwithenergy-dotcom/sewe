@@ -3,8 +3,8 @@ import { describe, it } from 'node:test';
 import {
   callWithQuotaFallback,
   isQuotaError,
+  parseApiKeys,
   resolveChatBackends,
-  type ChatProvider,
 } from './llm-providers';
 
 describe('isQuotaError', () => {
@@ -32,6 +32,16 @@ describe('isQuotaError', () => {
     );
   });
 
+  it('treats Cerebras payment_required (402) as quota', () => {
+    assert.equal(
+      isQuotaError({
+        status: 402,
+        error: { code: 'payment_required', message: 'Payment required to access this resource.' },
+      }),
+      true,
+    );
+  });
+
   it('does not treat Groq JSON validation failure as quota', () => {
     assert.equal(
       isQuotaError({
@@ -47,6 +57,16 @@ describe('isQuotaError', () => {
   });
 });
 
+describe('parseApiKeys', () => {
+  it('splits comma / semicolon / newline lists and dedupes', () => {
+    assert.deepEqual(parseApiKeys('a, b;c\nd', 'b,e'), ['a', 'b', 'c', 'd', 'e']);
+  });
+
+  it('ignores empty values', () => {
+    assert.deepEqual(parseApiKeys('  , ,x,, ', undefined, ''), ['x']);
+  });
+});
+
 describe('resolveChatBackends', () => {
   const allKeys = {
     GEMINI_API_KEY: 'gem-key',
@@ -55,30 +75,64 @@ describe('resolveChatBackends', () => {
     OPENAI_API_KEY: 'openai-key',
   };
 
-  it('uses Gemini → Groq → Cerebras when keys exist and LLM_PROVIDER is unset', () => {
+  it('uses Gemini → Groq → Cerebras → OpenAI when keys exist and LLM_PROVIDER is unset', () => {
     const backends = resolveChatBackends(allKeys);
     assert.deepEqual(
-      backends.map((b) => b.name),
-      ['gemini', 'groq', 'cerebras'],
+      backends.map((b) => b.id),
+      ['gemini#1', 'groq#1', 'cerebras#1', 'openai#1'],
     );
     assert.equal(backends[0].baseURL, 'https://generativelanguage.googleapis.com/v1beta/openai/');
     assert.equal(backends[1].baseURL, 'https://api.groq.com/openai/v1');
     assert.equal(backends[2].baseURL, 'https://api.cerebras.ai/v1');
   });
 
-  it('skips providers whose API key is missing', () => {
-    const backends = resolveChatBackends({ GROQ_API_KEY: 'groq-key' });
+  it('expands multiple keys per provider before falling to the next provider', () => {
+    const backends = resolveChatBackends({
+      GEMINI_API_KEY: 'gem-a,gem-b',
+      GROQ_API_KEY: 'groq-a;groq-b',
+      CEREBRAS_API_KEY: 'cerebras-a',
+    });
     assert.deepEqual(
-      backends.map((b) => b.name),
-      ['groq'],
+      backends.map((b) => ({ id: b.id, apiKey: b.apiKey })),
+      [
+        { id: 'gemini#1', apiKey: 'gem-a' },
+        { id: 'gemini#2', apiKey: 'gem-b' },
+        { id: 'groq#1', apiKey: 'groq-a' },
+        { id: 'groq#2', apiKey: 'groq-b' },
+        { id: 'cerebras#1', apiKey: 'cerebras-a' },
+      ],
     );
   });
 
-  it('pins to a single provider when LLM_PROVIDER is set', () => {
-    const backends = resolveChatBackends({ ...allKeys, LLM_PROVIDER: 'groq' });
+  it('merges GEMINI_API_KEYS / GROQ_API_KEYS with the singular env vars', () => {
+    const backends = resolveChatBackends({
+      GEMINI_API_KEY: 'gem-a',
+      GEMINI_API_KEYS: 'gem-b,gem-a',
+      GROQ_API_KEYS: 'groq-a',
+    });
     assert.deepEqual(
-      backends.map((b) => b.name),
-      ['groq'],
+      backends.map((b) => b.apiKey),
+      ['gem-a', 'gem-b', 'groq-a'],
+    );
+  });
+
+  it('skips providers whose API key is missing', () => {
+    const backends = resolveChatBackends({ GROQ_API_KEY: 'groq-key' });
+    assert.deepEqual(
+      backends.map((b) => b.id),
+      ['groq#1'],
+    );
+  });
+
+  it('pins to all keys of a single provider when LLM_PROVIDER is set', () => {
+    const backends = resolveChatBackends({
+      ...allKeys,
+      LLM_PROVIDER: 'groq',
+      GROQ_API_KEY: 'g1,g2',
+    });
+    assert.deepEqual(
+      backends.map((b) => b.id),
+      ['groq#1', 'groq#2'],
     );
   });
 
@@ -92,8 +146,8 @@ describe('resolveChatBackends', () => {
   it('falls back to OpenAI when no Gemini/Groq/Cerebras key is set', () => {
     const backends = resolveChatBackends({ OPENAI_API_KEY: 'openai-key' });
     assert.deepEqual(
-      backends.map((b) => b.name),
-      ['openai'],
+      backends.map((b) => b.id),
+      ['openai#1'],
     );
     assert.equal(backends[0].baseURL, undefined);
   });
@@ -102,7 +156,7 @@ describe('resolveChatBackends', () => {
     const backends = resolveChatBackends(allKeys);
     assert.equal(backends[0].model, 'gemini-3.6-flash');
     assert.equal(backends[1].model, 'qwen/qwen3.6-27b');
-    assert.equal(backends[2].model, 'llama-3.3-70b');
+    assert.equal(backends[2].model, 'gpt-oss-120b');
   });
 });
 
@@ -110,40 +164,72 @@ describe('callWithQuotaFallback', () => {
   it('returns the first provider result when it succeeds', async () => {
     const calls: string[] = [];
     const result = await callWithQuotaFallback(
-      [{ name: 'gemini' }, { name: 'groq' }],
+      [
+        { id: 'gemini#1', name: 'gemini' },
+        { id: 'groq#1', name: 'groq' },
+      ],
       async (backend) => {
-        calls.push(backend.name);
-        return `${backend.name}-ok`;
+        calls.push(backend.id);
+        return `${backend.id}-ok`;
       },
     );
 
-    assert.equal(result, 'gemini-ok');
-    assert.deepEqual(calls, ['gemini']);
+    assert.equal(result, 'gemini#1-ok');
+    assert.deepEqual(calls, ['gemini#1']);
+  });
+
+  it('falls back to the next Gemini key before switching to Groq', async () => {
+    const calls: string[] = [];
+    const result = await callWithQuotaFallback(
+      [
+        { id: 'gemini#1', name: 'gemini' },
+        { id: 'gemini#2', name: 'gemini' },
+        { id: 'groq#1', name: 'groq' },
+      ],
+      async (backend) => {
+        calls.push(backend.id);
+        if (backend.id === 'gemini#1') {
+          throw { status: 429, message: 'RESOURCE_EXHAUSTED' };
+        }
+        return `${backend.id}-ok`;
+      },
+    );
+
+    assert.equal(result, 'gemini#2-ok');
+    assert.deepEqual(calls, ['gemini#1', 'gemini#2']);
   });
 
   it('falls back to Groq when Gemini hits quota', async () => {
     const calls: string[] = [];
     const result = await callWithQuotaFallback(
-      [{ name: 'gemini' }, { name: 'groq' }, { name: 'cerebras' }],
+      [
+        { id: 'gemini#1', name: 'gemini' },
+        { id: 'groq#1', name: 'groq' },
+        { id: 'cerebras#1', name: 'cerebras' },
+      ],
       async (backend) => {
-        calls.push(backend.name);
+        calls.push(backend.id);
         if (backend.name === 'gemini') {
           throw { status: 429, message: 'RESOURCE_EXHAUSTED' };
         }
-        return `${backend.name}-ok`;
+        return `${backend.id}-ok`;
       },
     );
 
-    assert.equal(result, 'groq-ok');
-    assert.deepEqual(calls, ['gemini', 'groq']);
+    assert.equal(result, 'groq#1-ok');
+    assert.deepEqual(calls, ['gemini#1', 'groq#1']);
   });
 
   it('falls back to Cerebras when Gemini and Groq both hit quota', async () => {
     const calls: string[] = [];
     const result = await callWithQuotaFallback(
-      [{ name: 'gemini' }, { name: 'groq' }, { name: 'cerebras' }],
+      [
+        { id: 'gemini#1', name: 'gemini' },
+        { id: 'groq#1', name: 'groq' },
+        { id: 'cerebras#1', name: 'cerebras' },
+      ],
       async (backend) => {
-        calls.push(backend.name);
+        calls.push(backend.id);
         if (backend.name !== 'cerebras') {
           throw { status: 429, message: 'rate_limit_exceeded' };
         }
@@ -152,27 +238,37 @@ describe('callWithQuotaFallback', () => {
     );
 
     assert.equal(result, 'cerebras-ok');
-    assert.deepEqual(calls, ['gemini', 'groq', 'cerebras']);
+    assert.deepEqual(calls, ['gemini#1', 'groq#1', 'cerebras#1']);
   });
 
   it('does not fall back on non-quota errors', async () => {
     const calls: string[] = [];
     await assert.rejects(
       () =>
-        callWithQuotaFallback([{ name: 'gemini' }, { name: 'groq' }], async (backend) => {
-          calls.push(backend.name);
-          throw { status: 400, message: 'Failed to validate JSON' };
-        }),
+        callWithQuotaFallback(
+          [
+            { id: 'gemini#1', name: 'gemini' },
+            { id: 'groq#1', name: 'groq' },
+          ],
+          async (backend) => {
+            calls.push(backend.id);
+            throw { status: 400, message: 'Failed to validate JSON' };
+          },
+        ),
       /Failed to validate JSON/,
     );
-    assert.deepEqual(calls, ['gemini']);
+    assert.deepEqual(calls, ['gemini#1']);
   });
 
   it('throws the last error when every provider is over quota', async () => {
     await assert.rejects(
       () =>
         callWithQuotaFallback(
-          [{ name: 'gemini' }, { name: 'groq' }, { name: 'cerebras' }],
+          [
+            { id: 'gemini#1', name: 'gemini' },
+            { id: 'groq#1', name: 'groq' },
+            { id: 'cerebras#1', name: 'cerebras' },
+          ],
           async () => {
             throw { status: 429, message: 'quota exceeded' };
           },
@@ -181,22 +277,26 @@ describe('callWithQuotaFallback', () => {
     );
   });
 
-  it('remembers quota skips so the next call starts at Groq, not Gemini', async () => {
-    const backends = [{ name: 'gemini' as const }, { name: 'groq' as const }, { name: 'cerebras' as const }];
-    const skipped = new Set<ChatProvider>();
+  it('remembers quota skips so the next call starts at the next key, not the exhausted one', async () => {
+    const backends = [
+      { id: 'gemini#1', name: 'gemini' as const },
+      { id: 'gemini#2', name: 'gemini' as const },
+      { id: 'groq#1', name: 'groq' as const },
+    ];
+    const skipped = new Set<string>();
     const calls: string[] = [];
 
-    const call = async (backend: { name: ChatProvider }) => {
-      calls.push(backend.name);
-      if (backend.name === 'gemini') {
+    const call = async (backend: { id: string }) => {
+      calls.push(backend.id);
+      if (backend.id === 'gemini#1') {
         throw { status: 429, message: 'RESOURCE_EXHAUSTED' };
       }
-      return `${backend.name}-ok`;
+      return `${backend.id}-ok`;
     };
 
-    assert.equal(await callWithQuotaFallback(backends, call, { skipped }), 'groq-ok');
-    assert.equal(await callWithQuotaFallback(backends, call, { skipped }), 'groq-ok');
-    assert.deepEqual(calls, ['gemini', 'groq', 'groq']);
-    assert.deepEqual([...skipped], ['gemini']);
+    assert.equal(await callWithQuotaFallback(backends, call, { skipped }), 'gemini#2-ok');
+    assert.equal(await callWithQuotaFallback(backends, call, { skipped }), 'gemini#2-ok');
+    assert.deepEqual(calls, ['gemini#1', 'gemini#2', 'gemini#2']);
+    assert.deepEqual([...skipped], ['gemini#1']);
   });
 });
