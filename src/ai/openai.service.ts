@@ -38,7 +38,7 @@ export class OpenAIService {
         throw new Error('GROQ_API_KEY environment variable is required when LLM_PROVIDER=groq');
       }
       this.chatClient = new OpenAI({ apiKey: groqKey, baseURL: GROQ_BASE_URL });
-      this.model = process.env.GROQ_MODEL ?? 'llama-3.3-70b-versatile';
+      this.model = process.env.GROQ_MODEL ?? 'openai/gpt-oss-120b';
     } else {
       if (!openaiKey) {
         throw new Error('OPENAI_API_KEY environment variable is required');
