@@ -6,14 +6,25 @@ import {
   SHORT_THUMB_HEIGHT,
   SHORT_THUMB_WIDTH,
 } from '../ai/thumbnail-image.util';
+import type { BackgroundSlideshowConfig } from '../channel/channel.types';
 import { FFmpegService } from '../ffmpeg/ffmpeg.service';
 import { logger } from '../utils/logger';
+import {
+  buildRandomSlideshowSchedule,
+  listBackgroundImages,
+  writeSlideshowConcatFile,
+} from './background-slideshow.util';
 
 const VIDEO_WIDTH = 1920;
 const VIDEO_HEIGHT = 1080;
 const SHORT_VIDEO_WIDTH = SHORT_THUMB_WIDTH;
 const SHORT_VIDEO_HEIGHT = SHORT_THUMB_HEIGHT;
 const THUMBNAIL_VIDEO_DURATION = 5;
+
+interface ResolvedPodcastBackground {
+  path: string;
+  mode: 'image' | 'slideshow';
+}
 
 export class VideoService {
   constructor(
@@ -26,22 +37,62 @@ export class VideoService {
     subtitlesPath: string,
     backgroundPath: string,
     outputPath: string,
+    backgroundMode: 'image' | 'slideshow' = 'image',
   ): Promise<void> {
-    await this.ensureBackground(backgroundPath);
+    if (backgroundMode === 'image') {
+      await this.ensureBackground(backgroundPath);
+    }
 
     await this.ffmpeg.generateVideo(
       backgroundPath,
       audioPath,
       subtitlesPath,
       outputPath,
+      backgroundMode,
     );
 
     logger.success(`Podcast video saved → ${outputPath}`);
   }
 
-  async generateThumbnailVideo(thumbnailPath: string, outputPath: string): Promise<void> {
-    await this.ffmpeg.generateImageVideo(thumbnailPath, outputPath, THUMBNAIL_VIDEO_DURATION);
-    logger.success(`Thumbnail video saved → ${outputPath}`);
+  async resolvePodcastBackground(
+    staticBackgroundPath: string,
+    audioPath: string,
+    projectDir: string,
+    slideshow?: BackgroundSlideshowConfig,
+    slideshowDirectory?: string,
+  ): Promise<ResolvedPodcastBackground> {
+    if (!slideshow || !slideshowDirectory) {
+      await this.ensureBackground(staticBackgroundPath);
+      return { path: staticBackgroundPath, mode: 'image' };
+    }
+
+    const images = await listBackgroundImages(slideshowDirectory);
+    if (images.length === 0) {
+      logger.warn(
+        `No images in ${slideshowDirectory} — falling back to static background`,
+      );
+      await this.ensureBackground(staticBackgroundPath);
+      return { path: staticBackgroundPath, mode: 'image' };
+    }
+
+    const podcastDuration = await this.ffmpeg.getMediaDuration(audioPath);
+    // Extra second so the finite slideshow outlives podcast audio + outro xfade.
+    const slideshowDuration = podcastDuration + 1;
+    const schedule = buildRandomSlideshowSchedule(
+      images,
+      slideshowDuration,
+      slideshow.minIntervalSeconds,
+      slideshow.maxIntervalSeconds,
+    );
+
+    const concatPath = path.join(projectDir, '_background-slideshow.concat.txt');
+    await writeSlideshowConcatFile(schedule, concatPath);
+    logger.info(
+      `Background slideshow: ${schedule.length} switches over ${podcastDuration.toFixed(1)}s ` +
+        `(concat list, no pre-encode)`,
+    );
+
+    return { path: concatPath, mode: 'slideshow' };
   }
 
   async generateFinalVideo(
@@ -52,8 +103,11 @@ export class VideoService {
     subtitlesPath: string,
     outroPath: string,
     outputPath: string,
+    backgroundMode: 'image' | 'slideshow' = 'image',
   ): Promise<void> {
-    await this.ensureBackground(backgroundPath);
+    if (backgroundMode === 'image') {
+      await this.ensureBackground(backgroundPath);
+    }
 
     await this.ffmpeg.generateFinalVideo(
       introPath,
@@ -64,9 +118,15 @@ export class VideoService {
       outroPath,
       outputPath,
       THUMBNAIL_VIDEO_DURATION,
+      backgroundMode,
     );
 
     logger.success(`Final video saved → ${outputPath}`);
+  }
+
+  async generateThumbnailVideo(thumbnailPath: string, outputPath: string): Promise<void> {
+    await this.ffmpeg.generateImageVideo(thumbnailPath, outputPath, THUMBNAIL_VIDEO_DURATION);
+    logger.success(`Thumbnail video saved → ${outputPath}`);
   }
 
   async composeFinalVideo(

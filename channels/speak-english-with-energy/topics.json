@@ -159,6 +159,30 @@
       "createdAt": "2026-08-17T04:23:33.059Z",
       "status": "published",
       "projectId": "003-20260817"
+    },
+    {
+      "topic": "Stop Saying “I Don’t Know” in Interviews",
+      "scheduledDate": "2026-08-24",
+      "weekday": "monday",
+      "createdAt": "2026-08-23T09:16:06.099Z",
+      "status": "generating",
+      "projectId": "001-20260823"
+    },
+    {
+      "topic": "What Native Speakers Say When They’re Stuck in an Interview",
+      "scheduledDate": "2026-08-26",
+      "weekday": "wednesday",
+      "createdAt": "2026-08-23T09:16:06.099Z",
+      "status": "pending",
+      "projectId": "002-20260823"
+    },
+    {
+      "topic": "How to Explain Your Experience When Your English Is Limited",
+      "scheduledDate": "2026-08-28",
+      "weekday": "friday",
+      "createdAt": "2026-08-23T09:16:06.099Z",
+      "status": "pending",
+      "projectId": "003-20260823"
     }
   ]
 }

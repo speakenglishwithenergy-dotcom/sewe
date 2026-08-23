@@ -133,6 +133,16 @@ export const ChannelBrandingSchema = z.object({
 
 // ─── Assets (relative paths within channel dir) ──────────────────────────────
 
+/** Random background image rotation during the podcast segment. */
+export const BackgroundSlideshowConfigSchema = z.object({
+  /** Relative path within channel dir, e.g. assets/background-images */
+  directory: z.string().min(1),
+  /** Minimum seconds before switching to another image (default 60). */
+  minIntervalSeconds: z.number().positive().optional(),
+  /** Maximum seconds before switching (default 120). */
+  maxIntervalSeconds: z.number().positive().optional(),
+});
+
 export const ChannelAssetsConfigSchema = z.object({
   intro: z.string().min(1),
   outro: z.string().min(1),
@@ -257,6 +267,7 @@ export const ChannelConfigSchema = z.object({
   assets: ChannelAssetsConfigSchema,
   publish: ChannelPublishConfigSchema,
   perEpisodeBackground: z.boolean().optional(),
+  backgroundSlideshow: BackgroundSlideshowConfigSchema.optional(),
   env: z.object({
     prefix: z.string().min(1),
   }),
@@ -268,6 +279,7 @@ export type ChannelScriptConfig = z.infer<typeof ChannelScriptConfigSchema>;
 export type ChannelShortConfig = z.infer<typeof ChannelShortConfigSchema>;
 export type ChannelBranding = z.infer<typeof ChannelBrandingSchema>;
 export type ChannelAssetsConfig = z.infer<typeof ChannelAssetsConfigSchema>;
+export type BackgroundSlideshowConfig = z.infer<typeof BackgroundSlideshowConfigSchema>;
 export type ChannelPublishConfig = z.infer<typeof ChannelPublishConfigSchema>;
 export type ChannelConfig = z.infer<typeof ChannelConfigSchema>;
 

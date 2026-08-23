@@ -90,6 +90,17 @@ export class FFmpegService {
     return ['-c:v', 'libx264', '-preset', 'medium', '-crf', '20'];
   }
 
+  /** Background still image (-loop) or ffconcat slideshow list (no pre-encode). */
+  private backgroundInputArgs(
+    backgroundPath: string,
+    mode: 'image' | 'slideshow',
+  ): string[] {
+    if (mode === 'slideshow') {
+      return ['-f', 'concat', '-safe', '0', '-i', backgroundPath];
+    }
+    return ['-loop', '1', '-i', backgroundPath];
+  }
+
   private async resolveBin(candidates: string[], name: string): Promise<string> {
     for (const bin of candidates) {
       try {
@@ -233,6 +244,7 @@ export class FFmpegService {
     audioPath: string,
     subtitlesPath: string,
     outputPath: string,
+    backgroundMode: 'image' | 'slideshow' = 'image',
   ): Promise<void> {
     logger.info('Running FFmpeg video encode (this may take several minutes)...');
 
@@ -247,7 +259,7 @@ export class FFmpegService {
     const waveFilters = buildWaveOverlayFilters(this.wave);
     const { x: waveX, y: waveY } = this.wave.podcast;
     const filterComplex = [
-      `[0:v]scale=1920:1080[bg]`,
+      `[0:v]scale=1920:1080,fps=${VIDEO_FPS}[bg]`,
       `[1:a]volume=${PODCAST_VOLUME},asplit=2[aout][awave]`,
       ...waveFilters,
       `[bg][waves]overlay=${waveX}:${waveY},format=yuv420p,${subtitleFilter}[vout]`,
@@ -256,8 +268,7 @@ export class FFmpegService {
     await execFileAsync(
       this.ffmpegBin,
       [
-        '-loop', '1',
-        '-i', backgroundPath,
+        ...this.backgroundInputArgs(backgroundPath, backgroundMode),
         '-i', audioPath,
         '-filter_complex', filterComplex,
         '-map', '[vout]',
@@ -452,6 +463,7 @@ export class FFmpegService {
     outroPath: string,
     outputPath: string,
     thumbnailDurationSeconds = THUMBNAIL_VIDEO_DURATION,
+    backgroundMode: 'image' | 'slideshow' = 'image',
   ): Promise<void> {
     const fade = FADE_DURATION;
     const thumbDur = thumbnailDurationSeconds;
@@ -490,15 +502,21 @@ export class FFmpegService {
 
     const waveFilters = buildWaveOverlayFilters(this.wave);
     const { x: waveX, y: waveY } = this.wave.podcast;
+    // Slideshow concat is finite; end with audio waveform then clone last frame for xfade→outro.
+    const isSlideshow = backgroundMode === 'slideshow';
+    const overlayOpts = isSlideshow ? `:shortest=1` : '';
+    const podcastVideoPad = isSlideshow
+      ? `,tpad=stop_mode=clone:stop_duration=${fade}`
+      : '';
     const filters: string[] = [
       normalizeVideo(0, 'v0'),
       normalizeAudio(0, 'a0'),
       normalizeVideo(1, 'v1'),
       normalizeAudio(2, 'a1'),
-      `[3:v]scale=${VIDEO_WIDTH}:${VIDEO_HEIGHT}[bg]`,
+      `[3:v]scale=${VIDEO_WIDTH}:${VIDEO_HEIGHT},fps=${VIDEO_FPS}[bg]`,
       `[4:a]volume=${PODCAST_VOLUME},asplit=2[apod][awave]`,
       ...waveFilters,
-      `[bg][waves]overlay=${waveX}:${waveY},format=yuv420p,${subtitleFilter},fps=${VIDEO_FPS}[v2]`,
+      `[bg][waves]overlay=${waveX}:${waveY}${overlayOpts},format=yuv420p,${subtitleFilter},fps=${VIDEO_FPS}${podcastVideoPad}[v2]`,
       `[apod]aformat=sample_rates=44100:channel_layouts=stereo[a2]`,
       normalizeVideo(5, 'v3'),
       normalizeAudio(5, 'a3'),
@@ -529,7 +547,7 @@ export class FFmpegService {
       '-i', introPath,
       '-loop', '1', '-t', String(thumbDur), '-i', thumbnailPath,
       '-f', 'lavfi', '-t', String(thumbDur), '-i', 'anullsrc=r=44100:cl=stereo',
-      '-loop', '1', '-i', backgroundPath,
+      ...this.backgroundInputArgs(backgroundPath, backgroundMode),
       '-i', audioPath,
       '-i', outroPath,
       '-filter_complex', filters.join(';'),

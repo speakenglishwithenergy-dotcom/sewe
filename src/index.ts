@@ -863,7 +863,7 @@ async function main(): Promise<void> {
     totalSteps,
     args.podcast || !shortEnabled
       ? 'Rendering final video...'
-      : 'Rendering final video + short (parallel)...',
+      : 'Rendering short, then final video...',
   );
 
   const FINAL_VIDEO_PATH = buildPodcastVideoPath(PROJECT_DIR, podcastScript.title);
@@ -874,17 +874,30 @@ async function main(): Promise<void> {
     await fs.unlink(FINAL_VIDEO_PATH);
   }
 
+  const slideshowConfig = channelCtx.config.backgroundSlideshow;
+  const slideshowDirectory = slideshowConfig
+    ? path.join(channelCtx.dir, slideshowConfig.directory)
+    : undefined;
+  const podcastBackground = await videoService.resolvePodcastBackground(
+    videoBackgroundPath,
+    PODCAST_AUDIO_PATH,
+    PROJECT_DIR,
+    slideshowConfig,
+    slideshowDirectory,
+  );
+
   let shortScript: ShortScript | undefined;
 
   if (args.podcast || !shortEnabled) {
     await videoService.generateFinalVideo(
       channelAssets.intro,
       THUMBNAIL_PATH,
-      videoBackgroundPath,
+      podcastBackground.path,
       PODCAST_AUDIO_PATH,
       SUBTITLES_PATH,
       channelAssets.outro,
       FINAL_VIDEO_PATH,
+      podcastBackground.mode,
     );
   } else {
     const shortPaths = buildShortPaths(PROJECT_DIR);
@@ -907,33 +920,34 @@ async function main(): Promise<void> {
       await videoService.generateFinalVideo(
         channelAssets.intro,
         THUMBNAIL_PATH,
-        videoBackgroundPath,
+        podcastBackground.path,
         PODCAST_AUDIO_PATH,
         SUBTITLES_PATH,
         channelAssets.outro,
         FINAL_VIDEO_PATH,
+        podcastBackground.mode,
       );
     } else {
-      [shortScript] = await Promise.all([
-        runShortPipeline(project, podcastScript, {
-          shortScriptService,
-          keywordsService,
-          thumbnailService,
-          ttsService,
-          subtitleService,
-          ffmpegService,
-          videoService,
-        }, shortPaths),
-        videoService.generateFinalVideo(
-          channelAssets.intro,
-          THUMBNAIL_PATH,
-          videoBackgroundPath,
-          PODCAST_AUDIO_PATH,
-          SUBTITLES_PATH,
-          channelAssets.outro,
-          FINAL_VIDEO_PATH,
-        ),
-      ]);
+      // Run sequentially — parallel FFmpeg encodes freeze most machines.
+      shortScript = await runShortPipeline(project, podcastScript, {
+        shortScriptService,
+        keywordsService,
+        thumbnailService,
+        ttsService,
+        subtitleService,
+        ffmpegService,
+        videoService,
+      }, shortPaths);
+      await videoService.generateFinalVideo(
+        channelAssets.intro,
+        THUMBNAIL_PATH,
+        podcastBackground.path,
+        PODCAST_AUDIO_PATH,
+        SUBTITLES_PATH,
+        channelAssets.outro,
+        FINAL_VIDEO_PATH,
+        podcastBackground.mode,
+      );
     }
   }
 

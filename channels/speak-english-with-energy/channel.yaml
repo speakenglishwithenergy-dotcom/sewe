@@ -138,6 +138,11 @@ branding:
       Lisa's expression — pick ONE clear, moderate coaching reaction that pairs with Victor's topic moment.
       AVOID: exaggerated shock, jaw-drop, always pointing at Victor, passive listener pose.
 
+backgroundSlideshow:
+  directory: assets/background-images
+  minIntervalSeconds: 60
+  maxIntervalSeconds: 120
+
 assets:
   intro: assets/intro.mp4
   outro: assets/outro.mp4
