@@ -566,7 +566,7 @@ Variables read by the CLI and pipeline (set in `.env`):
 | Variable | Used by | Description |
 |----------|---------|-------------|
 | `GROQ_API_KEY` | generate, shadowing | Groq API key for LLM (script, metadata, IPA). Auto-selected when set. |
-| `GROQ_MODEL` | generate, shadowing | Groq model (default: `openai/gpt-oss-120b`). |
+| `GROQ_MODEL` | generate, shadowing | Groq model (default: `qwen/qwen3.6-27b`). |
 | `LLM_PROVIDER` | generate, shadowing | `groq` or `openai` — override auto-detection when both keys are set. |
 | `OPENAI_API_KEY` | generate | Required for TTS/thumbnails; LLM fallback when Groq is not configured. |
 | `OPENAI_MODEL` | generate | LLM model (default: `gpt-4o`). |
