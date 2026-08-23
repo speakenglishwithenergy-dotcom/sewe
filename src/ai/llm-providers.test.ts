@@ -4,6 +4,7 @@ import {
   callWithQuotaFallback,
   isQuotaError,
   resolveChatBackends,
+  type ChatProvider,
 } from './llm-providers';
 
 describe('isQuotaError', () => {
@@ -178,5 +179,24 @@ describe('callWithQuotaFallback', () => {
         ),
       /quota exceeded/,
     );
+  });
+
+  it('remembers quota skips so the next call starts at Groq, not Gemini', async () => {
+    const backends = [{ name: 'gemini' as const }, { name: 'groq' as const }, { name: 'cerebras' as const }];
+    const skipped = new Set<ChatProvider>();
+    const calls: string[] = [];
+
+    const call = async (backend: { name: ChatProvider }) => {
+      calls.push(backend.name);
+      if (backend.name === 'gemini') {
+        throw { status: 429, message: 'RESOURCE_EXHAUSTED' };
+      }
+      return `${backend.name}-ok`;
+    };
+
+    assert.equal(await callWithQuotaFallback(backends, call, { skipped }), 'groq-ok');
+    assert.equal(await callWithQuotaFallback(backends, call, { skipped }), 'groq-ok');
+    assert.deepEqual(calls, ['gemini', 'groq', 'groq']);
+    assert.deepEqual([...skipped], ['gemini']);
   });
 });

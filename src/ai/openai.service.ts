@@ -12,6 +12,7 @@ import {
   isQuotaError,
   resolveChatBackends,
   type ChatBackendConfig,
+  type ChatProvider,
 } from './llm-providers';
 
 const JSON_VALIDATE_ATTEMPTS = 3;
@@ -21,6 +22,8 @@ type ChatBackend = ChatBackendConfig & { client: OpenAI };
 export class OpenAIService {
   /** Chat / JSON completions (Gemini → Groq → Cerebras, or a pinned provider). */
   private readonly backends: ChatBackend[];
+  /** Providers that hit quota during this process — skip on later calls. */
+  private readonly quotaSkipped = new Set<ChatProvider>();
   /** TTS and image APIs — OpenAI only. */
   private readonly mediaClient: OpenAI | null;
   private readonly ttsModel: string;
@@ -53,7 +56,10 @@ export class OpenAIService {
     return callWithQuotaFallback(
       this.backends,
       (backend) => this.completeJSON(backend, userPrompt, systemPrompt, validator, options),
-      (from, to) => logger.warn(`${from} quota exceeded, falling back to ${to}`),
+      {
+        skipped: this.quotaSkipped,
+        onFallback: (from, to) => logger.warn(`${from} quota exceeded, falling back to ${to}`),
+      },
     );
   }
 
@@ -66,7 +72,10 @@ export class OpenAIService {
     return callWithQuotaFallback(
       this.backends,
       (backend) => this.completeText(backend, userPrompt, systemPrompt, options),
-      (from, to) => logger.warn(`${from} quota exceeded, falling back to ${to}`),
+      {
+        skipped: this.quotaSkipped,
+        onFallback: (from, to) => logger.warn(`${from} quota exceeded, falling back to ${to}`),
+      },
     );
   }
 

@@ -108,23 +108,34 @@ export function resolveChatBackends(env: Env = process.env): ChatBackendConfig[]
 export async function callWithQuotaFallback<TBackend extends { name: ChatProvider }, TResult>(
   backends: TBackend[],
   call: (backend: TBackend) => Promise<TResult>,
-  onFallback?: (from: ChatProvider, to: ChatProvider) => void,
+  options?: {
+    onFallback?: (from: ChatProvider, to: ChatProvider) => void;
+    /** Providers already known to be over quota — skipped for this and future calls. */
+    skipped?: Set<ChatProvider>;
+  },
 ): Promise<TResult> {
   if (backends.length === 0) {
     throw new Error('No LLM backends available');
   }
 
+  const skipped = options?.skipped;
+  const active = skipped ? backends.filter((b) => !skipped.has(b.name)) : backends;
+  const chain = active.length > 0 ? active : backends;
+
   let lastError: unknown;
-  for (let i = 0; i < backends.length; i++) {
-    const backend = backends[i];
-    const next = backends[i + 1];
+  for (let i = 0; i < chain.length; i++) {
+    const backend = chain[i];
+    const next = chain[i + 1];
     try {
       return await call(backend);
     } catch (error) {
       lastError = error;
-      if (next && isQuotaError(error)) {
-        onFallback?.(backend.name, next.name);
-        continue;
+      if (isQuotaError(error)) {
+        skipped?.add(backend.name);
+        if (next) {
+          options?.onFallback?.(backend.name, next.name);
+          continue;
+        }
       }
       throw toError(error);
     }
