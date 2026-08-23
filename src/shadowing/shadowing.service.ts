@@ -257,7 +257,7 @@ export class ShadowingService {
         await videoService.generatePodcastVideo(
           podcastPath,
           subtitlesPath,
-          ctx.backgroundPath,
+          { path: ctx.backgroundPath, mode: 'image' },
           videoPath,
         );
         didVideo = true;

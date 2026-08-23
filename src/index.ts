@@ -917,6 +917,8 @@ async function main(): Promise<void> {
     PROJECT_DIR,
     slideshowConfig,
     slideshowDirectory,
+    channelCtx.config.backgroundMotion,
+    channelCtx.dir,
   );
 
   let shortScript: ShortScript | undefined;
@@ -925,12 +927,11 @@ async function main(): Promise<void> {
     await videoService.generateFinalVideo(
       channelAssets.intro,
       THUMBNAIL_PATH,
-      podcastBackground.path,
+      podcastBackground,
       PODCAST_AUDIO_PATH,
       SUBTITLES_PATH,
       channelAssets.outro,
       FINAL_VIDEO_PATH,
-      podcastBackground.mode,
       TOPIC_AUDIO_PATH,
     );
   } else {
@@ -954,12 +955,11 @@ async function main(): Promise<void> {
       await videoService.generateFinalVideo(
         channelAssets.intro,
         THUMBNAIL_PATH,
-        podcastBackground.path,
+        podcastBackground,
         PODCAST_AUDIO_PATH,
         SUBTITLES_PATH,
         channelAssets.outro,
         FINAL_VIDEO_PATH,
-        podcastBackground.mode,
         TOPIC_AUDIO_PATH,
       );
     } else {
@@ -976,12 +976,11 @@ async function main(): Promise<void> {
       await videoService.generateFinalVideo(
         channelAssets.intro,
         THUMBNAIL_PATH,
-        podcastBackground.path,
+        podcastBackground,
         PODCAST_AUDIO_PATH,
         SUBTITLES_PATH,
         channelAssets.outro,
         FINAL_VIDEO_PATH,
-        podcastBackground.mode,
         TOPIC_AUDIO_PATH,
       );
     }

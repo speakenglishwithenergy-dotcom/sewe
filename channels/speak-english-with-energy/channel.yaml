@@ -147,6 +147,18 @@ backgroundSlideshow:
   minIntervalSeconds: 60
   maxIntervalSeconds: 120
 
+backgroundMotion:
+  kenBurns:
+    enabled: false
+  overlay:
+    grain:
+      enabled: true
+      strength: 6
+    particles:
+      enabled: true
+      asset: assets/particles-overlay.webm
+      opacity: 0.06
+
 assets:
   intro: assets/intro.mp4
   outro: assets/outro.mp4

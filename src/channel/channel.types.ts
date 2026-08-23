@@ -146,6 +146,35 @@ export const BackgroundSlideshowConfigSchema = z.object({
   maxIntervalSeconds: z.number().positive().optional(),
 });
 
+/** Ken Burns, film grain, and floating-particle overlays for podcast backgrounds. */
+export const BackgroundMotionConfigSchema = z.object({
+  kenBurns: z
+    .object({
+      enabled: z.boolean().optional(),
+      maxZoom: z.number().positive().optional(),
+    })
+    .optional(),
+  overlay: z
+    .object({
+      grain: z
+        .object({
+          enabled: z.boolean().optional(),
+          strength: z.number().positive().optional(),
+        })
+        .optional(),
+      particles: z
+        .object({
+          enabled: z.boolean().optional(),
+          asset: z.string().min(1).optional(),
+          opacity: z.number().min(0).max(1).optional(),
+        })
+        .optional(),
+    })
+    .optional(),
+  /** Crossfade duration between slideshow images when motion is enabled (default 1s). */
+  slideCrossfadeSeconds: z.number().positive().optional(),
+});
+
 export const ChannelAssetsConfigSchema = z.object({
   intro: z.string().min(1),
   outro: z.string().min(1),
@@ -271,6 +300,7 @@ export const ChannelConfigSchema = z.object({
   publish: ChannelPublishConfigSchema,
   perEpisodeBackground: z.boolean().optional(),
   backgroundSlideshow: BackgroundSlideshowConfigSchema.optional(),
+  backgroundMotion: BackgroundMotionConfigSchema.optional(),
   env: z.object({
     prefix: z.string().min(1),
   }),
@@ -283,6 +313,7 @@ export type ChannelShortConfig = z.infer<typeof ChannelShortConfigSchema>;
 export type ChannelBranding = z.infer<typeof ChannelBrandingSchema>;
 export type ChannelAssetsConfig = z.infer<typeof ChannelAssetsConfigSchema>;
 export type BackgroundSlideshowConfig = z.infer<typeof BackgroundSlideshowConfigSchema>;
+export type BackgroundMotionConfig = z.infer<typeof BackgroundMotionConfigSchema>;
 export type ChannelPublishConfig = z.infer<typeof ChannelPublishConfigSchema>;
 export type ChannelConfig = z.infer<typeof ChannelConfigSchema>;
 

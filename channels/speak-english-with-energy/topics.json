@@ -165,7 +165,7 @@
       "scheduledDate": "2026-08-24",
       "weekday": "monday",
       "createdAt": "2026-08-23T09:16:06.099Z",
-      "status": "generating",
+      "status": "pending",
       "projectId": "001-20260823"
     },
     {

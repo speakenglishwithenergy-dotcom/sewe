@@ -6,24 +6,28 @@ import {
   SHORT_THUMB_HEIGHT,
   SHORT_THUMB_WIDTH,
 } from '../ai/thumbnail-image.util';
-import type { BackgroundSlideshowConfig } from '../channel/channel.types';
+import type { BackgroundMotionConfig, BackgroundSlideshowConfig } from '../channel/channel.types';
 import { FFmpegService } from '../ffmpeg/ffmpeg.service';
+import {
+  ensureParticlesOverlay,
+  isMotionActive,
+  resolveBackgroundMotion,
+  type ResolvedPodcastBackground,
+} from '../ffmpeg/background-motion.util';
 import { logger } from '../utils/logger';
 import {
   buildRandomSlideshowSchedule,
   listBackgroundImages,
+  type SlideshowSegment,
   writeSlideshowConcatFile,
 } from './background-slideshow.util';
+
+export type { ResolvedPodcastBackground } from '../ffmpeg/background-motion.util';
 
 const VIDEO_WIDTH = 1920;
 const VIDEO_HEIGHT = 1080;
 const SHORT_VIDEO_WIDTH = SHORT_THUMB_WIDTH;
 const SHORT_VIDEO_HEIGHT = SHORT_THUMB_HEIGHT;
-
-interface ResolvedPodcastBackground {
-  path: string;
-  mode: 'image' | 'slideshow';
-}
 
 export class VideoService {
   constructor(
@@ -34,20 +38,18 @@ export class VideoService {
   async generatePodcastVideo(
     audioPath: string,
     subtitlesPath: string,
-    backgroundPath: string,
+    background: ResolvedPodcastBackground,
     outputPath: string,
-    backgroundMode: 'image' | 'slideshow' = 'image',
   ): Promise<void> {
-    if (backgroundMode === 'image') {
-      await this.ensureBackground(backgroundPath);
+    if (background.mode === 'image') {
+      await this.ensureBackground(background.path);
     }
 
     await this.ffmpeg.generateVideo(
-      backgroundPath,
+      background,
       audioPath,
       subtitlesPath,
       outputPath,
-      backgroundMode,
     );
 
     logger.success(`Podcast video saved → ${outputPath}`);
@@ -59,10 +61,27 @@ export class VideoService {
     projectDir: string,
     slideshow?: BackgroundSlideshowConfig,
     slideshowDirectory?: string,
+    motionConfig?: BackgroundMotionConfig,
+    channelDir?: string,
   ): Promise<ResolvedPodcastBackground> {
+    const motion = channelDir
+      ? resolveBackgroundMotion(motionConfig, channelDir)
+      : undefined;
+
+    if (motion?.particles.enabled && motion.particles.path) {
+      await ensureParticlesOverlay(motion.particles.path, this.ffmpeg.getFfmpegBin());
+    }
+
+    const podcastDuration = await this.ffmpeg.getMediaDuration(audioPath);
+
     if (!slideshow || !slideshowDirectory) {
       await this.ensureBackground(staticBackgroundPath);
-      return { path: staticBackgroundPath, mode: 'image' };
+      return {
+        path: staticBackgroundPath,
+        mode: 'image',
+        motion,
+        podcastDurationSeconds: podcastDuration,
+      };
     }
 
     const images = await listBackgroundImages(slideshowDirectory);
@@ -71,10 +90,14 @@ export class VideoService {
         `No images in ${slideshowDirectory} — falling back to static background`,
       );
       await this.ensureBackground(staticBackgroundPath);
-      return { path: staticBackgroundPath, mode: 'image' };
+      return {
+        path: staticBackgroundPath,
+        mode: 'image',
+        motion,
+        podcastDurationSeconds: podcastDuration,
+      };
     }
 
-    const podcastDuration = await this.ffmpeg.getMediaDuration(audioPath);
     // Extra second so the finite slideshow outlives podcast audio + outro xfade.
     const slideshowDuration = podcastDuration + 1;
     const schedule = buildRandomSlideshowSchedule(
@@ -84,40 +107,73 @@ export class VideoService {
       slideshow.maxIntervalSeconds,
     );
 
+    if (isMotionActive(motion) && schedule.length > 1) {
+      const crossfadePad = (schedule.length - 1) * motion!.slideCrossfadeSeconds;
+      schedule[schedule.length - 1].durationSeconds += crossfadePad;
+    }
+
     const concatPath = path.join(projectDir, '_background-slideshow.concat.txt');
     await writeSlideshowConcatFile(schedule, concatPath);
+
+    if (isMotionActive(motion)) {
+      const parts: string[] = [];
+      if (motion!.kenBurns.enabled) {
+        parts.push(`Ken Burns ${motion!.kenBurns.maxZoom}x`);
+      }
+      if (motion!.grain.enabled) {
+        parts.push(`grain ${motion!.grain.strength}`);
+      }
+      if (motion!.particles.enabled) {
+        parts.push(`particles ${(motion!.particles.opacity * 100).toFixed(0)}%`);
+      }
+      logger.info(
+        `Background slideshow: ${schedule.length} slides over ${podcastDuration.toFixed(1)}s ` +
+          `(${parts.join(' + ')}, ${motion!.slideCrossfadeSeconds}s crossfade)`,
+      );
+      return {
+        path: staticBackgroundPath,
+        mode: 'slideshow',
+        segments: schedule,
+        motion,
+        podcastDurationSeconds: podcastDuration,
+      };
+    }
+
     logger.info(
       `Background slideshow: ${schedule.length} switches over ${podcastDuration.toFixed(1)}s ` +
         `(concat list, no pre-encode)`,
     );
 
-    return { path: concatPath, mode: 'slideshow' };
+    return {
+      path: concatPath,
+      mode: 'slideshow',
+      motion,
+      podcastDurationSeconds: podcastDuration,
+    };
   }
 
   async generateFinalVideo(
     introPath: string,
     thumbnailPath: string,
-    backgroundPath: string,
+    background: ResolvedPodcastBackground,
     audioPath: string,
     subtitlesPath: string,
     outroPath: string,
     outputPath: string,
-    backgroundMode: 'image' | 'slideshow' = 'image',
     thumbnailAudioPath?: string,
   ): Promise<void> {
-    if (backgroundMode === 'image') {
-      await this.ensureBackground(backgroundPath);
+    if (background.mode === 'image') {
+      await this.ensureBackground(background.path);
     }
 
     await this.ffmpeg.generateFinalVideo(
       introPath,
       thumbnailPath,
-      backgroundPath,
+      background,
       audioPath,
       subtitlesPath,
       outroPath,
       outputPath,
-      backgroundMode,
       thumbnailAudioPath,
     );
 

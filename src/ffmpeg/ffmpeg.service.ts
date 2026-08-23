@@ -4,6 +4,17 @@ import path from 'path';
 import fs from 'fs/promises';
 import { logger } from '../utils/logger';
 import {
+  buildFinalVideoInputLayout,
+  buildPodcastBackgroundInputs,
+  buildSlideshowMotionFilters,
+  buildStaticMotionFilters,
+  isMotionActive,
+  type ResolvedPodcastBackground,
+  VIDEO_FPS,
+  VIDEO_HEIGHT,
+  VIDEO_WIDTH,
+} from './background-motion.util';
+import {
   buildWaveOverlayFilters,
   defaultWaveVisualizer,
   ResolvedWaveVisualizer,
@@ -26,11 +37,8 @@ const THUMBNAIL_TRAIL_SECONDS = 1;
 /** Fallback thumbnail still duration when no topic audio is provided. */
 const THUMBNAIL_VIDEO_DURATION = THUMBNAIL_LEAD_SECONDS + THUMBNAIL_TRAIL_SECONDS;
 
-const VIDEO_WIDTH = 1920;
-const VIDEO_HEIGHT = 1080;
 const SHORT_VIDEO_WIDTH = 1080;
 const SHORT_VIDEO_HEIGHT = 1920;
-const VIDEO_FPS = 30;
 
 // Candidate FFmpeg installations, ordered by preference.
 // ffmpeg-full (Homebrew keg-only) includes libass and the subtitles filter.
@@ -88,23 +96,17 @@ export class FFmpegService {
     }
   }
 
+  /** Expose resolved ffmpeg binary (e.g. for asset generation). */
+  getFfmpegBin(): string {
+    return this.ffmpegBin;
+  }
+
   /** H.264 encode args — VideoToolbox on macOS when available, else libx264 medium. */
   private getVideoEncodeArgs(): string[] {
     if (this.useVideoToolbox) {
       return ['-c:v', 'h264_videotoolbox', '-q:v', '65'];
     }
     return ['-c:v', 'libx264', '-preset', 'medium', '-crf', '20'];
-  }
-
-  /** Background still image (-loop) or ffconcat slideshow list (no pre-encode). */
-  private backgroundInputArgs(
-    backgroundPath: string,
-    mode: 'image' | 'slideshow',
-  ): string[] {
-    if (mode === 'slideshow') {
-      return ['-f', 'concat', '-safe', '0', '-i', backgroundPath];
-    }
-    return ['-loop', '1', '-i', backgroundPath];
   }
 
   private async resolveBin(candidates: string[], name: string): Promise<string> {
@@ -242,39 +244,81 @@ export class FFmpegService {
   }
 
   /**
-   * Compose the final 1920×1080 H.264 video from a static background image,
+   * Compose the final 1920×1080 H.264 video from a background (static or slideshow),
    * the merged podcast audio, and burned-in ASS subtitle track.
    */
   async generateVideo(
-    backgroundPath: string,
+    background: ResolvedPodcastBackground,
     audioPath: string,
     subtitlesPath: string,
     outputPath: string,
-    backgroundMode: 'image' | 'slideshow' = 'image',
   ): Promise<void> {
     logger.info('Running FFmpeg video encode (this may take several minutes)...');
 
-    // Escape characters special to FFmpeg filter option parsing.
-    // Colons are option separators; backslashes need doubling.
     const safeSubs = subtitlesPath.replace(/\\/g, '\\\\').replace(/:/g, '\\:');
-
-    // Styles are embedded in the ASS file so inline IPA colour overrides work.
     const subtitleFilter = `subtitles=filename=${safeSubs}`;
 
-    // Wave strip: p2p waveform, brand cyan, overlaid above subtitle zone
+    const motion = background.motion;
+    const useMotionSlideshow =
+      background.mode === 'slideshow' &&
+      background.segments &&
+      isMotionActive(motion);
+
+    const bgInputs = buildPodcastBackgroundInputs(
+      background.mode,
+      background.path,
+      useMotionSlideshow ? background.segments : undefined,
+      motion,
+      motion?.particles.path,
+    );
+
+    const podcastDuration =
+      background.podcastDurationSeconds ?? (await this.getMediaDuration(audioPath));
+
+    const filterParts: string[] = [];
+    let bgLabel = 'bg';
+    let isFiniteBackground = background.mode === 'slideshow' && !useMotionSlideshow;
+
+    if (isMotionActive(motion)) {
+      const motionResult =
+        useMotionSlideshow && background.segments
+          ? buildSlideshowMotionFilters(
+              bgInputs.bgInputIndices,
+              background.segments,
+              motion!,
+              bgInputs.particlesInputIndex,
+            )
+          : buildStaticMotionFilters(
+              bgInputs.bgInputIndices[0],
+              podcastDuration,
+              motion!,
+              bgInputs.particlesInputIndex,
+            );
+      filterParts.push(...motionResult.filters);
+      bgLabel = motionResult.bgLabel;
+      isFiniteBackground = motionResult.isFiniteBackground;
+    } else {
+      filterParts.push(
+        `[${bgInputs.bgInputIndices[0]}:v]scale=${VIDEO_WIDTH}:${VIDEO_HEIGHT},fps=${VIDEO_FPS}[bg]`,
+      );
+    }
+
+    const audioInputIndex = bgInputs.bgInputIndices.length + (bgInputs.particlesInputIndex !== undefined ? 1 : 0);
     const waveFilters = buildWaveOverlayFilters(this.wave);
     const { x: waveX, y: waveY } = this.wave.podcast;
+    const overlayOpts = isFiniteBackground ? ':shortest=1' : '';
+
     const filterComplex = [
-      `[0:v]scale=1920:1080,fps=${VIDEO_FPS}[bg]`,
-      `[1:a]volume=${PODCAST_VOLUME},asplit=2[aout][awave]`,
+      ...filterParts,
+      `[${audioInputIndex}:a]volume=${PODCAST_VOLUME},asplit=2[aout][awave]`,
       ...waveFilters,
-      `[bg][waves]overlay=${waveX}:${waveY},format=yuv420p,${subtitleFilter}[vout]`,
+      `[${bgLabel}][waves]overlay=${waveX}:${waveY}${overlayOpts},format=yuv420p,${subtitleFilter}[vout]`,
     ].join(';');
 
     await execFileAsync(
       this.ffmpegBin,
       [
-        ...this.backgroundInputArgs(backgroundPath, backgroundMode),
+        ...bgInputs.args,
         '-i', audioPath,
         '-filter_complex', filterComplex,
         '-map', '[vout]',
@@ -288,7 +332,6 @@ export class FFmpegService {
         '-y',
         outputPath,
       ],
-      // Increase buffer — video stdout/stderr can be large
       { maxBuffer: 256 * 1024 * 1024 },
     );
   }
@@ -486,12 +529,11 @@ export class FFmpegService {
   async generateFinalVideo(
     introPath: string,
     thumbnailPath: string,
-    backgroundPath: string,
+    background: ResolvedPodcastBackground,
     audioPath: string,
     subtitlesPath: string,
     outroPath: string,
     outputPath: string,
-    backgroundMode: 'image' | 'slideshow' = 'image',
     thumbnailAudioPath?: string,
   ): Promise<void> {
     const fade = FADE_DURATION;
@@ -507,7 +549,6 @@ export class FFmpegService {
       ? THUMBNAIL_LEAD_SECONDS + topicDur + THUMBNAIL_TRAIL_SECONDS
       : THUMBNAIL_VIDEO_DURATION;
 
-    // Order on timeline: thumbnail → intro → podcast → outro
     const segmentDurations = [thumbDur, introDur, podcastDur, outroDur];
     const segmentNames = ['thumbnail', 'intro', 'podcast', 'outro'];
 
@@ -542,28 +583,76 @@ export class FFmpegService {
       `[${index}:a]aformat=sample_rates=44100:channel_layouts=stereo,` +
       `adelay=${leadMs}|${leadMs}:all=1,apad=whole_dur=${thumbDur},atrim=0:${thumbDur}[${label}]`;
 
+    const motion = background.motion;
+    const useMotionSlideshow =
+      background.mode === 'slideshow' &&
+      background.segments &&
+      isMotionActive(motion);
+
+    const bgInputs = buildPodcastBackgroundInputs(
+      background.mode,
+      background.path,
+      useMotionSlideshow ? background.segments : undefined,
+      motion,
+      motion?.particles.path,
+    );
+
+    const layout = buildFinalVideoInputLayout(
+      bgInputs.bgInputIndices.length,
+      bgInputs.particlesInputIndex !== undefined,
+    );
+
     const waveFilters = buildWaveOverlayFilters(this.wave);
     const { x: waveX, y: waveY } = this.wave.podcast;
-    // Slideshow concat is finite; end with audio waveform then clone last frame for xfade→outro.
-    const isSlideshow = backgroundMode === 'slideshow';
-    const overlayOpts = isSlideshow ? `:shortest=1` : '';
-    const podcastVideoPad = isSlideshow
+
+    let isFiniteBackground =
+      background.mode === 'slideshow' && !useMotionSlideshow;
+    const filterParts: string[] = [];
+    let bgLabel = 'bg';
+
+    if (isMotionActive(motion)) {
+      const motionResult =
+        useMotionSlideshow && background.segments
+          ? buildSlideshowMotionFilters(
+              layout.bgInputIndices,
+              background.segments,
+              motion!,
+              layout.particlesInputIndex,
+            )
+          : buildStaticMotionFilters(
+              layout.bgInputIndices[0],
+              podcastDur,
+              motion!,
+              layout.particlesInputIndex,
+            );
+      filterParts.push(...motionResult.filters);
+      bgLabel = motionResult.bgLabel;
+      isFiniteBackground = motionResult.isFiniteBackground;
+    } else {
+      filterParts.push(
+        `[${layout.bgInputIndices[0]}:v]scale=${VIDEO_WIDTH}:${VIDEO_HEIGHT},fps=${VIDEO_FPS}[bg]`,
+      );
+    }
+
+    const overlayOpts = isFiniteBackground ? `:shortest=1` : '';
+    const podcastVideoPad = isFiniteBackground
       ? `,tpad=stop_mode=clone:stop_duration=${fade}`
       : '';
-    // Inputs: 0=intro, 1=thumb image, 2=thumb audio, 3=bg, 4=podcast audio, 5=outro
-    // Labels follow timeline order: v0/a0=thumb, v1/a1=intro, v2/a2=podcast, v3/a3=outro
+
     const filters: string[] = [
-      normalizeVideo(1, 'v0'),
-      thumbnailAudioPath ? fitThumbAudio(2, 'a0') : normalizeAudio(2, 'a0'),
-      normalizeVideo(0, 'v1'),
-      normalizeAudio(0, 'a1'),
-      `[3:v]scale=${VIDEO_WIDTH}:${VIDEO_HEIGHT},fps=${VIDEO_FPS}[bg]`,
-      `[4:a]volume=${PODCAST_VOLUME},asplit=2[apod][awave]`,
+      normalizeVideo(layout.thumb, 'v0'),
+      thumbnailAudioPath
+        ? fitThumbAudio(layout.thumbAudio, 'a0')
+        : normalizeAudio(layout.thumbAudio, 'a0'),
+      normalizeVideo(layout.intro, 'v1'),
+      normalizeAudio(layout.intro, 'a1'),
+      ...filterParts,
+      `[${layout.podcastAudio}:a]volume=${PODCAST_VOLUME},asplit=2[apod][awave]`,
       ...waveFilters,
-      `[bg][waves]overlay=${waveX}:${waveY}${overlayOpts},format=yuv420p,${subtitleFilter},fps=${VIDEO_FPS}${podcastVideoPad}[v2]`,
+      `[${bgLabel}][waves]overlay=${waveX}:${waveY}${overlayOpts},format=yuv420p,${subtitleFilter},fps=${VIDEO_FPS}${podcastVideoPad}[v2]`,
       `[apod]aformat=sample_rates=44100:channel_layouts=stereo[a2]`,
-      normalizeVideo(5, 'v3'),
-      normalizeAudio(5, 'a3'),
+      normalizeVideo(layout.outro, 'v3'),
+      normalizeAudio(layout.outro, 'a3'),
     ];
 
     let videoLabel = 'v0';
@@ -595,7 +684,7 @@ export class FFmpegService {
       '-i', introPath,
       '-loop', '1', '-t', String(thumbDur), '-i', thumbnailPath,
       ...thumbAudioInput,
-      ...this.backgroundInputArgs(backgroundPath, backgroundMode),
+      ...bgInputs.args,
       '-i', audioPath,
       '-i', outroPath,
       '-filter_complex', filters.join(';'),
