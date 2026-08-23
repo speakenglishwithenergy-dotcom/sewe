@@ -6,52 +6,36 @@ import {
   formatChatCompletionError,
   groqJsonModeExtras,
   isJsonValidateFailed,
-  type LlmProvider,
 } from './groq-json';
+import {
+  callWithQuotaFallback,
+  isQuotaError,
+  resolveChatBackends,
+  type ChatBackendConfig,
+} from './llm-providers';
 
-const GROQ_BASE_URL = 'https://api.groq.com/openai/v1';
 const JSON_VALIDATE_ATTEMPTS = 3;
 
-function resolveLlmProvider(): LlmProvider {
-  const explicit = process.env.LLM_PROVIDER?.toLowerCase();
-  if (explicit === 'groq' || explicit === 'openai') {
-    return explicit;
-  }
-  if (process.env.GROQ_API_KEY) {
-    return 'groq';
-  }
-  return 'openai';
-}
+type ChatBackend = ChatBackendConfig & { client: OpenAI };
 
 export class OpenAIService {
-  /** Chat / JSON completions (Groq or OpenAI). */
-  private readonly chatClient: OpenAI;
+  /** Chat / JSON completions (Gemini → Groq → Cerebras, or a pinned provider). */
+  private readonly backends: ChatBackend[];
   /** TTS and image APIs — OpenAI only. */
   private readonly mediaClient: OpenAI | null;
-  private readonly llmProvider: LlmProvider;
-  private readonly model: string;
   private readonly ttsModel: string;
   private readonly imageModel: string;
 
   constructor() {
+    this.backends = resolveChatBackends().map((config) => ({
+      ...config,
+      client: new OpenAI({
+        apiKey: config.apiKey,
+        ...(config.baseURL ? { baseURL: config.baseURL } : {}),
+      }),
+    }));
+
     const openaiKey = process.env.OPENAI_API_KEY;
-    const groqKey = process.env.GROQ_API_KEY;
-    this.llmProvider = resolveLlmProvider();
-
-    if (this.llmProvider === 'groq') {
-      if (!groqKey) {
-        throw new Error('GROQ_API_KEY environment variable is required when LLM_PROVIDER=groq');
-      }
-      this.chatClient = new OpenAI({ apiKey: groqKey, baseURL: GROQ_BASE_URL });
-      this.model = process.env.GROQ_MODEL ?? 'qwen/qwen3.6-27b';
-    } else {
-      if (!openaiKey) {
-        throw new Error('OPENAI_API_KEY environment variable is required');
-      }
-      this.chatClient = new OpenAI({ apiKey: openaiKey });
-      this.model = process.env.OPENAI_MODEL ?? 'gpt-4o';
-    }
-
     this.mediaClient = openaiKey ? new OpenAI({ apiKey: openaiKey }) : null;
     this.ttsModel = process.env.OPENAI_TTS_MODEL ?? 'tts-1';
     this.imageModel = process.env.OPENAI_IMAGE_MODEL ?? 'gpt-image-1';
@@ -66,56 +50,11 @@ export class OpenAIService {
     validator: (data: unknown) => T,
     options?: { temperature?: number; maxTokens?: number },
   ): Promise<T> {
-    logger.info(`Calling ${this.llmProvider}/${this.model} for JSON generation...`);
-
-    const defaultMaxTokens = this.llmProvider === 'groq' ? 4_096 : 16_384;
-    const maxTokens = options?.maxTokens ?? defaultMaxTokens;
-    const groqExtras = this.llmProvider === 'groq' ? groqJsonModeExtras(this.model) : {};
-
-    let response;
-    let lastError: unknown;
-    for (let attempt = 1; attempt <= JSON_VALIDATE_ATTEMPTS; attempt++) {
-      try {
-        response = await this.chatClient.chat.completions.create({
-          model: this.model,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-          ],
-          response_format: { type: 'json_object' },
-          temperature: options?.temperature ?? 0.85,
-          max_tokens: maxTokens,
-          ...groqExtras,
-        });
-        lastError = undefined;
-        break;
-      } catch (error) {
-        lastError = error;
-        if (!isJsonValidateFailed(error) || attempt === JSON_VALIDATE_ATTEMPTS) {
-          throw new Error(formatChatCompletionError(this.llmProvider, error));
-        }
-        logger.warn(
-          `Groq JSON validation failed (attempt ${attempt}/${JSON_VALIDATE_ATTEMPTS}) — retrying...`,
-        );
-      }
-    }
-    if (!response) {
-      throw new Error(formatChatCompletionError(this.llmProvider, lastError));
-    }
-
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error('LLM returned an empty response');
-    }
-
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(content);
-    } catch {
-      throw new Error(`LLM returned invalid JSON: ${content.slice(0, 200)}`);
-    }
-
-    return validator(parsed);
+    return callWithQuotaFallback(
+      this.backends,
+      (backend) => this.completeJSON(backend, userPrompt, systemPrompt, validator, options),
+      (from, to) => logger.warn(`${from} quota exceeded, falling back to ${to}`),
+    );
   }
 
   /** Call the Chat Completions API and return plain text (no JSON mode). */
@@ -124,27 +63,11 @@ export class OpenAIService {
     systemPrompt: string,
     options?: { temperature?: number; maxTokens?: number },
   ): Promise<string> {
-    logger.info(`Calling ${this.llmProvider}/${this.model} for text generation...`);
-
-    const defaultMaxTokens = this.llmProvider === 'groq' ? 4_096 : 16_384;
-    const maxTokens = options?.maxTokens ?? defaultMaxTokens;
-
-    const response = await this.chatClient.chat.completions.create({
-      model: this.model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: options?.temperature ?? 0.7,
-      max_tokens: maxTokens,
-    });
-
-    const content = response.choices[0]?.message?.content?.trim();
-    if (!content) {
-      throw new Error('LLM returned an empty response');
-    }
-
-    return content;
+    return callWithQuotaFallback(
+      this.backends,
+      (backend) => this.completeText(backend, userPrompt, systemPrompt, options),
+      (from, to) => logger.warn(`${from} quota exceeded, falling back to ${to}`),
+    );
   }
 
   /**
@@ -157,7 +80,7 @@ export class OpenAIService {
     speed = 0.85,
   ): Promise<void> {
     if (!this.mediaClient) {
-      throw new Error('OPENAI_API_KEY is required for TTS (Groq does not support speech generation)');
+      throw new Error('OPENAI_API_KEY is required for TTS');
     }
 
     const response = await this.mediaClient.audio.speech.create({
@@ -183,7 +106,7 @@ export class OpenAIService {
     options?: { size?: '1024x1024' | '1536x1024' | '1024x1536' | 'auto' },
   ): Promise<Buffer> {
     if (!this.mediaClient) {
-      throw new Error('OPENAI_API_KEY is required for image generation (Groq does not support images)');
+      throw new Error('OPENAI_API_KEY is required for image generation');
     }
 
     logger.info(`Calling ${this.imageModel} for thumbnail generation...`);
@@ -213,4 +136,103 @@ export class OpenAIService {
 
     return Buffer.from(b64, 'base64');
   }
+
+  private async completeJSON<T>(
+    backend: ChatBackend,
+    userPrompt: string,
+    systemPrompt: string,
+    validator: (data: unknown) => T,
+    options?: { temperature?: number; maxTokens?: number },
+  ): Promise<T> {
+    logger.info(`Calling ${backend.name}/${backend.model} for JSON generation...`);
+
+    const maxTokens = options?.maxTokens ?? backend.defaultMaxTokens;
+    const groqExtras = backend.name === 'groq' ? groqJsonModeExtras(backend.model) : {};
+
+    let response;
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= JSON_VALIDATE_ATTEMPTS; attempt++) {
+      try {
+        response = await backend.client.chat.completions.create({
+          model: backend.model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          response_format: { type: 'json_object' },
+          temperature: options?.temperature ?? 0.85,
+          max_tokens: maxTokens,
+          ...groqExtras,
+        });
+        lastError = undefined;
+        break;
+      } catch (error) {
+        lastError = error;
+        if (isJsonValidateFailed(error) && attempt < JSON_VALIDATE_ATTEMPTS) {
+          logger.warn(
+            `${backend.name} JSON validation failed (attempt ${attempt}/${JSON_VALIDATE_ATTEMPTS}) — retrying...`,
+          );
+          continue;
+        }
+        throw wrapChatError(backend.name, error);
+      }
+    }
+    if (!response) {
+      throw wrapChatError(backend.name, lastError);
+    }
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('LLM returned an empty response');
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      throw new Error(`LLM returned invalid JSON: ${content.slice(0, 200)}`);
+    }
+
+    return validator(parsed);
+  }
+
+  private async completeText(
+    backend: ChatBackend,
+    userPrompt: string,
+    systemPrompt: string,
+    options?: { temperature?: number; maxTokens?: number },
+  ): Promise<string> {
+    logger.info(`Calling ${backend.name}/${backend.model} for text generation...`);
+
+    const maxTokens = options?.maxTokens ?? backend.defaultMaxTokens;
+
+    let response;
+    try {
+      response = await backend.client.chat.completions.create({
+        model: backend.model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: options?.temperature ?? 0.7,
+        max_tokens: maxTokens,
+      });
+    } catch (error) {
+      throw wrapChatError(backend.name, error);
+    }
+
+    const content = response.choices[0]?.message?.content?.trim();
+    if (!content) {
+      throw new Error('LLM returned an empty response');
+    }
+
+    return content;
+  }
+}
+
+function wrapChatError(provider: ChatBackend['name'], error: unknown): unknown {
+  if (isQuotaError(error)) {
+    return error;
+  }
+  return new Error(formatChatCompletionError(provider, error));
 }

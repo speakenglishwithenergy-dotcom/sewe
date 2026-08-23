@@ -565,10 +565,14 @@ Variables read by the CLI and pipeline (set in `.env`):
 
 | Variable | Used by | Description |
 |----------|---------|-------------|
-| `GROQ_API_KEY` | generate, shadowing | Groq API key for LLM (script, metadata, IPA). Auto-selected when set. |
+| `GEMINI_API_KEY` | generate, shadowing | Gemini API key for LLM (first in the quota fallback chain). |
+| `GEMINI_MODEL` | generate, shadowing | Gemini model (default: `gemini-2.5-flash`). |
+| `GROQ_API_KEY` | generate, shadowing | Groq API key for LLM. Used after Gemini quota errors. |
 | `GROQ_MODEL` | generate, shadowing | Groq model (default: `qwen/qwen3.6-27b`). |
-| `LLM_PROVIDER` | generate, shadowing | `groq` or `openai` — override auto-detection when both keys are set. |
-| `OPENAI_API_KEY` | generate | Required for TTS/thumbnails; LLM fallback when Groq is not configured. |
+| `CEREBRAS_API_KEY` | generate, shadowing | Cerebras API key for LLM. Used after Gemini and Groq quota errors. |
+| `CEREBRAS_MODEL` | generate, shadowing | Cerebras model (default: `llama-3.3-70b`). |
+| `LLM_PROVIDER` | generate, shadowing | Leave unset for `gemini → groq → cerebras`. Pin with `gemini`, `groq`, `cerebras`, or `openai`. |
+| `OPENAI_API_KEY` | generate | Required for TTS/thumbnails; LLM fallback when no Gemini/Groq/Cerebras key is set. |
 | `OPENAI_MODEL` | generate | LLM model (default: `gpt-4o`). |
 | `OPENAI_TTS_MODEL` | — | TTS model if OpenAI TTS is used (default: `tts-1`). |
 | `OPENAI_IMAGE_MODEL` | generate | Thumbnail image model (default: `gpt-image-1`). |

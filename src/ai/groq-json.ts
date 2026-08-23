@@ -1,4 +1,6 @@
-export type LlmProvider = 'groq' | 'openai';
+import type { ChatProvider } from './llm-providers';
+
+export type LlmProvider = ChatProvider;
 
 type GroqApiError = {
   message?: string;
@@ -60,11 +62,11 @@ export function formatChatCompletionError(provider: LlmProvider, error: unknown)
     const baseMessage = apiError.error?.message ?? apiError.message ?? String(error);
 
     if (failedGeneration) {
-      return `${apiError.status ?? ''} ${baseMessage}\nfailed_generation: ${failedGeneration.slice(0, 500)}`.trim();
+      return `${provider} ${apiError.status ?? ''} ${baseMessage}\nfailed_generation: ${failedGeneration.slice(0, 500)}`.trim();
     }
 
-    if (provider === 'groq' && apiError.status) {
-      return `${apiError.status} ${baseMessage}`;
+    if (apiError.status) {
+      return `${provider} ${apiError.status} ${baseMessage}`;
     }
   }
 
