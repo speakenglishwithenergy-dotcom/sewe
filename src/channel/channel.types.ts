@@ -19,7 +19,10 @@ export const ChannelScriptConfigSchema = z.object({
   targetMinWords: z.number().int().positive(),
   targetMinLines: z.number().int().positive(),
   languageLevel: z.string().min(1),
+  /** Structural template — ids and line counts; labels/briefs are generated per topic. */
   sections: z.array(ScriptSectionSchema).min(1),
+  /** Extra guidance for the per-topic section outline step. */
+  sectionsOutlineGuidance: z.string().optional(),
   closingTemplate: z.string().min(1),
   dialogueRules: z.string().optional(),
   dialogueFlowExample: z.string().optional(),

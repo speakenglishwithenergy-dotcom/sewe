@@ -101,14 +101,8 @@ function normalizeBullets(bullets: string[], pub: ResolvedPublishCopy): string[]
 
 function normalizeChapterLabels(
   chapters: YouTubeMetadata['chapters'],
-  pub: ResolvedPublishCopy,
 ): YouTubeMetadata['chapters'] {
-  if (chapters.length !== pub.chapterLabels.length) return chapters;
-
-  return chapters.map((chapter, index) => ({
-    time: chapter.time,
-    label: pub.chapterLabels[index] ?? chapter.label,
-  }));
+  return chapters;
 }
 
 function escapeRegExp(value: string): string {
@@ -144,7 +138,7 @@ export function formatChannelDescription(meta: YouTubeMetadata, pub: ResolvedPub
     meta.hashtags,
     PUBLISH_LIMITS.youtubeHashtagsMax,
   );
-  const chapters = normalizeChapterLabels(meta.chapters, pub);
+  const chapters = normalizeChapterLabels(meta.chapters);
   const chapterBlock = chapters.map((chapter) => `${chapter.time} ${chapter.label}`).join('\n');
   const bulletBlock = bullets.map((bullet) => `• ${bullet}`).join('\n');
 
@@ -257,7 +251,7 @@ function normalizeYouTubeMetadata(
     title: formatYouTubeTitle(topic ?? meta.title, pub),
     titleVariants: meta.titleVariants.map((title) => formatYouTubeTitle(title, pub)),
     tags: mergeUniqueTags(pub.coreTags, meta.tags, PUBLISH_LIMITS.youtubeTagsMax),
-    chapters: normalizeChapterLabels(meta.chapters, pub),
+    chapters: normalizeChapterLabels(meta.chapters),
     hashtags,
     pinnedComment: meta.pinnedComment.trim(),
   };

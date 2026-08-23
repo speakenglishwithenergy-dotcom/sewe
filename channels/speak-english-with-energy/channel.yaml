@@ -38,6 +38,10 @@ script:
     Victor: "Well, I remember a time in school where I spoke up in class."
     Victor: "A few classmates laughed, and honestly, it really got to me."
     Lisa: "Oh, that hurts — did it change how you spoke up after that?"
+  sectionsOutlineGuidance: |
+    Plan sections that feel native to the episode topic — not a generic "main idea 1/2/3" lesson.
+    Name each main segment after a concrete angle (a story beat, myth, habit, or question from the topic).
+    Briefs should tell Victor and Lisa what to talk about for THIS topic specifically.
   sections:
     - id: intro
       label: Intro & hook
@@ -46,19 +50,19 @@ script:
     - id: main1
       label: Main idea 1
       lineCount: 14
-      brief: Core concept of the topic. Victor tells a personal story with concrete details — he may speak 2–4 lines in a row to finish it before Lisa reacts.
+      brief: First core angle of the topic — personal story or key concept with concrete details.
     - id: main2
       label: Main idea 2
       lineCount: 14
-      brief: Second angle with a specific everyday example. Name one misconception, correct it, and let the hosts react with a follow-up or "what if" moment.
+      brief: Second angle — everyday example, misconception, or "what if" moment tied to the topic.
     - id: main3
       label: Main idea 3
       lineCount: 14
-      brief: Practical tips and one common mistake — what listeners can try this week. Walk through one tip step by step; stay actionable, not repetitive.
+      brief: Practical tips and one common mistake — what listeners can try this week.
     - id: closing
       label: Closing
       lineCount: 11
-      brief: Finish the conversation first — recap the three main points in your own words, land one clear actionable tip, and let Victor and Lisa react naturally. Only after that wrap-up, end with a brief warm goodbye and "see you next time" — do NOT ask viewers to like, share, or subscribe.
+      brief: Recap the episode's main points, land one actionable tip, warm goodbye — no subscribe CTAs.
 
 short:
   enabled: true

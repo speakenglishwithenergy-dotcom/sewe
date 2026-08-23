@@ -81,6 +81,54 @@ function exampleSpeakerLine(ctx: ChannelContext, index: number, continuesStory: 
   return `{ "speaker": "${speaker}", "text": "...", "continuesStory": ${continuesStory} }`;
 }
 
+function formatSectionTemplateBlock(sections: ScriptSectionDef[]): string {
+  return sections
+    .map(
+      (section) =>
+        `- id: "${section.id}" | lineCount: ${section.lineCount} | template label: "${section.label}" | template brief: ${section.brief}`,
+    )
+    .join('\n');
+}
+
+export function buildSectionsOutlinePrompt(
+  ctx: ChannelContext,
+  topic: string,
+  customScript?: string,
+): string {
+  const { name, niche, script } = ctx.config;
+  const hostsBlock = buildHostsBlock(ctx.config.hosts);
+  const draftBlock = formatCustomScriptBlock(customScript);
+  const templateBlock = formatSectionTemplateBlock(script.sections);
+  const guidance = script.sectionsOutlineGuidance?.trim();
+
+  return `You are planning the section outline for a podcast episode on "${name}".
+Channel niche: ${niche}
+English level: ${script.languageLevel}
+
+Episode topic: "${topic}"
+
+${hostsBlock}
+${draftBlock}
+STRUCTURAL TEMPLATE (fixed — do NOT change id or lineCount):
+${templateBlock}
+
+Your job: write a TOPIC-SPECIFIC outline. Each section must keep the exact "id" and "lineCount" from the template, but "label" and "brief" must be tailored to "${topic}" — concrete angles, stories, or questions that fit THIS episode (not generic podcast beats).
+
+Rules:
+- "label": short chapter title for YouTube (2–6 words, title case)
+- "brief": 2–4 sentences telling the script writer what happens in this section for THIS topic — include specific story beats, misconceptions, or tips tied to the topic
+- id "intro": hook + why this topic matters to English learners
+- id "closing": recap tied to this topic + warm sign-off (no like/share/subscribe CTAs)
+- Main sections (not intro/closing): distinct angles — no repeating the same idea
+${guidance ? `\nChannel guidance:\n${guidance}\n` : ''}
+Return ONLY a valid JSON object (no markdown):
+{
+  "sections": [
+    { "id": "intro", "label": "...", "lineCount": 11, "brief": "..." }
+  ]
+}`;
+}
+
 export function buildMetadataPrompt(
   ctx: ChannelContext,
   topic: string,

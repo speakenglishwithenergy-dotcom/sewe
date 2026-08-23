@@ -1,5 +1,6 @@
-import { ChannelContext } from '../channel/channel.types';
+import { ChannelContext, ScriptSectionDef } from '../channel/channel.types';
 import { PodcastScript, ShortScript } from '../types';
+import { getChapterLabels } from '../script/sections.util';
 import { PUBLISH_LIMITS } from '../social/publish.limits';
 
 function formatScriptExcerpt(script: PodcastScript, maxLines = 40): string {
@@ -17,9 +18,11 @@ export function buildYouTubeMetadataPrompt(
   ctx: ChannelContext,
   podcastScript: PodcastScript,
   topic: string,
+  sections?: ScriptSectionDef[],
 ): string {
   const { name, niche, script } = ctx.config;
   const pub = ctx.publish;
+  const chapterLabels = sections ? getChapterLabels(sections) : [...pub.chapterLabels];
 
   return `You are a YouTube SEO specialist for the channel "${name}" — ${niche}, hosted by ${hostsDescription(ctx)}.
 
@@ -47,7 +50,7 @@ RULES:
 - "title": MUST be exactly "${topic}" — do not rephrase or shorten it (suffix added automatically)
 - "titleVariants": 2 alternative titles based on the same topic, max ${pub.titleBaseMax} characters each
 - "tags": up to ${PUBLISH_LIMITS.youtubeTagsMax - pub.coreTags.length} episode-specific tags (lowercase, no #)
-- "chapters": exactly ${pub.chapterLabels.length} entries with labels ${pub.chapterLabels.map((l) => `"${l}"`).join(', ')}
+- "chapters": exactly ${chapterLabels.length} entries with labels ${chapterLabels.map((l) => `"${l}"`).join(', ')}
 - "pinnedComment": one engaging question (1–2 sentences). Do not include URLs.
 - "hashtags": 1–3 episode-specific hashtags with # prefix
 

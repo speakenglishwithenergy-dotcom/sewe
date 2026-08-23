@@ -1,9 +1,10 @@
 import { OpenAIService } from './openai.service';
-import { ChannelContext } from '../channel/channel.types';
+import { ChannelContext, ScriptSectionDef } from '../channel/channel.types';
 import {
   asSpeakerTuple,
   buildPodcastScriptSchema,
   buildScriptSectionResultSchema,
+  buildScriptSectionsOutlineSchema,
   DialogueLine,
   PodcastMetadataSchema,
   PodcastScript,
@@ -14,6 +15,7 @@ import {
   buildMetadataPrompt,
   buildScriptPrompt,
   buildSectionPrompt,
+  buildSectionsOutlinePrompt,
   countScriptWords,
 } from '../prompts/script.prompt';
 import { logger } from '../utils/logger';
@@ -23,6 +25,11 @@ const SYSTEM_PROMPT =
   'You are a professional podcast script writer. Respond only with valid JSON matching the requested structure exactly.';
 
 const PodcastMetadataFieldsSchema = PodcastMetadataSchema.omit({ title: true });
+
+export interface ScriptGenerationResult {
+  script: PodcastScript;
+  sections: ScriptSectionDef[];
+}
 
 export class ScriptService {
   private readonly speakers: [string, ...string[]];
@@ -34,7 +41,12 @@ export class ScriptService {
     this.speakers = asSpeakerTuple(ctx.speakers);
   }
 
-  async generate(topic: string, test = false, customScript?: string): Promise<PodcastScript> {
+  async generate(
+    topic: string,
+    test = false,
+    customScript?: string,
+    existingSections?: ScriptSectionDef[],
+  ): Promise<ScriptGenerationResult> {
     const { script: scriptConfig } = this.ctx.config;
     const draftNote = customScript?.trim() ? ' (with custom draft)' : '';
     logger.info(
@@ -54,7 +66,7 @@ export class ScriptService {
       logger.success(
         `Script ready — "${script.title}" (${script.script.length} lines, ${countScriptWords(script.script)} words)`,
       );
-      return script;
+      return { script, sections: scriptConfig.sections };
     }
 
     const metadataFields = await this.openai.generateJSON(
@@ -64,9 +76,12 @@ export class ScriptService {
     );
     const metadata = { ...metadataFields, title: topic };
 
+    const sections =
+      existingSections ?? (await this.generateSectionsOutline(topic, customScript));
+
     const allLines: DialogueLine[] = [];
 
-    for (const section of scriptConfig.sections) {
+    for (const section of sections) {
       logger.info(`Writing section "${section.label}" (${section.lineCount} lines)...`);
       const sectionLines = await this.generateSection(
         topic,
@@ -93,12 +108,38 @@ export class ScriptService {
       `Script ready — "${script.title}" (${script.script.length} lines, ${words} words)`,
     );
 
-    return script;
+    return { script, sections };
+  }
+
+  async generateSectionsOutline(
+    topic: string,
+    customScript?: string,
+  ): Promise<ScriptSectionDef[]> {
+    const template = this.ctx.config.script.sections;
+    logger.info(`Planning ${template.length} topic-specific sections...`);
+
+    const outline = await this.openai.generateJSON(
+      buildSectionsOutlinePrompt(this.ctx, topic, customScript),
+      SYSTEM_PROMPT,
+      (data) => buildScriptSectionsOutlineSchema(template.length).parse(data),
+    );
+
+    const sections = outline.sections.map((section, i) => ({
+      ...section,
+      id: template[i].id,
+      lineCount: template[i].lineCount,
+    }));
+
+    logger.info(
+      `Section outline: ${sections.map((s) => s.label).join(' → ')}`,
+    );
+
+    return sections;
   }
 
   private async generateSection(
     topic: string,
-    section: (typeof this.ctx.config.script.sections)[number],
+    section: ScriptSectionDef,
     previousLines: DialogueLine[],
     episodeTitle: string,
     customScript?: string,

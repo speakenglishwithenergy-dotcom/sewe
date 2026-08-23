@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ChannelContext } from '../channel/channel.types';
+import { ChannelContext, ScriptSectionSchema } from '../channel/channel.types';
 
 // ─── Speakers (dynamic per channel) ──────────────────────────────────────────
 
@@ -42,6 +42,17 @@ export function buildScriptSectionResultSchema(speakers: [string, ...string[]]) 
     script: z.array(buildDialogueLineSchema(speakers)).min(1),
   });
 }
+
+export function buildScriptSectionsOutlineSchema(sectionCount: number) {
+  return z.object({
+    sections: z.array(ScriptSectionSchema).length(sectionCount),
+  });
+}
+
+export const ScriptSectionsOutlineSchema = z.object({
+  sections: z.array(ScriptSectionSchema).min(1),
+});
+export type ScriptSectionsOutline = z.infer<typeof ScriptSectionsOutlineSchema>;
 
 export const ScriptSectionResultSchema = z.object({
   script: z.array(DialogueLineSchema).min(1),

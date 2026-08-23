@@ -20,6 +20,7 @@ import {
   buildYouTubeShortMetadataPrompt,
 } from '../prompts/social-metadata.prompt';
 import { refineChapterTimes } from './chapters.util';
+import { loadScriptSections } from '../script/sections.util';
 import { normalizeSocialMetadata } from './social-metadata.normalize';
 import { resolveSocialMetadataPath, writeSocialMetadataExports } from './social-metadata.export';
 import { logger } from '../utils/logger';
@@ -62,7 +63,7 @@ export class SocialMetadataService {
       logger.info('Generating social metadata...');
     }
 
-    const meta = await this.generateAllMetadata(podcastScript, topic, options);
+    const meta = await this.generateAllMetadata(projectDir, podcastScript, topic, options);
     await writeSocialMetadataExports(projectDir, meta, this.ctx.publish, topic);
     logger.success(`Social metadata saved → ${path.join(projectDir, 'publish')}`);
     return normalizeSocialMetadata(meta, this.ctx.publish, topic);
@@ -112,12 +113,14 @@ export class SocialMetadataService {
   }
 
   private async generateAllMetadata(
+    projectDir: string,
     podcastScript: PodcastScript,
     topic: string,
     options?: { shortScript?: ShortScript; segments?: AudioSegment[] },
   ): Promise<SocialMetadata> {
+    const sections = await loadScriptSections(projectDir, this.ctx);
     const [youtube, facebook] = await Promise.all([
-      this.generateYouTubeMetadata(podcastScript, topic, options?.segments),
+      this.generateYouTubeMetadata(podcastScript, topic, sections, options?.segments),
       this.generateFacebookMetadata(podcastScript, topic),
     ]);
 
@@ -137,17 +140,18 @@ export class SocialMetadataService {
   private async generateYouTubeMetadata(
     podcastScript: PodcastScript,
     topic: string,
+    sections: Awaited<ReturnType<typeof loadScriptSections>>,
     segments?: AudioSegment[],
   ) {
     const raw = await this.openai.generateJSON(
-      buildYouTubeMetadataPrompt(this.ctx, podcastScript, topic),
+      buildYouTubeMetadataPrompt(this.ctx, podcastScript, topic, sections),
       SYSTEM_PROMPT,
       (data) => YouTubeMetadataSchema.parse(data),
       { temperature: 0.7 },
     );
 
     if (segments && segments.length > 0) {
-      const chapters = refineChapterTimes(this.ctx, raw.chapters, segments);
+      const chapters = refineChapterTimes(sections, raw.chapters, segments, this.ctx);
       return {
         ...raw,
         chapters,

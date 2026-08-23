@@ -22,6 +22,11 @@ import { ChannelService } from './channel/channel.service';
 import { ChannelContext } from './channel/channel.types';
 import { SocialMetadataService } from './social/social-metadata.service';
 import {
+  getSectionsPath,
+  loadScriptSections,
+  saveScriptSections,
+} from './script/sections.util';
+import {
   FACEBOOK_LONG_CAPTION,
   FACEBOOK_LONG_FIRST_COMMENT,
   FACEBOOK_SHORT_CAPTION,
@@ -182,6 +187,7 @@ async function clearProjectCache(
 
   const podcastArtifacts = [
     path.join(projectDir, 'script.json'),
+    path.join(projectDir, 'sections.json'),
     path.join(projectDir, 'audio'),
     path.join(projectDir, 'podcast.mp3'),
     path.join(projectDir, 'subtitles.ass'),
@@ -583,6 +589,7 @@ async function main(): Promise<void> {
   const channelAssets = channelCtx.assets;
   const AUDIO_DIR = path.join(PROJECT_DIR, 'audio');
   const SCRIPT_PATH = path.join(PROJECT_DIR, 'script.json');
+  const SECTIONS_PATH = getSectionsPath(PROJECT_DIR);
   const PODCAST_AUDIO_PATH = path.join(PROJECT_DIR, 'podcast.mp3');
   const SUBTITLES_PATH = path.join(PROJECT_DIR, 'subtitles.ass');
   const THUMBNAIL_PATH = path.join(PROJECT_DIR, 'thumbnail.png');
@@ -613,14 +620,27 @@ async function main(): Promise<void> {
     logger.info('Using custom script draft as reference');
   }
   let podcastScript: PodcastScript;
+  let scriptSections = await loadScriptSections(PROJECT_DIR, channelCtx);
   if (await fileExists(SCRIPT_PATH)) {
     logger.info(`⏭  Script already exists — loading from cache`);
     const raw = await fs.readFile(SCRIPT_PATH, 'utf-8');
     podcastScript = JSON.parse(raw);
   } else {
-    podcastScript = await scriptService.generate(project.topic, args.test, customScript);
+    const existingSections = (await fileExists(SECTIONS_PATH))
+      ? scriptSections
+      : undefined;
+    const result = await scriptService.generate(
+      project.topic,
+      args.test,
+      customScript,
+      existingSections,
+    );
+    podcastScript = result.script;
+    scriptSections = result.sections;
     await fs.writeFile(SCRIPT_PATH, JSON.stringify(podcastScript, null, 2), 'utf-8');
+    await saveScriptSections(PROJECT_DIR, scriptSections);
     logger.info(`Script saved → ${SCRIPT_PATH}`);
+    logger.info(`Sections saved → ${SECTIONS_PATH}`);
   }
 
   // Persist title/description into project metadata

@@ -1,4 +1,4 @@
-import { ChannelContext } from '../channel/channel.types';
+import { ChannelContext, ScriptSectionDef } from '../channel/channel.types';
 import { AudioSegment, YouTubeChapter } from '../types';
 
 function formatChapterTime(seconds: number): string {
@@ -18,11 +18,11 @@ function formatChapterTime(seconds: number): string {
  * based on script section line boundaries.
  */
 export function refineChapterTimes(
-  ctx: ChannelContext,
+  sections: ScriptSectionDef[],
   chapters: YouTubeChapter[],
   segments: AudioSegment[],
+  ctx?: ChannelContext,
 ): YouTubeChapter[] {
-  const sections = ctx.config.script.sections;
   if (segments.length === 0 || chapters.length === 0) {
     return chapters;
   }
@@ -31,7 +31,10 @@ export function refineChapterTimes(
 
   return sections.map((section, i) => {
     const segment = segments[Math.min(lineIndex, segments.length - 1)];
-    const label = chapters[i]?.label ?? ctx.publish.chapterLabels[i] ?? section.label;
+    const label =
+      chapters[i]?.label ??
+      ctx?.publish.chapterLabels[i] ??
+      section.label;
     lineIndex += section.lineCount;
     return {
       time: formatChapterTime(segment.startTime),
