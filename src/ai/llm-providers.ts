@@ -22,7 +22,7 @@ const PROVIDER_SPECS: Record<ChatProvider, ProviderSpec> = {
   gemini: {
     envKey: 'GEMINI_API_KEY',
     modelEnv: 'GEMINI_MODEL',
-    defaultModel: 'gemini-2.5-flash',
+    defaultModel: 'gemini-3.6-flash',
     baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
     defaultMaxTokens: 8_192,
   },

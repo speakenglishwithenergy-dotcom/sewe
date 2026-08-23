@@ -566,7 +566,7 @@ Variables read by the CLI and pipeline (set in `.env`):
 | Variable | Used by | Description |
 |----------|---------|-------------|
 | `GEMINI_API_KEY` | generate, shadowing | Gemini API key for LLM (first in the quota fallback chain). |
-| `GEMINI_MODEL` | generate, shadowing | Gemini model (default: `gemini-2.5-flash`). |
+| `GEMINI_MODEL` | generate, shadowing | Gemini model (default: `gemini-3.6-flash`). |
 | `GROQ_API_KEY` | generate, shadowing | Groq API key for LLM. Used after Gemini quota errors. |
 | `GROQ_MODEL` | generate, shadowing | Groq model (default: `qwen/qwen3.6-27b`). |
 | `CEREBRAS_API_KEY` | generate, shadowing | Cerebras API key for LLM. Used after Gemini and Groq quota errors. |

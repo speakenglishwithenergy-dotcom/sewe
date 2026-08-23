@@ -99,7 +99,7 @@ describe('resolveChatBackends', () => {
 
   it('uses default models when model env vars are unset', () => {
     const backends = resolveChatBackends(allKeys);
-    assert.equal(backends[0].model, 'gemini-2.5-flash');
+    assert.equal(backends[0].model, 'gemini-3.6-flash');
     assert.equal(backends[1].model, 'qwen/qwen3.6-27b');
     assert.equal(backends[2].model, 'llama-3.3-70b');
   });
