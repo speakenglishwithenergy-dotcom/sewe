@@ -11,8 +11,8 @@ hosts:
     personality: female, thoughtful, asks insightful questions, relatable, practical
 
 script:
-  targetMinWords: 1100
-  targetMinLines: 62
+  targetMinWords: 2500
+  targetMinLines: 140
   languageLevel: A2-B1
   closingTemplate: "Thanks for listening — see you next time on {channelName}!"
   dialogueRules: |
@@ -45,24 +45,28 @@ script:
   sections:
     - id: intro
       label: Intro & hook
-      lineCount: 11
-      brief: Warm greeting, introduce the topic, paint a quick everyday scene listeners recognize, explain why it matters to English learners today.
+      lineCount: 18
+      brief: Warm greeting, introduce the topic, paint a vivid everyday scene listeners recognize, explain why it matters to English learners today, and preview what Victor and Lisa will cover in this longer episode.
     - id: main1
       label: Main idea 1
-      lineCount: 14
-      brief: First core angle of the topic — personal story or key concept with concrete details.
+      lineCount: 26
+      brief: First core angle of the topic — personal story or key concept with concrete details, follow-up questions, and a clear takeaway phrase listeners can reuse.
     - id: main2
       label: Main idea 2
-      lineCount: 14
-      brief: Second angle — everyday example, misconception, or "what if" moment tied to the topic.
+      lineCount: 26
+      brief: Second angle — everyday example, misconception, or "what if" moment tied to the topic, with a mini role-play or contrast between weak vs strong English.
     - id: main3
       label: Main idea 3
-      lineCount: 14
-      brief: Practical tips and one common mistake — what listeners can try this week.
+      lineCount: 26
+      brief: Practical tips, one common mistake, and a short listener-style scenario — what to say and what to avoid in real conversations.
+    - id: main4
+      label: Main idea 4
+      lineCount: 26
+      brief: Deeper dive — advanced nuance, cultural context, or a second story that reinforces the topic; end with a memorable line listeners can practice out loud.
     - id: closing
       label: Closing
-      lineCount: 11
-      brief: Recap the episode's main points, land one actionable tip, warm goodbye — no subscribe CTAs.
+      lineCount: 18
+      brief: Recap the episode's main points with examples, land one actionable tip for this week, answer a final "so what now?" beat, warm goodbye — no subscribe CTAs.
 
 short:
   enabled: true
@@ -209,6 +213,7 @@ publish:
     - Main idea 1
     - Main idea 2
     - Main idea 3
+    - Main idea 4
     - Closing
   defaultBullets:
     - Practical English tips you can use today

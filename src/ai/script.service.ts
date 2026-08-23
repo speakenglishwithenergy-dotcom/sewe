@@ -21,6 +21,7 @@ import {
 import { logger } from '../utils/logger';
 
 const MAX_SECTION_ATTEMPTS = 3;
+const MAX_EXPANSION_ATTEMPTS = 3;
 const SYSTEM_PROMPT =
   'You are a professional podcast script writer. Respond only with valid JSON matching the requested structure exactly.';
 
@@ -191,26 +192,40 @@ export class ScriptService {
     let lines = [...script.script];
     let words = countScriptWords(lines);
 
-    if (words >= targetMinWords && lines.length >= targetMinLines) {
-      return { ...script, script: lines };
+    for (let attempt = 1; attempt <= MAX_EXPANSION_ATTEMPTS; attempt++) {
+      if (words >= targetMinWords && lines.length >= targetMinLines) {
+        return { ...script, script: lines };
+      }
+
+      const linesNeeded = Math.max(
+        15,
+        targetMinLines - lines.length + 5,
+        Math.ceil((targetMinWords - words) / 16),
+      );
+      logger.warn(
+        `Script below target (${lines.length}/${targetMinLines} lines, ${words}/${targetMinWords} words) — ` +
+          `expansion ${attempt}/${MAX_EXPANSION_ATTEMPTS} by ~${linesNeeded} lines...`,
+      );
+
+      const expansion = await this.openai.generateJSON(
+        buildExpansionPrompt(this.ctx, topic, script.title, lines, linesNeeded, customScript),
+        SYSTEM_PROMPT,
+        (data) => buildScriptSectionResultSchema(this.speakers).parse(data),
+      );
+
+      const closingStart = findClosingStart(lines);
+      lines = [...lines.slice(0, closingStart), ...expansion.script, ...lines.slice(closingStart)];
+      words = countScriptWords(lines);
+
+      logger.info(`After expansion ${attempt}: ${lines.length} lines, ${words} words`);
     }
 
-    const linesNeeded = Math.max(10, targetMinLines - lines.length + 5);
-    logger.warn(
-      `Script below target (${lines.length} lines, ${words} words) — expanding by ~${linesNeeded} lines...`,
-    );
-
-    const expansion = await this.openai.generateJSON(
-      buildExpansionPrompt(this.ctx, topic, script.title, lines, linesNeeded, customScript),
-      SYSTEM_PROMPT,
-      (data) => buildScriptSectionResultSchema(this.speakers).parse(data),
-    );
-
-    const closingStart = findClosingStart(lines);
-    lines = [...lines.slice(0, closingStart), ...expansion.script, ...lines.slice(closingStart)];
-    words = countScriptWords(lines);
-
-    logger.info(`After expansion: ${lines.length} lines, ${words} words`);
+    if (words < targetMinWords || lines.length < targetMinLines) {
+      logger.warn(
+        `Script still below target after ${MAX_EXPANSION_ATTEMPTS} expansions ` +
+          `(${lines.length} lines, ${words} words) — proceeding anyway`,
+      );
+    }
 
     return { ...script, script: lines };
   }
