@@ -352,13 +352,14 @@ Upload videos and post captions/comments for an existing project. Does not re-re
 | `--project=ID` | **Yes** | — | Project ID to publish. |
 | `--force` | No | off | Re-upload even if already published. |
 | `--now` | No | off | Publish immediately (skip channel schedule). Uses `YOUTUBE_PUBLISH_PRIVACY` / `FACEBOOK_PUBLISH_LIVE`. |
+| `--date=` | No | next wall-clock from channel schedule | Pin schedule to a calendar day: `YYYY-MM-DD` or weekday `2`–`8` (e.g. `6` = Friday). Uses `longTime` / `shortTime` from channel.yaml. Mutually exclusive with `--now`. |
 | `--youtube-only` | No | all platforms | Publish to YouTube only. |
 | `--facebook-only` | No | all platforms | Publish to Facebook only. |
 | `--tiktok-only` | No | all platforms | Publish to TikTok only. |
 | `--long-only` | No | long + short | Publish long-form only (YouTube + Facebook). |
 | `--short-only` | No | long + short | Publish short-form only (YouTube Short, Facebook Reel, TikTok). |
 
-Only one platform-only flag may be used at a time. `--long-only` and `--short-only` are mutually exclusive.
+Only one platform-only flag may be used at a time. `--long-only` and `--short-only` are mutually exclusive. `--now` and `--date` are mutually exclusive.
 
 If `publish/social-metadata.json` is missing, metadata is generated from the script before upload.
 
@@ -374,6 +375,12 @@ npm run publish -- --project=20260614-185052 --youtube-only --long-only
 # Publish long-form immediately (no schedule)
 npm run publish -- --project=20260614-185052 --long-only --now
 
+# Schedule for next Friday (long/short times from channel.yaml)
+npm run publish -- --project=20260614-185052 --facebook-only --date=6
+
+# Schedule for a specific calendar day
+npm run publish -- --project=20260614-185052 --date=2026-08-28
+
 # Re-upload short to TikTok
 npm run publish -- --project=20260614-185052 --tiktok-only --short-only --force
 ```
@@ -384,6 +391,7 @@ npm run publish -- --project=20260614-185052 --tiktok-only --short-only --force
 |-------|-------|
 | `--youtube-only` + `--facebook-only` / `--tiktok-only` | Only one platform filter |
 | `--long-only` + `--short-only` | Mutually exclusive |
+| `--now` + `--date` | Mutually exclusive |
 
 ---
 
