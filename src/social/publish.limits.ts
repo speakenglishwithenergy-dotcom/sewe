@@ -1,6 +1,5 @@
 /** Platform publish limits — not channel-specific. */
 export const PUBLISH_LIMITS = {
-  youtubeTitleMax: 70,
   youtubeShortTitleMax: 50,
   youtubeTagsMax: 15,
   youtubeHashtagsMax: 5,

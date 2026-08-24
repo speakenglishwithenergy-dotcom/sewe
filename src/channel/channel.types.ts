@@ -263,7 +263,6 @@ export interface ResolvedPublishCopy {
   youtubeLongPlaylistId: string;
   youtubeShortPlaylistId: string;
   titleSuffix: string;
-  titleBaseMax: number;
   youtubeSchedule?: PlatformSchedule;
   facebookSchedule?: PlatformSchedule;
   coreTags: readonly string[];
@@ -339,7 +338,6 @@ export function buildClosingText(template: string, channelName: string): string 
 
 export function resolvePublishCopy(
   publish: ChannelPublishConfig,
-  titleMax = 70,
   includeTikTok = false,
 ): ResolvedPublishCopy {
   const { youtubeChannelUrl, facebookPageUrl, tiktokChannelUrl } = publish;
@@ -352,7 +350,6 @@ export function resolvePublishCopy(
     youtubeLongPlaylistId: publish.youtubeLongPlaylistId,
     youtubeShortPlaylistId: publish.youtubeShortPlaylistId,
     titleSuffix: publish.titleSuffix,
-    titleBaseMax: titleMax - publish.titleSuffix.length,
     youtubeSchedule: publish.youtubeSchedule,
     facebookSchedule: publish.facebookSchedule,
     coreTags: publish.coreTags,

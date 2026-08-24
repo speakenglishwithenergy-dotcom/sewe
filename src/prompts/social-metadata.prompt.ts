@@ -48,7 +48,7 @@ CHANNEL STANDARD (enforced automatically — do not duplicate in your output):
 
 RULES:
 - "title": MUST be exactly "${topic}" — do not rephrase or shorten it (suffix added automatically)
-- "titleVariants": 2 alternative titles based on the same topic, max ${pub.titleBaseMax} characters each
+- "titleVariants": 2 alternative titles based on the same topic (suffix added automatically)
 - "tags": up to ${PUBLISH_LIMITS.youtubeTagsMax - pub.coreTags.length} episode-specific tags (lowercase, no #)
 - "chapters": exactly ${chapterLabels.length} entries with labels ${chapterLabels.map((l) => `"${l}"`).join(', ')}
 - "pinnedComment": one engaging question (1–2 sentences). Do not include URLs.

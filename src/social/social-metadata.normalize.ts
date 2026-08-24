@@ -115,7 +115,7 @@ function stripYouTubeTitleSuffix(title: string, suffix: string): string {
 }
 
 export function formatYouTubeTitle(title: string, pub: ResolvedPublishCopy): string {
-  const base = truncateAtWord(stripYouTubeTitleSuffix(title, pub.titleSuffix), pub.titleBaseMax);
+  const base = stripYouTubeTitleSuffix(title, pub.titleSuffix);
   return `${base}${pub.titleSuffix}`;
 }
 
