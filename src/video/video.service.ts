@@ -219,8 +219,8 @@ export class VideoService {
     const resolvedThumbnail = await this.ensureShortThumbnailBackground(thumbnailPath);
 
     if (await this.fileExists(outputPath)) {
-      logger.info('Existing short video found — removing to force regeneration');
-      await fs.unlink(outputPath);
+      logger.info('⏭  Short video already exists — skipping');
+      return;
     }
 
     await this.ffmpeg.generateShortVideo(

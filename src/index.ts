@@ -47,7 +47,7 @@ import { formatChannelShortCaption, formatFacebookShortCaption } from './social/
 import { buildShortPaths, runShortPipeline } from './short/short.pipeline';
 import { SocialPublisherService } from './social/social-publisher.service';
 import { PublishFormat } from './social/publish.types';
-import { PodcastScript, Project, ShortScript } from './types';
+import { AudioSegment, PodcastScript, Project, ShortScript } from './types';
 import { buildPodcastVideoPath, buildShortVideoPath } from './utils/filename.util';
 import { logger } from './utils/logger';
 import { TopicRegistryService } from './topic/topic-registry.service';
@@ -854,25 +854,37 @@ async function main(): Promise<void> {
     }
   }
 
-  const segments = await ttsService.generateSegments(podcastScript.script, AUDIO_DIR);
+  const podcastAudioExists = await fileExists(PODCAST_AUDIO_PATH);
+  const subtitlesExist = await fileExists(SUBTITLES_PATH);
+  // TTS segment walk is only needed to merge podcast.mp3 or build subtitles.
+  const needTtsSegments = !podcastAudioExists || !subtitlesExist;
+
+  let segments: AudioSegment[] | undefined;
+  if (!needTtsSegments) {
+    logger.info('⏭  Podcast audio already exists — skipping TTS');
+  } else {
+    segments = await ttsService.generateSegments(podcastScript.script, AUDIO_DIR);
+  }
 
   // ── Step 4: Subtitles ─────────────────────────────────────────────────────
   logger.step(4, totalSteps, 'Generating subtitle file...');
-  if (!KEYWORD_HIGHLIGHTS_ENABLED && await fileExists(SUBTITLES_PATH)) {
-    await fs.unlink(SUBTITLES_PATH);
-    logger.info('Removed cached subtitles — highlights disabled, will regenerate plain text');
-  }
-  if (await fileExists(SUBTITLES_PATH)) {
+  if (subtitlesExist) {
     logger.info(`⏭  Subtitles already exist — skipping`);
   } else {
+    if (!segments) {
+      throw new Error('Cannot generate subtitles without audio segments');
+    }
     await subtitleService.generate(segments, SUBTITLES_PATH);
   }
 
   // ── Step 5: Merge audio ───────────────────────────────────────────────────
   logger.step(5, totalSteps, 'Merging audio segments...');
-  if (await fileExists(PODCAST_AUDIO_PATH)) {
+  if (podcastAudioExists) {
     logger.info(`⏭  Merged audio already exists — skipping`);
   } else {
+    if (!segments) {
+      throw new Error('Cannot merge podcast audio without audio segments');
+    }
     const audioFiles = segments.map((s) => s.filePath);
     const pauses = segments.slice(0, -1).map((s) => s.pauseAfter);
     await ffmpegService.mergeAudioFiles(audioFiles, PODCAST_AUDIO_PATH, pauses);
@@ -902,28 +914,31 @@ async function main(): Promise<void> {
   const FINAL_VIDEO_PATH = buildPodcastVideoPath(PROJECT_DIR, podcastScript.title);
   await fs.mkdir(path.dirname(FINAL_VIDEO_PATH), { recursive: true });
 
-  if (await fileExists(FINAL_VIDEO_PATH)) {
-    logger.info('Existing final video found — removing to force regeneration');
-    await fs.unlink(FINAL_VIDEO_PATH);
+  const finalVideoExists = await fileExists(FINAL_VIDEO_PATH);
+  if (finalVideoExists) {
+    logger.info('⏭  Final video already exists — skipping');
   }
 
   const slideshowConfig = channelCtx.config.backgroundSlideshow;
   const slideshowDirectory = slideshowConfig
     ? path.join(channelCtx.dir, slideshowConfig.directory)
     : undefined;
-  const podcastBackground = await videoService.resolvePodcastBackground(
-    videoBackgroundPath,
-    PODCAST_AUDIO_PATH,
-    PROJECT_DIR,
-    slideshowConfig,
-    slideshowDirectory,
-    channelCtx.config.backgroundMotion,
-    channelCtx.dir,
-  );
+  const podcastBackground = finalVideoExists
+    ? null
+    : await videoService.resolvePodcastBackground(
+        videoBackgroundPath,
+        PODCAST_AUDIO_PATH,
+        PROJECT_DIR,
+        slideshowConfig,
+        slideshowDirectory,
+        channelCtx.config.backgroundMotion,
+        channelCtx.dir,
+      );
 
   let shortScript: ShortScript | undefined;
 
-  if (args.podcast || !shortEnabled) {
+  async function renderFinalVideoIfNeeded(): Promise<void> {
+    if (finalVideoExists || !podcastBackground) return;
     await videoService.generateFinalVideo(
       channelAssets.intro,
       THUMBNAIL_PATH,
@@ -934,56 +949,24 @@ async function main(): Promise<void> {
       FINAL_VIDEO_PATH,
       TOPIC_AUDIO_PATH,
     );
+  }
+
+  if (args.podcast || !shortEnabled) {
+    await renderFinalVideoIfNeeded();
   } else {
     const shortPaths = buildShortPaths(PROJECT_DIR);
 
-    if (DISABLE_THUMBNAIL_GENERATION) {
-      shortScript = await runShortPipeline(
-        project,
-        podcastScript,
-        {
-          shortScriptService,
-          keywordsService,
-          thumbnailService,
-          ttsService,
-          subtitleService,
-          ffmpegService,
-          videoService,
-        },
-        shortPaths,
-      );
-      await videoService.generateFinalVideo(
-        channelAssets.intro,
-        THUMBNAIL_PATH,
-        podcastBackground,
-        PODCAST_AUDIO_PATH,
-        SUBTITLES_PATH,
-        channelAssets.outro,
-        FINAL_VIDEO_PATH,
-        TOPIC_AUDIO_PATH,
-      );
-    } else {
-      // Run sequentially — parallel FFmpeg encodes freeze most machines.
-      shortScript = await runShortPipeline(project, podcastScript, {
-        shortScriptService,
-        keywordsService,
-        thumbnailService,
-        ttsService,
-        subtitleService,
-        ffmpegService,
-        videoService,
-      }, shortPaths);
-      await videoService.generateFinalVideo(
-        channelAssets.intro,
-        THUMBNAIL_PATH,
-        podcastBackground,
-        PODCAST_AUDIO_PATH,
-        SUBTITLES_PATH,
-        channelAssets.outro,
-        FINAL_VIDEO_PATH,
-        TOPIC_AUDIO_PATH,
-      );
-    }
+    // Run sequentially — parallel FFmpeg encodes freeze most machines.
+    shortScript = await runShortPipeline(project, podcastScript, {
+      shortScriptService,
+      keywordsService,
+      thumbnailService,
+      ttsService,
+      subtitleService,
+      ffmpegService,
+      videoService,
+    }, shortPaths);
+    await renderFinalVideoIfNeeded();
   }
 
   const socialMeta = await socialMetadataService.loadOrGenerate(
@@ -1006,7 +989,7 @@ async function main(): Promise<void> {
   Project ID  : ${project.id}
   Title       : ${podcastScript.title}
   Thumbnail   : ${podcastScript.thumbnailText}
-  Segments    : ${segments.length} dialogue lines
+  Segments    : ${podcastScript.script.length} dialogue lines
   Script      : ${SCRIPT_PATH}
   Thumbnail   : ${THUMBNAIL_PATH}
   Audio       : ${PODCAST_AUDIO_PATH}

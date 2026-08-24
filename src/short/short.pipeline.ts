@@ -125,35 +125,55 @@ export async function runShortPipeline(
   // ── Step 3: TTS ──────────────────────────────────────────────────────────
   logger.step(3, totalSteps, 'Generating short voice audio...');
   await fs.mkdir(paths.shortAudioDir, { recursive: true });
-  const segments = await services.ttsService.generateSegments(
-    shortScript.script,
-    paths.shortAudioDir,
-    SHORT_PAUSE_BETWEEN_SEGMENTS,
-  );
 
-  const totalDuration = segments.reduce(
-    (sum, s) => sum + s.duration + s.pauseAfter,
-    0,
-  );
-  if (totalDuration < SHORT_TARGET_MIN_SECONDS) {
-    logger.warn(
-      `Short audio is ${totalDuration.toFixed(1)}s — below ${SHORT_TARGET_MIN_SECONDS}s target`,
+  const shortAudioExists = await fileExists(paths.shortAudioPath);
+  const shortSubtitlesExist = await fileExists(paths.shortSubtitlesPath);
+  const needShortTts = !shortAudioExists || !shortSubtitlesExist;
+
+  let segments;
+  if (!needShortTts) {
+    logger.info('⏭  Short audio already exists — skipping TTS');
+  } else {
+    segments = await services.ttsService.generateSegments(
+      shortScript.script,
+      paths.shortAudioDir,
+      SHORT_PAUSE_BETWEEN_SEGMENTS,
     );
-  } else if (totalDuration > SHORT_TARGET_MAX_SECONDS) {
-    logger.warn(
-      `Short audio is ${totalDuration.toFixed(1)}s — exceeds ${SHORT_TARGET_MAX_SECONDS}s target`,
+
+    const totalDuration = segments.reduce(
+      (sum, s) => sum + s.duration + s.pauseAfter,
+      0,
     );
+    if (totalDuration < SHORT_TARGET_MIN_SECONDS) {
+      logger.warn(
+        `Short audio is ${totalDuration.toFixed(1)}s — below ${SHORT_TARGET_MIN_SECONDS}s target`,
+      );
+    } else if (totalDuration > SHORT_TARGET_MAX_SECONDS) {
+      logger.warn(
+        `Short audio is ${totalDuration.toFixed(1)}s — exceeds ${SHORT_TARGET_MAX_SECONDS}s target`,
+      );
+    }
   }
 
   // ── Step 4: Subtitles ────────────────────────────────────────────────────
   logger.step(4, totalSteps, 'Generating short subtitle file...');
-  await services.subtitleService.generateShort(segments, paths.shortSubtitlesPath);
+  if (shortSubtitlesExist) {
+    logger.info('⏭  Short subtitles already exist — skipping');
+  } else {
+    if (!segments) {
+      throw new Error('Cannot generate short subtitles without audio segments');
+    }
+    await services.subtitleService.generateShort(segments, paths.shortSubtitlesPath);
+  }
 
   // ── Step 5: Merge audio ──────────────────────────────────────────────────
   logger.step(5, totalSteps, 'Merging short audio segments...');
-  if (await fileExists(paths.shortAudioPath)) {
+  if (shortAudioExists) {
     logger.info('⏭  Short merged audio already exists — skipping');
   } else {
+    if (!segments) {
+      throw new Error('Cannot merge short audio without audio segments');
+    }
     const audioFiles = segments.map((s) => s.filePath);
     await services.ffmpegService.mergeAudioFiles(
       audioFiles,
@@ -167,15 +187,15 @@ export async function runShortPipeline(
   logger.step(6, totalSteps, 'Rendering short video (9:16)...');
   await fs.mkdir(path.dirname(paths.shortVideoPath), { recursive: true });
   if (await fileExists(paths.shortVideoPath)) {
-    logger.info('Existing short video found — removing to force regeneration');
-    await fs.unlink(paths.shortVideoPath);
+    logger.info('⏭  Short video already exists — skipping');
+  } else {
+    await services.videoService.generateShortVideo(
+      paths.shortAudioPath,
+      paths.shortSubtitlesPath,
+      paths.shortThumbnailPath,
+      paths.shortVideoPath,
+    );
   }
-  await services.videoService.generateShortVideo(
-    paths.shortAudioPath,
-    paths.shortSubtitlesPath,
-    paths.shortThumbnailPath,
-    paths.shortVideoPath,
-  );
 
   return shortScript;
 }

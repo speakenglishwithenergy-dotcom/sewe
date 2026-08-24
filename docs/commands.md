@@ -229,6 +229,8 @@ When neither `--short` nor `--podcast` is set, both formats are produced.
 |------|----------|-------------|
 | `--force` | `--project` | Clear cached artifacts and re-run. Keeps `thumbnail.png` and `short-thumbnail.png`. Scope follows `--short` / `--podcast` (see below). |
 
+Resume (`--project`) skips any step whose result file already exists (script, audio, long/short video, etc.). Use `--force` to re-render videos and other cleared artifacts.
+
 **`--force` cache scope:**
 
 | Combined with | Clears |
