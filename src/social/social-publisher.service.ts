@@ -159,6 +159,35 @@ function resolvePublishAt(
   return nextScheduledTime(timeHhmm, timezone ?? 'UTC');
 }
 
+/**
+ * Run platform uploads in parallel. Persist each success before rethrowing the first failure
+ * so partial progress survives (same as sequential upload behavior).
+ */
+async function runParallelUploads(
+  jobs: Array<() => Promise<PublishResult>>,
+  projectDir: string,
+  status: PublishStatus,
+  results: PublishResult[],
+): Promise<void> {
+  if (jobs.length === 0) return;
+
+  const settled = await Promise.allSettled(jobs.map((job) => job()));
+  let firstError: unknown;
+
+  for (const outcome of settled) {
+    if (outcome.status === 'fulfilled') {
+      results.push(outcome.value);
+      await recordAndSaveResult(projectDir, status, outcome.value);
+    } else if (firstError === undefined) {
+      firstError = outcome.reason;
+    }
+  }
+
+  if (firstError !== undefined) {
+    throw firstError;
+  }
+}
+
 export class SocialPublisherService {
   async publishProject(
     ctx: ChannelContext,
@@ -226,22 +255,24 @@ export class SocialPublisherService {
         logger.info('No long-form thumbnail found — platforms will use an auto-generated frame');
       }
 
+      const longJobs: Array<() => Promise<PublishResult>> = [];
+
       if (targets.includes('youtube') && youtube) {
         if (!force && isAlreadyPublished(status, 'youtube', 'long')) {
           logger.info(`⏭  YouTube long already published → ${status.youtube!.long!.url}`);
         } else {
-          const result = await youtube.uploadVideo({
-            videoPath,
-            thumbnailPath,
-            title: socialMeta.youtube.title,
-            description: formatChannelDescription(socialMeta.youtube, pub),
-            tags: socialMeta.youtube.tags,
-            pinnedComment: socialMeta.youtube.pinnedComment,
-            format: 'long',
-            publishAt: longPublishAt,
-          });
-          results.push(result);
-          await recordAndSaveResult(projectDir, status, result);
+          longJobs.push(() =>
+            youtube.uploadVideo({
+              videoPath,
+              thumbnailPath,
+              title: socialMeta.youtube.title,
+              description: formatChannelDescription(socialMeta.youtube, pub),
+              tags: socialMeta.youtube.tags,
+              pinnedComment: socialMeta.youtube.pinnedComment,
+              format: 'long',
+              publishAt: longPublishAt,
+            }),
+          );
         }
       }
 
@@ -249,18 +280,20 @@ export class SocialPublisherService {
         if (!force && isAlreadyPublished(status, 'facebook', 'long')) {
           logger.info(`⏭  Facebook long already published → ${status.facebook!.long!.url}`);
         } else {
-          const result = await facebook.uploadVideo({
-            videoPath,
-            thumbnailPath,
-            caption: formatFacebookCaption(socialMeta.facebook, pub),
-            firstComment: socialMeta.facebook.firstComment,
-            format: 'long',
-            publishAt: fbLongPublishAt,
-          });
-          results.push(result);
-          await recordAndSaveResult(projectDir, status, result);
+          longJobs.push(() =>
+            facebook.uploadVideo({
+              videoPath,
+              thumbnailPath,
+              caption: formatFacebookCaption(socialMeta.facebook!, pub),
+              firstComment: socialMeta.facebook!.firstComment,
+              format: 'long',
+              publishAt: fbLongPublishAt,
+            }),
+          );
         }
       }
+
+      await runParallelUploads(longJobs, projectDir, status, results);
     }
 
     if (formats.includes('short') && shortScript && socialMeta.youtubeShort) {
@@ -277,22 +310,24 @@ export class SocialPublisherService {
         logger.info('No short thumbnail found — platforms will use an auto-generated frame');
       }
 
+      const shortJobs: Array<() => Promise<PublishResult>> = [];
+
       if (targets.includes('youtube') && youtube) {
         if (!force && isAlreadyPublished(status, 'youtube', 'short')) {
           logger.info(`⏭  YouTube Short already published → ${status.youtube!.short!.url}`);
         } else {
-          const result = await youtube.uploadVideo({
-            videoPath,
-            thumbnailPath,
-            title: socialMeta.youtubeShort.title,
-            description: formatChannelShortCaption(socialMeta.youtubeShort, pub),
-            tags: [],
-            pinnedComment: socialMeta.youtubeShort.pinnedComment,
-            format: 'short',
-            publishAt: shortPublishAt,
-          });
-          results.push(result);
-          await recordAndSaveResult(projectDir, status, result);
+          shortJobs.push(() =>
+            youtube.uploadVideo({
+              videoPath,
+              thumbnailPath,
+              title: socialMeta.youtubeShort!.title,
+              description: formatChannelShortCaption(socialMeta.youtubeShort!, pub),
+              tags: [],
+              pinnedComment: socialMeta.youtubeShort!.pinnedComment,
+              format: 'short',
+              publishAt: shortPublishAt,
+            }),
+          );
         }
       }
 
@@ -300,16 +335,16 @@ export class SocialPublisherService {
         if (!force && isAlreadyPublished(status, 'facebook', 'short')) {
           logger.info(`⏭  Facebook Reel already published → ${status.facebook!.short!.url}`);
         } else {
-          const result = await facebook.uploadVideo({
-            videoPath,
-            thumbnailPath,
-            caption: formatFacebookShortCaption(socialMeta.facebookShort, pub),
-            firstComment: socialMeta.facebookShort.firstComment,
-            format: 'short',
-            publishAt: fbShortPublishAt,
-          });
-          results.push(result);
-          await recordAndSaveResult(projectDir, status, result);
+          shortJobs.push(() =>
+            facebook.uploadVideo({
+              videoPath,
+              thumbnailPath,
+              caption: formatFacebookShortCaption(socialMeta.facebookShort!, pub),
+              firstComment: socialMeta.facebookShort!.firstComment,
+              format: 'short',
+              publishAt: fbShortPublishAt,
+            }),
+          );
         }
       }
 
@@ -317,14 +352,16 @@ export class SocialPublisherService {
         if (!force && isAlreadyPublished(status, 'tiktok', 'short')) {
           logger.info(`⏭  TikTok already published → ${status.tiktok!.short!.url}`);
         } else {
-          const result = await tiktok.uploadVideo({
-            videoPath,
-            caption: formatTikTokShortCaption(socialMeta.youtubeShort, pub),
-          });
-          results.push(result);
-          await recordAndSaveResult(projectDir, status, result);
+          shortJobs.push(() =>
+            tiktok.uploadVideo({
+              videoPath,
+              caption: formatTikTokShortCaption(socialMeta.youtubeShort!, pub),
+            }),
+          );
         }
       }
+
+      await runParallelUploads(shortJobs, projectDir, status, results);
     }
 
     return results;
