@@ -26,7 +26,7 @@ const execFileAsync = promisify(execFile);
 const PODCAST_VOLUME = 2.0;
 
 /** Linear gain for thumbnail topic narration (matches podcast so levels stay consistent). */
-const TOPIC_VOLUME = 2.0;
+const TOPIC_VOLUME = 2.5;
 
 /** Crossfade duration between final-video segments. */
 const FADE_DURATION = 0.5;
