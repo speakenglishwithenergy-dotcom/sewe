@@ -25,6 +25,9 @@ const execFileAsync = promisify(execFile);
 /** Linear gain applied to podcast speech before mixing (+6 dB at 2.0). */
 const PODCAST_VOLUME = 2.0;
 
+/** Linear gain for thumbnail topic narration (matches podcast so levels stay consistent). */
+const TOPIC_VOLUME = 2.0;
+
 /** Crossfade duration between final-video segments. */
 const FADE_DURATION = 0.5;
 
@@ -412,7 +415,7 @@ export class FFmpegService {
 
     const leadMs = Math.round(THUMBNAIL_LEAD_SECONDS * 1000);
     const audioFilter = audioPath
-      ? `[1:a]aformat=sample_rates=44100:channel_layouts=stereo,` +
+      ? `[1:a]volume=${TOPIC_VOLUME},aformat=sample_rates=44100:channel_layouts=stereo,` +
         `adelay=${leadMs}|${leadMs}:all=1,apad=whole_dur=${duration},atrim=0:${duration}[aout]`
       : undefined;
 
@@ -583,7 +586,7 @@ export class FFmpegService {
 
     const leadMs = Math.round(THUMBNAIL_LEAD_SECONDS * 1000);
     const fitThumbAudio = (index: number, label: string): string =>
-      `[${index}:a]aformat=sample_rates=44100:channel_layouts=stereo,` +
+      `[${index}:a]volume=${TOPIC_VOLUME},aformat=sample_rates=44100:channel_layouts=stereo,` +
       `adelay=${leadMs}|${leadMs}:all=1,apad=whole_dur=${thumbDur},atrim=0:${thumbDur}[${label}]`;
 
     const motion = background.motion;
