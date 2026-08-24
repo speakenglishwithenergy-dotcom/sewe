@@ -104,15 +104,12 @@ export class FFmpegService {
     return this.ffmpegBin;
   }
 
-  /**
-   * H.264 encode args — VideoToolbox on macOS when available, else libx264 medium.
-   * Targets ~4–5 Mbps for 1080p slideshow/podcast (smaller uploads; platforms re-encode anyway).
-   */
+  /** H.264 encode args — VideoToolbox on macOS when available, else libx264 medium. */
   private getVideoEncodeArgs(): string[] {
     if (this.useVideoToolbox) {
-      return ['-c:v', 'h264_videotoolbox', '-b:v', '4M', '-maxrate', '5M', '-bufsize', '8M'];
+      return ['-c:v', 'h264_videotoolbox', '-q:v', '65'];
     }
-    return ['-c:v', 'libx264', '-preset', 'medium', '-crf', '23', '-maxrate', '5M', '-bufsize', '10M'];
+    return ['-c:v', 'libx264', '-preset', 'medium', '-crf', '20'];
   }
 
   private async resolveBin(candidates: string[], name: string): Promise<string> {
