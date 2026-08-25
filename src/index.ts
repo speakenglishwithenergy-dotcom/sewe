@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs/promises';
 
 import { OpenAIService } from './ai/openai.service';
+import { ImageService } from './ai/image.service';
 import { IpaService } from './ai/ipa.service';
 import { KeywordsService, KEYWORDS_GENERATOR_VERSION } from './ai/keywords.service';
 import { ScriptService } from './ai/script.service';
@@ -583,7 +584,7 @@ async function main(): Promise<void> {
   logger.info('');
 
   if (DISABLE_THUMBNAIL_GENERATION) {
-    logger.info('Thumbnail mode     : MANUAL (DISABLE_THUMBNAIL_GENERATION — use ChatGPT, then save PNG to project folder)');
+    logger.info('Thumbnail mode     : MANUAL (DISABLE_THUMBNAIL_GENERATION — paste prompt into an image tool, then save PNG to project folder)');
   }
 
   const PROJECT_DIR = projectService.getDir(project);
@@ -605,11 +606,16 @@ async function main(): Promise<void> {
   }
 
   const openaiService = new OpenAIService();
+  const imageService = new ImageService();
   const ffmpegService = new FFmpegService(resolveWaveVisualizer(channelCtx.config.branding));
   const scriptService = new ScriptService(openaiService, channelCtx);
   const shortScriptService = new ShortScriptService(openaiService, channelCtx);
-  const thumbnailService = new ThumbnailService(openaiService, channelCtx);
+  const thumbnailService = new ThumbnailService(openaiService, imageService, channelCtx);
   const socialMetadataService = new SocialMetadataService(openaiService, channelCtx);
+
+  if (!DISABLE_THUMBNAIL_GENERATION) {
+    logger.info(`Thumbnail provider  : ${imageService.provider} (${imageService.model})`);
+  }
 
   // ── Step 0: Preflight ─────────────────────────────────────────────────────
   await ffmpegService.checkDependencies();

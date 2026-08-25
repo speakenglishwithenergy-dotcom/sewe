@@ -43,6 +43,13 @@ export async function prepareReferenceImage(inputPath: string): Promise<Buffer> 
 }
 
 /**
+ * Load a demo reference as PNG for Gemini (native 16:9 / 9:16 — no letterbox).
+ */
+export async function loadReferenceImagePng(inputPath: string): Promise<Buffer> {
+  return sharp(inputPath).png().toBuffer();
+}
+
+/**
  * Crop the 16:9 content band from the API canvas and resize to YouTube size.
  */
 export async function finalizeThumbnailImage(apiBuffer: Buffer): Promise<Buffer> {

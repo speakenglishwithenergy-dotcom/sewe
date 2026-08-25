@@ -1,4 +1,9 @@
 import { ChannelContext } from '../channel/channel.types';
+import {
+  composeFreshThumbnailScene,
+  isFreshEpisodeThumbnail,
+  type FreshThumbnailSceneParts,
+} from './thumbnail.prompt';
 
 export interface ShortThumbnailPromptInput {
   topic: string;
@@ -24,6 +29,44 @@ export function buildShortThumbnailImagePrompt(
   const { topic, episodeTitle, thumbnailText, thumbnailScene } = input;
   const { name, branding } = ctx.config;
   const thumb = branding.thumbnail;
+
+  if (isFreshEpisodeThumbnail(ctx)) {
+    return `Edit the provided VERTICAL 9:16 reference thumbnail for the "${name}" channel.
+
+CRITICAL: Keep the SAME illustration style, character designs, logo, and badge look as the reference.
+Same-style episode refresh only — change topic content, not the art style.
+
+${thumb.logoLockRules}
+
+═══ KEEP MATCHING THE REFERENCE ═══
+
+${thumb.shortLogoUnchanged}
+${thumb.shortBadgeUnchanged}
+${thumb.charactersBlock ?? ''}
+${thumb.characterColorReference ? `\n${thumb.characterColorReference}` : ''}
+
+Art style: ${thumb.artStyle}
+Brand colors: ${thumb.brandColors}
+
+═══ CHANGE FOR THIS EPISODE (content only) ═══
+
+${thumb.freshnessRules ?? ''}
+
+${thumb.ctrRules ?? ''}
+
+Episode title: "${episodeTitle}"
+Episode topic: "${topic}"
+
+Headline — spell EXACTLY (preserve \\n line breaks), keep demo-like bold typography:
+"${thumbnailText}"
+
+Art director brief:
+${thumbnailScene}
+
+${getExpressionGuidance(ctx)}
+
+Phone-screen readable, no watermarks, no meta labels, no extra text beyond the headline and existing badge.`;
+  }
 
   return `Edit the provided reference thumbnail template for the "${name}" channel — VERTICAL 9:16 short-form format.
 
@@ -66,6 +109,37 @@ export function buildShortThumbnailScenePrompt(
   const { name, branding } = ctx.config;
   const thumb = branding.thumbnail;
 
+  if (isFreshEpisodeThumbnail(ctx)) {
+    return `You are an art director for the "${name}" YouTube Short / TikTok channel.
+
+Episode title: "${episodeTitle}"
+Topic: "${topic}"
+Thumbnail headline: "${thumbnailText}"
+
+Design a SAME-STYLE vertical refresh. Must still look like the channel's illustrated podcast hosts — only episode content changes.
+
+${thumb.freshnessRules ?? ''}
+
+${thumb.ctrRules ?? ''}
+
+${thumb.topicRelevance ?? ''}
+${thumb.expressionModeration ?? ''}
+${thumb.charactersExpressionGuidance ?? ''}
+
+Choose ONE light scene twist from:
+${thumb.visualGenres ?? '- same studio desk with new topic props'}
+
+Return ONLY valid JSON:
+{
+  "visualGenre": "short label",
+  "colorMood": "subtle mood within the warm brand palette",
+  "setting": "one sentence — vertical-friendly, still illustrated podcast world",
+  "interaction": "one sentence — Victor/Lisa gestures",
+  "badgePlacement": "keep",
+  "thumbnailScene": "2–4 sentences — topic props + focal action (no style change)"
+}`;
+  }
+
   return `You are an art director for the "${name}" YouTube Short / TikTok channel.
 
 Episode title: "${episodeTitle}"
@@ -85,3 +159,6 @@ Return ONLY valid JSON:
   "thumbnailScene": "..."
 }`;
 }
+
+export type { FreshThumbnailSceneParts };
+export { composeFreshThumbnailScene };

@@ -110,6 +110,11 @@ export const WaveVisualizerSchema = z.object({
 
 export const ThumbnailBrandingSchema = z.object({
   templateType: z.enum(['podcast-hosts', 'overlay-template']).optional(),
+  /**
+   * template = strict demo layout (legacy).
+   * fresh-episode = lock logo + host identity only; reinvent setting/palette/interaction per episode.
+   */
+  freshnessMode: z.enum(['template', 'fresh-episode']).optional(),
   brandColors: z.string().min(1),
   charactersBlock: z.string().optional(),
   logoLockRules: z.string().min(1),
@@ -124,6 +129,12 @@ export const ThumbnailBrandingSchema = z.object({
   topicRelevance: z.string().optional(),
   expressionModeration: z.string().optional(),
   charactersExpressionGuidance: z.string().optional(),
+  /** Multiline list of visual genres for fresh-episode mode. */
+  visualGenres: z.string().optional(),
+  /** CTR / composition rules for fresh-episode mode. */
+  ctrRules: z.string().optional(),
+  /** What may change vs what stays locked in fresh-episode mode. */
+  freshnessRules: z.string().optional(),
 });
 
 export const ChannelBrandingSchema = z.object({

@@ -150,7 +150,11 @@ Return ONLY a valid JSON object (no markdown). Do NOT include a "title" field �
 {
   "description": "YouTube SEO description using \\n line breaks:\\n1) Hook line ≤125 chars with main keyword\\n2) Blank line\\n3) 📌 In this episode you'll learn: + exactly 3 bullet takeaways (• prefix)\\n4) Blank line\\n5) Warm 2-sentence summary\\n6) 🔔 Subscribe CTA aligned with the channel niche",
   "thumbnailText": "Stacked headline — 4 lines max, ALL CAPS, 5–8 words total, use \\n between lines",
-  "thumbnailScene": "Topic-specific changes only — host expressions, gestures, props, book spine titles (uppercase, topic-related)"
+  "thumbnailScene": "${
+    (ctx.config.branding.thumbnail.freshnessMode ?? 'template') === 'fresh-episode'
+      ? 'Same illustration style as demo — only change host beat + topic props (NOT a new art style / setting genre)'
+      : 'Topic-specific changes only — host expressions, gestures, props, book spine titles (uppercase, topic-related)'
+  }"
 }`;
 }
 

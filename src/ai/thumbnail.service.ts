@@ -1,8 +1,10 @@
 import fs from 'fs/promises';
-import path from 'path';
+import { ImageService } from './image.service';
 import { OpenAIService } from './openai.service';
 import {
   getImageDimensions,
+  loadReferenceImagePng,
+  normalizePodcastThumbnail,
   prepareReferenceImage,
   prepareShortReferenceImage,
   scaleShortThumbnailToVideoSize,
@@ -20,6 +22,8 @@ import { PodcastScript, ShortScript } from '../types';
 import {
   buildThumbnailImagePrompt,
   buildThumbnailScenePrompt,
+  composeFreshThumbnailScene,
+  isFreshEpisodeThumbnail,
 } from '../prompts/thumbnail.prompt';
 import {
   buildBackgroundImagePrompt,
@@ -31,9 +35,51 @@ import {
 } from '../prompts/short-thumbnail.prompt';
 import { logger } from '../utils/logger';
 
+function parseSceneResponse(data: unknown, label: string): string {
+  if (typeof data !== 'object' || data === null || !('thumbnailScene' in data)) {
+    throw new Error(`Invalid ${label} response`);
+  }
+
+  const record = data as Record<string, unknown>;
+  if (typeof record.thumbnailScene !== 'string' || !record.thumbnailScene.trim()) {
+    throw new Error(`Invalid ${label} response`);
+  }
+
+  const hasFreshFields =
+    typeof record.visualGenre === 'string' &&
+    typeof record.colorMood === 'string' &&
+    typeof record.setting === 'string' &&
+    typeof record.interaction === 'string';
+
+  if (hasFreshFields) {
+    return composeFreshThumbnailScene({
+      visualGenre: record.visualGenre as string,
+      colorMood: record.colorMood as string,
+      setting: record.setting as string,
+      interaction: record.interaction as string,
+      badgePlacement:
+        typeof record.badgePlacement === 'string' ? record.badgePlacement : undefined,
+      thumbnailScene: record.thumbnailScene,
+    });
+  }
+
+  return record.thumbnailScene;
+}
+
+/** Reuse cached scene only if it already matches fresh-episode structured format. */
+function resolveCachedScene(
+  ctx: ChannelContext,
+  cached: string | undefined,
+): string | undefined {
+  if (!cached?.trim()) return undefined;
+  if (!isFreshEpisodeThumbnail(ctx)) return cached;
+  return cached.includes('VISUAL GENRE:') ? cached : undefined;
+}
+
 export class ThumbnailService {
   constructor(
     private readonly openai: OpenAIService,
+    private readonly images: ImageService,
     private readonly ctx: ChannelContext,
   ) {}
 
@@ -49,7 +95,7 @@ export class ThumbnailService {
     const demoPath = this.ctx.assets.demoThumbnail;
 
     const thumbnailScene =
-      script.thumbnailScene ??
+      resolveCachedScene(this.ctx, script.thumbnailScene) ??
       (await this.generateScene(topic, script.title, script.thumbnailText));
 
     const prompt = buildThumbnailImagePrompt(this.ctx, {
@@ -69,19 +115,22 @@ export class ThumbnailService {
 
     logger.info(`Generating thumbnail image for: "${script.thumbnailText}"`);
 
-    const referenceBuffer = await prepareReferenceImage(demoPath);
+    const referenceBuffer = await this.prepareLandscapeReference(demoPath);
     const refSize = await getImageDimensions(referenceBuffer);
-    logger.info(`Reference prepared → ${refSize.width}x${refSize.height} (16:9 content letterboxed for API)`);
+    logger.info(`Reference prepared → ${refSize.width}x${refSize.height} (${this.images.provider})`);
 
-    const apiBuffer = await this.openai.generateImageEdit(
+    const apiBuffer = await this.images.generateImageEdit(
       prompt,
       [referenceBuffer],
       ['demo-thumbnail.png'],
+      { size: '1536x1024', aspectRatio: '16:9' },
     );
-    const apiSize = await getImageDimensions(apiBuffer);
+    const finalBuffer =
+      this.images.provider === 'openai' ? apiBuffer : await normalizePodcastThumbnail(apiBuffer);
+    const apiSize = await getImageDimensions(finalBuffer);
     logger.info(`API returned → ${apiSize.width}x${apiSize.height}`);
 
-    await fs.writeFile(outputPath, apiBuffer);
+    await fs.writeFile(outputPath, finalBuffer);
 
     logger.success(`Thumbnail saved → ${outputPath} (${apiSize.width}x${apiSize.height})`);
   }
@@ -98,7 +147,7 @@ export class ThumbnailService {
     }
 
     const thumbnailScene =
-      script.thumbnailScene ??
+      resolveCachedScene(this.ctx, script.thumbnailScene) ??
       (await this.generateBackgroundScene(topic, script.title));
 
     const prompt = buildBackgroundImagePrompt(this.ctx, {
@@ -117,19 +166,22 @@ export class ThumbnailService {
 
     logger.info(`Generating episode background for: "${script.title}"`);
 
-    const referenceBuffer = await prepareReferenceImage(templatePath);
+    const referenceBuffer = await this.prepareLandscapeReference(templatePath);
     const refSize = await getImageDimensions(referenceBuffer);
     logger.info(`Background reference prepared → ${refSize.width}x${refSize.height}`);
 
-    const apiBuffer = await this.openai.generateImageEdit(
+    const apiBuffer = await this.images.generateImageEdit(
       prompt,
       [referenceBuffer],
       ['background.png'],
+      { size: '1536x1024', aspectRatio: '16:9' },
     );
-    const apiSize = await getImageDimensions(apiBuffer);
+    const finalBuffer =
+      this.images.provider === 'openai' ? apiBuffer : await normalizePodcastThumbnail(apiBuffer);
+    const apiSize = await getImageDimensions(finalBuffer);
     logger.info(`API returned → ${apiSize.width}x${apiSize.height}`);
 
-    await fs.writeFile(outputPath, apiBuffer);
+    await fs.writeFile(outputPath, finalBuffer);
 
     logger.success(`Background saved → ${outputPath} (${apiSize.width}x${apiSize.height})`);
   }
@@ -151,8 +203,8 @@ export class ThumbnailService {
     const demoShortPath = this.ctx.assets.demoShortThumbnail;
 
     const thumbnailScene =
-      episode.thumbnailScene ??
-      script.thumbnailScene ??
+      resolveCachedScene(this.ctx, episode.thumbnailScene) ??
+      resolveCachedScene(this.ctx, script.thumbnailScene) ??
       (await this.generateShortScene(topic, episode.title, episode.thumbnailText));
 
     const prompt = buildShortThumbnailImagePrompt(this.ctx, {
@@ -172,15 +224,15 @@ export class ThumbnailService {
 
     logger.info(`Generating short thumbnail for: "${episode.thumbnailText}"`);
 
-    const shortReferenceBuffer = await prepareShortReferenceImage(demoShortPath);
+    const shortReferenceBuffer = await this.preparePortraitReference(demoShortPath);
     const refSize = await getImageDimensions(shortReferenceBuffer);
-    logger.info(`Reference prepared → ${refSize.width}x${refSize.height} (9:16 content letterboxed for portrait API)`);
+    logger.info(`Reference prepared → ${refSize.width}x${refSize.height} (${this.images.provider})`);
 
-    const apiBuffer = await this.openai.generateImageEdit(
+    const apiBuffer = await this.images.generateImageEdit(
       prompt,
       [shortReferenceBuffer],
       ['demo-short-thumbnail.png'],
-      { size: '1024x1536' },
+      { size: '1024x1536', aspectRatio: '9:16' },
     );
     const apiSize = await getImageDimensions(apiBuffer);
     logger.info(`API returned → ${apiSize.width}x${apiSize.height}`);
@@ -207,30 +259,34 @@ export class ThumbnailService {
     }
   }
 
+  private prepareLandscapeReference(inputPath: string): Promise<Buffer> {
+    return this.images.provider === 'openai'
+      ? prepareReferenceImage(inputPath)
+      : loadReferenceImagePng(inputPath);
+  }
+
+  private preparePortraitReference(inputPath: string): Promise<Buffer> {
+    return this.images.provider === 'openai'
+      ? prepareShortReferenceImage(inputPath)
+      : loadReferenceImagePng(inputPath);
+  }
+
   private async generateScene(
     topic: string,
     episodeTitle: string,
     thumbnailText: string,
   ): Promise<string> {
-    logger.info('Generating thumbnail scene description...');
-
-    const result = await this.openai.generateJSON(
-      buildThumbnailScenePrompt(this.ctx, topic, episodeTitle, thumbnailText),
-      'You are a creative art director. Respond only with valid JSON.',
-      (data: unknown) => {
-        if (
-          typeof data !== 'object' ||
-          data === null ||
-          !('thumbnailScene' in data) ||
-          typeof (data as { thumbnailScene: unknown }).thumbnailScene !== 'string'
-        ) {
-          throw new Error('Invalid thumbnail scene response');
-        }
-        return (data as { thumbnailScene: string }).thumbnailScene;
-      },
+    logger.info(
+      isFreshEpisodeThumbnail(this.ctx)
+        ? 'Generating fresh-episode thumbnail scene...'
+        : 'Generating thumbnail scene description...',
     );
 
-    return result;
+    return this.openai.generateJSON(
+      buildThumbnailScenePrompt(this.ctx, topic, episodeTitle, thumbnailText),
+      'You are a creative art director. Respond only with valid JSON.',
+      (data: unknown) => parseSceneResponse(data, 'thumbnail scene'),
+    );
   }
 
   private async generateBackgroundScene(
@@ -263,24 +319,16 @@ export class ThumbnailService {
     episodeTitle: string,
     thumbnailText: string,
   ): Promise<string> {
-    logger.info('Generating short thumbnail scene description...');
-
-    const result = await this.openai.generateJSON(
-      buildShortThumbnailScenePrompt(this.ctx, topic, episodeTitle, thumbnailText),
-      'You are a creative art director. Respond only with valid JSON.',
-      (data: unknown) => {
-        if (
-          typeof data !== 'object' ||
-          data === null ||
-          !('thumbnailScene' in data) ||
-          typeof (data as { thumbnailScene: unknown }).thumbnailScene !== 'string'
-        ) {
-          throw new Error('Invalid short thumbnail scene response');
-        }
-        return (data as { thumbnailScene: string }).thumbnailScene;
-      },
+    logger.info(
+      isFreshEpisodeThumbnail(this.ctx)
+        ? 'Generating fresh-episode short thumbnail scene...'
+        : 'Generating short thumbnail scene description...',
     );
 
-    return result;
+    return this.openai.generateJSON(
+      buildShortThumbnailScenePrompt(this.ctx, topic, episodeTitle, thumbnailText),
+      'You are a creative art director. Respond only with valid JSON.',
+      (data: unknown) => parseSceneResponse(data, 'short thumbnail scene'),
+    );
   }
 }

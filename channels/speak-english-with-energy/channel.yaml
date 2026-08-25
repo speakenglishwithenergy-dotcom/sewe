@@ -96,55 +96,66 @@ branding:
   waveVisualizer:
     y: 200
   thumbnail:
+    freshnessMode: fresh-episode
     brandColors: "Dark Navy #0D1B3D, Royal Blue #1E3A8A, Bright Orange #FF7A00, Off-white #F2F4F7"
     charactersBlock: |
-      - Victor: male, brown hair, beard, forest green / olive green sweater (NOT navy, NOT black, NOT dark blue), black headphones, navy mug labeled "Victor"
+      BOTH HOSTS REQUIRED — match the reference illustration style exactly:
+      - Victor: male, brown hair, short beard, forest green / olive green sweater (NOT navy/black), black headphones, navy mug labeled "Victor"
       - Lisa: female, long wavy brown hair, bright orange #FF7A00 sweater, black headphones, orange mug labeled "Lisa"
-    logoLockRules: "LOGO AND BADGE ARE LOCKED ASSETS: copy them pixel-for-pixel from the reference image. Never redraw, regenerate, or reinterpret any logo icon (microphone, book) or badge icon."
+      - Same flat digital-illustration faces/bodies as the reference — NEVER photorealistic, NEVER 3D/Pixar, NEVER anime
+    logoLockRules: "LOGO IS A LOCKED ASSET: copy the channel logo pixel-for-pixel from the reference image. Never redraw, regenerate, or reinterpret logo icons (microphone, book) or wordmark."
     logoUnchanged: |
       TOP RIGHT — logo block (ABSOLUTELY UNTOUCHED — copy verbatim from reference):
       - CRITICAL: Do NOT generate, redraw, reinterpret, restyle, or "fix" ANY part of this logo block
-      - CRITICAL: The microphone icon above the wordmark MUST be the exact same graphic from the reference
-      - "Speak" and "ENGLISH" in dark navy #0D1B3D bold sans-serif — same glyphs and layout as reference
-      - Orange #FF7A00 "WITH ENERGY" banner treatment — same shape and placement as reference
-      - Open book icon below — exact same icon from reference; do NOT redraw or regenerate
-      - Same size, position, spacing, colors, fonts, and icon shapes as reference — ZERO changes
+      - Microphone icon + open book + "Speak ENGLISH" + orange "WITH ENERGY" banner — exact same graphics from reference
+      - Same size, colors, fonts, and icon shapes as reference — ZERO redesign
     badgeUnchanged: |
-      BOTTOM LEFT — badge block (ABSOLUTELY UNTOUCHED — copy verbatim from reference):
-      - CRITICAL: Do NOT regenerate the circular microphone icon inside the badge — use the reference graphic exactly
-      - Circular teal/green icon with white microphone
-      - Green rounded pill with white "ENGLISH PODCAST" in bold caps
-      - "FOR LEARNING ENGLISH" subtitle below in dark navy
-      - Same size, position, spacing, colors, and fonts as reference — ZERO changes
+      BOTTOM LEFT — keep the green ENGLISH PODCAST badge from the reference (same icon + pill). You may nudge position slightly for layout, but do not invent a new badge or render words like "optional" / "omit".
     shortLogoUnchanged: |
-      TOP — "Speak ENGLISH WITH ENERGY" logo block (ABSOLUTELY UNTOUCHED — copy verbatim from reference):
-      - CRITICAL: Do NOT generate, redraw, reinterpret, or replace ANY logo icons
-      - Microphone icon and open book icon MUST match the reference exactly
-      - Same wordmark layout, colors, spacing, and compact vertical sizing as reference — ZERO changes
+      TOP — logo block ABSOLUTELY UNTOUCHED (copy verbatim from reference):
+      - Same wordmark + microphone + book icons as reference — ZERO redesign
     shortBadgeUnchanged: |
-      BOTTOM — green rounded badge block (ABSOLUTELY UNTOUCHED — copy verbatim from reference):
-      - CRITICAL: Do NOT regenerate the microphone icon inside the badge — use the reference graphic exactly
-      - Green rounded badge with microphone icon — "ENGLISH PODCAST" and "FOR LEARNING ENGLISH"
-      - Same size, position, spacing, colors, and fonts as reference — ZERO changes
-    artStyle: "modern clean digital illustration, warm beige studio, soft shading, not photorealistic"
+      Keep the green ENGLISH PODCAST badge from the reference (same style). Do not invent new badges or meta labels.
+    artStyle: "modern clean digital illustration matching the reference exactly — warm soft shading, flat 2D (not photo, not 3D), cozy English-learning podcast look"
     characterColorReference: |
-      CHARACTER COLORS — must match the landscape podcast thumbnail reference exactly:
+      CHARACTER COLORS — match the reference:
       - Victor sweater: forest green / olive green — NEVER navy, black, or dark blue
       - Lisa sweater: bright orange #FF7A00
+    visualGenres: |
+      Stay inside the SAME illustration world as the demo. Pick ONE light scene twist (not a new art style):
+      - same studio desk, different topic props + host beat
+      - bookshelf + whiteboard coaching moment
+      - sticky-note brainstorm on the wall behind them
+      - checklist / clipboard teaching moment
+      - before-vs-after props on the desk (still one continuous illustrated scene — NO split photo panels)
+      - coffee-on-desk casual coaching chat
+      - notebook practice / role-play moment
+      - interview-prep flashcards on the desk
+    freshnessRules: |
+      SAME STYLE, FRESH EPISODE CONTENT:
+      - MUST match the reference art style, character designs, logo, and overall podcast-illustration look
+      - CHANGE enough to feel like a new episode: host gestures/interaction, topic props, shelf/wall details, small background accents, optional lighting mood within the same palette family
+      - Do NOT change into a different visual genre (no neon cyber, no photoreal, no 3D, no outdoor photography, no split-screen red/green panels)
+      - Keep a desk / podcast-host composition similar to the reference (two hosts + headline space)
+      - Headline stays ALL-CAPS stacked and spelled exactly; typography style should stay close to the demo
+    ctrRules: |
+      CTR WITHIN THE DEMO STYLE:
+      - Clear topic props + readable host reactions at phone-grid size
+      - One focal story beat between Victor and Lisa
+      - High contrast headline, clean negative space
+      - Energetic but still on-brand illustration — not meme faces, not style swaps
     topicRelevance: |
-      TOPIC RELEVANCE — REQUIRED for every change you make:
-      - Episode topic drives ALL creative choices — expressions, gestures, props, visual metaphors, book spines
-      - Pick expressions that fit THIS episode's specific problem or insight
-      - Props and desk objects must clearly symbolize the topic
-      - AVOID: random props, generic emotions, decorative objects with no link to the topic
+      TOPIC RELEVANCE — REQUIRED:
+      - Props, gestures, and wall/shelf details must clearly sell THIS episode's hook
+      - AVOID: generic smiles with no topic props, or a scene that could belong to any episode
     expressionModeration: |
-      EXPRESSION INTENSITY — warm and clear at thumbnail size, but natural and moderate:
-      - Subtle-to-medium expressiveness — like a real podcast moment, not a cartoon reaction shot
-      - NOT over-the-top, NOT exaggerated YouTube-face, NOT clownish or melodramatic
+      EXPRESSION INTENSITY — clear at thumbnail size, still matching the demo's illustrated faces:
+      - Medium expressiveness — specific to the hook
+      - NOT flat, NOT clownish, NOT photoreal drama
     charactersExpressionGuidance: |
-      Victor's expression — pick ONE clear, moderate reaction that fits THIS episode's topic and hook.
-      Lisa's expression — pick ONE clear, moderate coaching reaction that pairs with Victor's topic moment.
-      AVOID: exaggerated shock, jaw-drop, always pointing at Victor, passive listener pose.
+      Victor — ONE clear illustrated reaction for THIS hook.
+      Lisa — ONE clear coaching / contrasting reaction that pairs with Victor.
+      Vary the beat; avoid repeating the exact same thumbs-up + point every episode.
 
 backgroundSlideshow:
   directory: assets/background-images
