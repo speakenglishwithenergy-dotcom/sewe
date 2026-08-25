@@ -26,6 +26,11 @@ function getExpressionGuidance(ctx: ChannelContext): string {
   return parts.join('\n\n');
 }
 
+function getHeadlineDesignBlock(ctx: ChannelContext): string {
+  const design = ctx.config.branding.thumbnail.headlineDesign;
+  return design?.trim() ? `\n${design.trim()}\n` : '';
+}
+
 export function isFreshEpisodeThumbnail(ctx: ChannelContext): boolean {
   return (ctx.config.branding.thumbnail.freshnessMode ?? 'template') === 'fresh-episode';
 }
@@ -73,13 +78,13 @@ ${thumb.charactersBlock ? `${thumb.charactersBlock}` : ''}
 ${thumb.characterColorReference ? `- ${thumb.characterColorReference}` : ''}
 - Episode tag brush-stroke style and badge icon row layout
 
-═══ CHANGE ONLY — left headline (keep demo typography styles) ═══
+═══ CHANGE ONLY — left headline (keep demo character/logo style) ═══
 
 Episode title: "${episodeTitle}"
 
-Replace the demo title with this new stacked ALL-CAPS text (spell exactly, preserve \\n line breaks):
+Replace the demo title with this stacked ALL-CAPS text (spell exactly, preserve \\n line breaks):
 "${thumbnailText}"
-
+${getHeadlineDesignBlock(ctx)}
 ═══ CHANGE ONLY — blurred workspace background + host context (right side) ═══
 
 Episode topic: "${topic}"
@@ -120,13 +125,13 @@ ${thumb.charactersBlock ?? ''}
 - Brand colors: ${thumb.brandColors}
 ${thumb.characterColorReference ? `- ${thumb.characterColorReference}` : ''}
 
-═══ CHANGE ONLY — left headline (keep demo typography styles) ═══
+═══ CHANGE ONLY — left headline (keep demo character/logo style) ═══
 
 Episode title: "${episodeTitle}"
 
-Replace the demo title with this new stacked ALL-CAPS text (spell exactly, preserve \\n line breaks):
+Replace the demo title with this stacked ALL-CAPS text (spell exactly, preserve \\n line breaks):
 "${thumbnailText}"
-
+${getHeadlineDesignBlock(ctx)}
 ═══ CHANGE ONLY — host scene context (right ~60%) ═══
 
 Episode topic: "${topic}"
@@ -177,9 +182,9 @@ ${thumb.ctrRules ?? ''}
 Episode title: "${episodeTitle}"
 Episode topic: "${topic}"
 
-Replace the headline with this stacked ALL-CAPS text (spell exactly, preserve \\n line breaks) — keep demo-like bold typography:
+Replace the headline with this stacked ALL-CAPS text (spell exactly, preserve \\n line breaks):
 "${thumbnailText}"
-
+${getHeadlineDesignBlock(ctx)}
 Art director brief (topic props + host beat only — do not change art style):
 ${thumbnailScene}
 

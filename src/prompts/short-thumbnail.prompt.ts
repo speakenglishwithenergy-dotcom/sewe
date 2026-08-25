@@ -57,9 +57,9 @@ ${thumb.ctrRules ?? ''}
 Episode title: "${episodeTitle}"
 Episode topic: "${topic}"
 
-Headline — spell EXACTLY (preserve \\n line breaks), keep demo-like bold typography:
+Headline — spell EXACTLY (preserve \\n line breaks):
 "${thumbnailText}"
-
+${ctx.config.branding.thumbnail.headlineDesign ? `\n${ctx.config.branding.thumbnail.headlineDesign}\n` : ''}
 Art director brief:
 ${thumbnailScene}
 

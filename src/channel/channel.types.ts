@@ -135,6 +135,8 @@ export const ThumbnailBrandingSchema = z.object({
   ctrRules: z.string().optional(),
   /** What may change vs what stays locked in fresh-episode mode. */
   freshnessRules: z.string().optional(),
+  /** How to design the stacked thumbnail headline for CTR. */
+  headlineDesign: z.string().optional(),
 });
 
 export const ChannelBrandingSchema = z.object({

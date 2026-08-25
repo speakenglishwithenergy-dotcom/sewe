@@ -137,13 +137,23 @@ branding:
       - CHANGE enough to feel like a new episode: host gestures/interaction, topic props, shelf/wall details, small background accents, optional lighting mood within the same palette family
       - Do NOT change into a different visual genre (no neon cyber, no photoreal, no 3D, no outdoor photography, no split-screen red/green panels)
       - Keep a desk / podcast-host composition similar to the reference (two hosts + headline space)
-      - Headline stays ALL-CAPS stacked and spelled exactly; typography style should stay close to the demo
+      - Spell the headline EXACTLY as given; make the typography punchier than plain flat text (see headlineDesign)
     ctrRules: |
       CTR WITHIN THE DEMO STYLE:
       - Clear topic props + readable host reactions at phone-grid size
       - One focal story beat between Victor and Lisa
       - High contrast headline, clean negative space
       - Energetic but still on-brand illustration — not meme faces, not style swaps
+    headlineDesign: |
+      HEADLINE DESIGN — make the title the #1 click magnet (still on-brand):
+      - Huge, ultra-bold condensed sans-serif ALL-CAPS — thicker than body props text
+      - High contrast: dark navy #0D1B3D on cream, OR cream/white on a dark navy rounded panel behind the stack
+      - Emphasize the HOOK words (usually the quoted phrase, the forbidden phrase, or the emotional punch) in bright orange #FF7A00 — larger or heavier than the surrounding lines
+      - Supporting lines stay navy; 1 accent line max in orange (do not rainbow the whole title)
+      - Tight line spacing, slight upward energy; leave clear left-side negative space so it reads at phone-grid size
+      - Optional tasteful accents ONLY if they help CTR: soft orange underline / brush stroke under the punch line, or a subtle rounded navy plate behind the stack — never messy stickers, never extra words
+      - Perfect spelling; crisp edges; no warped letters, no thin fonts, no low-contrast gray text
+      - The headline must feel bigger and more intentional than a plain label — like a YouTube thumbnail title, not a caption
     topicRelevance: |
       TOPIC RELEVANCE — REQUIRED:
       - Props, gestures, and wall/shelf details must clearly sell THIS episode's hook
