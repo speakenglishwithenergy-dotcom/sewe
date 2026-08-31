@@ -88,8 +88,10 @@ npm run batch -- --channel=speak-english-with-energy --resume
    - `[r]` regenerate suggestions
    - `[y]` confirm
    - `[q]` quit
-6. Interactive publish-date review (defaults to next Mon/Wed or Mon/Wed/Fri):
-   - `[1-2]` or `[1-3]` change date by **weekday number** or `YYYY-MM-DD`
+6. Interactive publish-date review (defaults to next Mon/Wed or Mon/Wed/Fri for **long** video):
+   - Long video: sáng Thứ hai / Tư / Sáu (`longTime`, default 11:30)
+   - Short video: sáng ngày kế tiếp — Thứ ba / Năm / Bảy (cùng `longTime`)
+   - `[1-2]` or `[1-3]` change long publish date by **weekday number** or `YYYY-MM-DD`
    - Weekday numbers: `2`=Thứ hai, `3`=Thứ ba, `4`=Thứ tư, `5`=Thứ năm, `6`=Thứ sáu, `7`=Thứ bảy, `8`=Chủ nhật
    - Entering `2` picks the **next** Thứ hai from today (including today)
    - `[d]` reset defaults
@@ -98,7 +100,7 @@ npm run batch -- --channel=speak-english-with-energy --resume
 7. Runs in 3 phases across all episodes:
    1. **Create folders** — project dirs under `output/<channel-id>/projects/`
    2. **Generate files** — full `generate` pipeline for each project
-   3. **Publish** — schedule each project on its chosen date (long at `youtubeSchedule.longTime`, short at `youtubeSchedule.shortTime`)
+   3. **Publish** — long on chosen Mon/Wed/Fri morning; short on the following morning (Tue/Thu/Sat)
 8. Saves every topic to `channels/<channel-id>/topics.json` (persists even if you delete project folders later)
 
 Publish dates accept weekday numbers (`2`–`8`) or `YYYY-MM-DD`. CLI example: `--dates=2,4,6` schedules next Mon / Wed / Fri.

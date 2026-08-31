@@ -6,6 +6,7 @@ import {
   formatViWeekdayHelp,
   isScheduleDateValid,
   parseScheduleDateInput,
+  shortPublishSlotForLongSlot,
 } from '../social/schedule.util';
 import { TopicRecord } from '../topic/topic.types';
 import { isIncompleteTopicStatus } from '../topic/topic-registry.service';
@@ -85,18 +86,27 @@ export function printSuggestedTopics(topics: string[]): void {
   console.log(`\nActions: [${formatIndexRange(topics.length as BatchCount)}] edit topic | [r] regenerate | [y] confirm | [q] quit`);
 }
 
-export function printScheduleSlots(slots: BatchScheduleSlot[], timezone: string): void {
-  console.log('\nPublish schedule:');
+export function printScheduleSlots(
+  slots: BatchScheduleSlot[],
+  timezone: string,
+  longTime: string,
+): void {
+  console.log('\nPublish schedule (long Mon/Wed/Fri, short next day Tue/Thu/Sat — both morning):');
   slots.forEach((slot, index) => {
-    console.log(`  ${index + 1}. ${formatBatchScheduleSlot(slot, timezone)}`);
+    const shortSlot = shortPublishSlotForLongSlot(slot, timezone);
+    console.log(
+      `  ${index + 1}. long ${formatBatchScheduleSlot(slot, timezone)} ${longTime}, `
+      + `short ${formatBatchScheduleSlot(shortSlot, timezone)} ${longTime}`,
+    );
   });
-  console.log(`\nActions: [${formatIndexRange(slots.length as BatchCount)}] change date (2-8 or YYYY-MM-DD) | [d] reset defaults | [y] confirm | [q] quit`);
+  console.log(`\nActions: [${formatIndexRange(slots.length as BatchCount)}] change long date (2-8 or YYYY-MM-DD) | [d] reset defaults | [y] confirm | [q] quit`);
   console.log(`Weekdays: ${formatViWeekdayHelp()}`);
 }
 
 export async function reviewScheduleInteractive(
   defaultSlots: BatchScheduleSlot[],
   timezone: string,
+  longTime: string,
 ): Promise<BatchScheduleSlot[] | null> {
   const rl = createInterface();
   const count = defaultSlots.length as BatchCount;
@@ -104,7 +114,7 @@ export async function reviewScheduleInteractive(
 
   try {
     while (true) {
-      printScheduleSlots(slots, timezone);
+      printScheduleSlots(slots, timezone, longTime);
       const action = (await askQuestion(rl, '> ')).toLowerCase();
 
       if (action === 'y' || action === 'yes') {

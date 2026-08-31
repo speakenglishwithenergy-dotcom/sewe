@@ -23,6 +23,7 @@ import {
   nextMonWedFriDates,
   parseScheduleDateInput,
   scheduledTimeOnDate,
+  shortPublishSlotForLongSlot,
 } from './social/schedule.util';
 import {
   loadPodcastScript,
@@ -390,12 +391,16 @@ async function publishBatchEpisodes(
       throw new Error(`Missing projectId for topic "${item.topic}" before publish`);
     }
 
+    const shortSlot = shortPublishSlotForLongSlot(item.slot, item.timezone);
     const longAt = scheduledTimeOnDate(item.longTime, item.timezone, item.slot.date);
-    const shortAt = scheduledTimeOnDate(item.shortTime, item.timezone, item.slot.date);
+    const shortAt = scheduledTimeOnDate(item.longTime, item.timezone, shortSlot.date);
 
     logger.divider('─');
     logger.info(`Publishing ${index + 1}/${toPublish.length} — ${item.topic}`);
-    logger.info(`Scheduled : long ${formatPublishTime(longAt, item.timezone)}, short ${formatPublishTime(shortAt, item.timezone)}`);
+    logger.info(
+      `Scheduled : long ${formatPublishTime(longAt, item.timezone)} (${item.slot.dateIso}), `
+      + `short ${formatPublishTime(shortAt, item.timezone)} (${shortSlot.dateIso})`,
+    );
     logger.divider('─');
 
     try {
@@ -477,7 +482,8 @@ async function resumeIncompleteBatch(input: {
   console.log('\nSummary:');
   summaryRecords.forEach((record, index) => {
     console.log(`  ${index + 1}. [${record.status}] ${record.topic}`);
-    console.log(`     ${record.scheduledDate} — long ${longTime}, short ${shortTime}`);
+    const shortSlot = shortPublishSlotForLongSlot(slotFromTopicRecord(record, timezone), timezone);
+    console.log(`     long ${record.scheduledDate} ${longTime}, short ${shortSlot.dateIso} ${longTime}`);
   });
   console.log(`\nTopic registry: channels/${channelId}/topics.json\n`);
 }
@@ -534,7 +540,7 @@ async function runNewBatch(input: {
 
   const scheduleSlots = dates
     ? defaultScheduleSlots
-    : await reviewScheduleInteractive(defaultScheduleSlots, timezone);
+    : await reviewScheduleInteractive(defaultScheduleSlots, timezone, longTime);
 
   if (!scheduleSlots) {
     logger.info('Batch cancelled.');
@@ -572,7 +578,11 @@ async function runNewBatch(input: {
   confirmedTopics.forEach((topic, index) => {
     const slot = scheduleSlots[index];
     console.log(`  ${index + 1}. ${topic}`);
-    console.log(`     ${formatBatchScheduleSlot(slot, timezone)} — long ${longTime}, short ${shortTime}`);
+    const shortSlot = shortPublishSlotForLongSlot(slot, timezone);
+    console.log(
+      `     long ${formatBatchScheduleSlot(slot, timezone)} ${longTime}, `
+      + `short ${formatBatchScheduleSlot(shortSlot, timezone)} ${longTime}`,
+    );
   });
   console.log(`\nTopic registry: channels/${channelId}/topics.json\n`);
 }

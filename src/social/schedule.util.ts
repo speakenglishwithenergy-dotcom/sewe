@@ -145,7 +145,7 @@ function getWeekdayInTimezone(date: Date, timezone: string): number {
   return map[weekday] ?? 0;
 }
 
-function addCalendarDays(date: CalendarDate, days: number): CalendarDate {
+export function addCalendarDays(date: CalendarDate, days: number): CalendarDate {
   const utc = new Date(Date.UTC(date.year, date.month - 1, date.day + days));
   return {
     year: utc.getUTCFullYear(),
@@ -441,6 +441,19 @@ export function nextMonWedFriDates(
 export function formatBatchScheduleSlot(slot: BatchScheduleSlot, timezone: string): string {
   const label = slot.weekday.charAt(0).toUpperCase() + slot.weekday.slice(1);
   return `${label} ${slot.dateIso} (${timezone})`;
+}
+
+/** Short-form publish day: calendar day after the long-form slot (Tue/Thu/Sat when long is Mon/Wed/Fri). */
+export function shortPublishSlotForLongSlot(
+  longSlot: BatchScheduleSlot,
+  timezone: string,
+): BatchScheduleSlot {
+  const date = addCalendarDays(longSlot.date, 1);
+  return {
+    weekday: weekdayNameFromDate(date, timezone),
+    date,
+    dateIso: calendarDateToIso(date),
+  };
 }
 
 export { BATCH_WEEKDAYS };
