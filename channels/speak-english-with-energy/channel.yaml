@@ -11,7 +11,7 @@ hosts:
     personality: female, thoughtful, asks insightful questions, relatable, practical
 
 script:
-  targetMinWords: 2500
+  targetMinWords: 2100
   targetMinLines: 140
   languageLevel: A2-B1
   closingTemplate: "Thanks for listening — see you next time on {channelName}!"
@@ -46,7 +46,7 @@ script:
     - id: intro
       label: Intro & hook
       lineCount: 18
-      brief: Warm greeting, introduce the topic, paint a vivid everyday scene listeners recognize, explain why it matters to English learners today, and preview what Victor and Lisa will cover in this longer episode.
+      brief: Warm greeting, introduce the topic, paint a vivid everyday scene listeners recognize, explain why it matters to English learners today, and preview what Victor and Lisa will cover in this episode.
     - id: main1
       label: Main idea 1
       lineCount: 26

@@ -94,7 +94,7 @@
       "scheduledDate": "2026-08-03",
       "weekday": "monday",
       "createdAt": "2026-08-03T08:24:37.831Z",
-      "status": "failed"
+      "status": "published"
     },
     {
       "topic": "How to Sound Professional in English",
@@ -118,7 +118,7 @@
       "scheduledDate": "2026-08-10",
       "weekday": "monday",
       "createdAt": "2026-08-10T04:42:22.974Z",
-      "status": "generated"
+      "status": "published"
     },
     {
       "topic": "You Know English, But You Freeze in Interviews",
@@ -142,7 +142,7 @@
       "scheduledDate": "2026-08-17",
       "weekday": "monday",
       "createdAt": "2026-08-17T04:14:19.285Z",
-      "status": "generated"
+      "status": "published"
     },
     {
       "topic": "How to Sound Professional Without Using Difficult English",
@@ -183,6 +183,30 @@
       "createdAt": "2026-08-23T09:16:06.099Z",
       "status": "published",
       "projectId": "003-20260823"
+    },
+    {
+      "topic": "How to Answer Unexpected Phone Calls in English Without Panic",
+      "scheduledDate": "2026-08-31",
+      "weekday": "monday",
+      "createdAt": "2026-08-31T10:19:58.813Z",
+      "status": "generated",
+      "projectId": "001-20260831"
+    },
+    {
+      "topic": "Polite Ways to Say 'No' to Friends and Colleagues",
+      "scheduledDate": "2026-09-02",
+      "weekday": "wednesday",
+      "createdAt": "2026-08-31T10:19:58.813Z",
+      "status": "generating",
+      "projectId": "002-20260831"
+    },
+    {
+      "topic": "How to Tell Great Stories Using Everyday English",
+      "scheduledDate": "2026-09-04",
+      "weekday": "friday",
+      "createdAt": "2026-08-31T10:19:58.813Z",
+      "status": "pending",
+      "projectId": "003-20260831"
     }
   ]
 }
