@@ -6,6 +6,11 @@ export const DEFAULT_TTS_TOTAL_STEPS = Number(process.env.SUPERTONIC_TOTAL_STEPS
 /** Max synthesis attempts when output looks corrupted (skip/repeat). */
 export const DEFAULT_TTS_MAX_RETRIES = Number(process.env.SUPERTONIC_TTS_RETRIES ?? 3);
 
+/** Short narration clips (titles, intros) — closer to Supertonic defaults, higher quality. */
+export const NARRATION_TTS_SPEED = Number(process.env.SUPERTONIC_NARRATION_SPEED ?? 1.05);
+export const NARRATION_TTS_TOTAL_STEPS = Number(process.env.SUPERTONIC_NARRATION_TOTAL_STEPS ?? 12);
+export const NARRATION_TTS_MAX_RETRIES = Number(process.env.SUPERTONIC_NARRATION_RETRIES ?? 5);
+
 /** Spoken-word rate at speed 1.0 (~105 wpm from script calibration). */
 const WORDS_PER_MINUTE_AT_SPEED_1 = 105;
 

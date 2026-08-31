@@ -6,6 +6,9 @@ import { FFmpegService } from '../ffmpeg/ffmpeg.service';
 import {
   DEFAULT_TTS_MAX_RETRIES,
   DEFAULT_TTS_TOTAL_STEPS,
+  NARRATION_TTS_MAX_RETRIES,
+  NARRATION_TTS_SPEED,
+  NARRATION_TTS_TOTAL_STEPS,
   estimateMinDurationSeconds,
   isSuspiciousSegmentDuration,
   isWavFilePlausible,
@@ -17,6 +20,12 @@ import { logger } from '../utils/logger';
 
 const PODCAST_TTS_SPEED = 0.85;
 const NON_SPEECH_SILENCE_SECONDS = 0.3;
+
+type TtsSynthOptions = {
+  speed?: number;
+  totalSteps?: number;
+  maxRetries?: number;
+};
 
 export class TTSService {
   constructor(
@@ -30,11 +39,12 @@ export class TTSService {
     filePath: string,
     voiceName: string,
     speed = PODCAST_TTS_SPEED,
+    synthOptions: TtsSynthOptions = {},
   ): Promise<number> {
     const preparedText = prepareTextForTts(text);
     const minDuration = estimateMinDurationSeconds(preparedText, speed);
-    const maxAttempts = DEFAULT_TTS_MAX_RETRIES;
-    const totalSteps = DEFAULT_TTS_TOTAL_STEPS;
+    const maxAttempts = synthOptions.maxRetries ?? DEFAULT_TTS_MAX_RETRIES;
+    const totalSteps = synthOptions.totalSteps ?? DEFAULT_TTS_TOTAL_STEPS;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       if (attempt > 1) {
@@ -177,8 +187,12 @@ export class TTSService {
     text: string,
     filePath: string,
     voiceName: string,
-    speed = PODCAST_TTS_SPEED,
+    options: TtsSynthOptions = {},
   ): Promise<number> {
+    const speed = options.speed ?? NARRATION_TTS_SPEED;
+    const totalSteps = options.totalSteps ?? NARRATION_TTS_TOTAL_STEPS;
+    const maxRetries = options.maxRetries ?? NARRATION_TTS_MAX_RETRIES;
+
     await fs.mkdir(path.dirname(filePath), { recursive: true });
 
     const preparedText = prepareTextForTts(text);
@@ -195,8 +209,11 @@ export class TTSService {
     if (cached) {
       logger.info(`  ⏭  Narration (cached): ${previewText}`);
     } else {
-      logger.info(`  Narration: ${previewText}`);
-      await this.synthesizeWithStability(text, filePath, voiceName, speed);
+      logger.info(`  Narration: ${previewText} (speed=${speed}, steps=${totalSteps})`);
+      await this.synthesizeWithStability(text, filePath, voiceName, speed, {
+        totalSteps,
+        maxRetries,
+      });
     }
 
     return this.ffmpeg.getAudioDuration(filePath);

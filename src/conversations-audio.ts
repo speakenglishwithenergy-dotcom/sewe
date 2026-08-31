@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { FFmpegService } from './ffmpeg/ffmpeg.service';
 import { SupertonicService } from './audio/supertonic.service';
 import { TTSService } from './audio/tts.service';
+import { formatTopicForSpeech } from './audio/speech-text.util';
 import { DialogueLineSchema } from './types';
 
 const LEGACY_VOICE_MAP = { Victor: 'M1', Lisa: 'F1' } as const;
@@ -36,6 +37,7 @@ type CliArgs = {
   collectionDir: string;
   episodeId?: number;
   force: boolean;
+  titlesOnly: boolean;
 };
 
 async function fileExists(filePath: string): Promise<boolean> {
@@ -50,6 +52,7 @@ async function fileExists(filePath: string): Promise<boolean> {
 function parseArgs(): CliArgs {
   const args = process.argv.slice(2);
   const force = args.includes('--force');
+  const titlesOnly = args.includes('--titles-only');
 
   const dirArg = args.find((a) => a.startsWith('--dir='));
   const collectionDir = dirArg
@@ -68,20 +71,18 @@ function parseArgs(): CliArgs {
   npm run generate:conversations-audio
   npm run generate:conversations-audio -- --id=1
   npm run generate:conversations-audio -- --dir=output/basic-english-conversations --force
+  npm run generate:conversations-audio -- --dir=output/basic-english-conversations --titles-only
 
 Options:
-  --dir=PATH   Collection folder (default: output/basic-english-conversations)
-  --id=N       Process a single episode by manifest id
-  --force      Regenerate audio even if podcast.mp3 already exists
+  --dir=PATH       Collection folder (default: output/basic-english-conversations)
+  --id=N           Process a single episode by manifest id
+  --force          Regenerate all audio even if podcast.mp3 already exists
+  --titles-only    Regenerate spoken title (000-title.wav) and re-merge podcast.mp3
 `);
     process.exit(0);
   }
 
-  return { collectionDir, episodeId, force };
-}
-
-function formatTitleForSpeech(title: string): string {
-  return title.replace(/\s*&\s*/g, ' and ').replace(/\s+/g, ' ').trim();
+  return { collectionDir, episodeId, force, titlesOnly };
 }
 
 async function generateEpisodeAudio(
@@ -89,13 +90,14 @@ async function generateEpisodeAudio(
   ttsService: TTSService,
   ffmpegService: FFmpegService,
   force: boolean,
+  titlesOnly: boolean,
 ): Promise<void> {
   const episodeDir = path.dirname(entry.path);
   const audioDir = path.join(episodeDir, 'audio');
   const titlePath = path.join(audioDir, '000-title.wav');
   const podcastPath = path.join(episodeDir, 'podcast.mp3');
 
-  if (!force && (await fileExists(podcastPath))) {
+  if (!force && !titlesOnly && (await fileExists(podcastPath))) {
     logger.info(`⏭  [${entry.id}] "${entry.title}" — podcast.mp3 exists, skipping`);
     return;
   }
@@ -105,7 +107,11 @@ async function generateEpisodeAudio(
 
   const raw = await fs.readFile(entry.path, 'utf-8');
   const script = ConversationScriptSchema.parse(JSON.parse(raw));
-  const titleSpeech = formatTitleForSpeech(script.title);
+  const titleSpeech = formatTopicForSpeech(script.title);
+
+  if (titlesOnly || force) {
+    await fs.unlink(titlePath).catch(() => {});
+  }
 
   await ttsService.generateNarration(titleSpeech, titlePath, LEGACY_VOICE_MAP.Victor);
 
@@ -122,7 +128,7 @@ async function generateEpisodeAudio(
 }
 
 async function main(): Promise<void> {
-  const { collectionDir, episodeId, force } = parseArgs();
+  const { collectionDir, episodeId, force, titlesOnly } = parseArgs();
   const manifestPath = path.join(collectionDir, 'manifest.json');
 
   if (!(await fileExists(manifestPath))) {
@@ -147,16 +153,21 @@ async function main(): Promise<void> {
   logger.info(`Collection : ${collectionDir}`);
   logger.info(`Episodes   : ${entries.length}`);
   logger.info(`Title intro: spoken title + ${TITLE_INTRO_PAUSE_SECONDS}s pause`);
+  if (titlesOnly) {
+    logger.info('Mode       : titles only (dialogue segments cached)');
+  } else if (force) {
+    logger.info('Mode       : full regenerate (--force)');
+  }
   logger.info('');
 
   const ffmpegService = new FFmpegService();
   await ffmpegService.checkDependencies();
 
   const supertonicService = new SupertonicService(SUPERTONIC_ONNX_DIR, SUPERTONIC_VOICES_DIR);
-  const ttsService = new TTSService(supertonicService, ffmpegService);
+  const ttsService = new TTSService(supertonicService, ffmpegService, LEGACY_VOICE_MAP);
 
   for (const entry of entries) {
-    await generateEpisodeAudio(entry, ttsService, ffmpegService, force);
+    await generateEpisodeAudio(entry, ttsService, ffmpegService, force, titlesOnly);
   }
 
   logger.info('');
