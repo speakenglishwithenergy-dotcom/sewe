@@ -207,6 +207,30 @@
       "createdAt": "2026-08-31T10:19:58.813Z",
       "status": "published",
       "projectId": "003-20260831"
+    },
+    {
+      "topic": "You Understand English… So Why Can’t You Speak?",
+      "scheduledDate": "2026-09-14",
+      "weekday": "monday",
+      "createdAt": "2026-09-13T14:19:54.666Z",
+      "status": "generated",
+      "projectId": "004-20260913"
+    },
+    {
+      "topic": "You’re Learning English Every Day — But Getting Nowhere",
+      "scheduledDate": "2026-09-16",
+      "weekday": "wednesday",
+      "createdAt": "2026-09-13T14:19:54.666Z",
+      "status": "failed",
+      "projectId": "005-20260913"
+    },
+    {
+      "topic": "Why You Forget English Words So Quickly",
+      "scheduledDate": "2026-09-18",
+      "weekday": "friday",
+      "createdAt": "2026-09-13T14:19:54.666Z",
+      "status": "pending",
+      "projectId": "006-20260913"
     }
   ]
 }
