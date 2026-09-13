@@ -13,7 +13,7 @@ npm run <script> -- [flags]
 | Command | Purpose |
 |---------|---------|
 | `npm run generate` | Create or resume a podcast/short video project |
-| `npm run batch` | Weekly batch: AI topics → generate 2–3 episodes → schedule publish (supports `--resume`) |
+| `npm run batch` | Weekly batch: AI topics → generate then publish each of 2–3 episodes (supports `--resume`) |
 | `npm run remind` | Send Monday batch reminder email |
 | `npm run remind:install` | Install macOS launchd job for weekly Monday reminder |
 | `npm run publish` | Upload an existing project to YouTube, Facebook, and/or TikTok |
@@ -97,10 +97,9 @@ npm run batch -- --channel=speak-english-with-energy --resume
    - `[d]` reset defaults
    - `[y]` confirm and start
    - `[q]` quit
-7. Runs in 3 phases across all episodes:
-   1. **Create folders** — project dirs under `output/<channel-id>/projects/`
-   2. **Generate files** — full `generate` pipeline for each project
-   3. **Publish** — long on chosen Mon/Wed/Fri morning; short on the following morning (Tue/Thu/Sat)
+7. Runs in 2 phases:
+   1. **Create folders** — project dirs under `output/<channel-id>/projects/` for every episode
+   2. **Generate then publish each episode** — full `generate` for episode 1, then schedule-publish it, then episode 2, and so on. Long on chosen Mon/Wed/Fri morning; short on the following morning (Tue/Thu/Sat)
 8. Saves every topic to `channels/<channel-id>/topics.json` (persists even if you delete project folders later)
 
 Publish dates accept weekday numbers (`2`–`8`) or `YYYY-MM-DD`. CLI example: `--dates=2,4,6` schedules next Mon / Wed / Fri.
@@ -119,8 +118,8 @@ Behavior:
 
 - Groups topics by shared `createdAt` (one weekly batch run)
 - Skips episodes already `published`
-- Same 3 phases: create missing folders → generate unfinished episodes → publish remaining
-- Skips generate when long + short videos already exist on disk (marks status `generated`)
+- Same 2 phases: create missing folders → generate then immediately publish each unfinished episode
+- Skips generate when long + short videos already exist on disk (marks status `generated`), then publishes that episode before starting the next
 - Reuses existing `projectId` when present (`generate --project=...`), then publishes with the stored schedule
 - `--resume` ignores `--count` / `--dates`
 

@@ -268,7 +268,7 @@ async function createBatchFolders(
   shortRequired: boolean,
 ): Promise<BatchEpisodeWorkItem[]> {
   logger.divider('═');
-  logger.info(`Phase 1/3 — Create folders (${items.length})`);
+  logger.info(`Phase 1/2 — Create folders (${items.length})`);
   logger.divider('═');
 
   const withFolders: BatchEpisodeWorkItem[] = [];
@@ -304,113 +304,106 @@ async function createBatchFolders(
   return withFolders;
 }
 
-/** Phase 2 — generate project files for every episode that is not already generated/published. */
-async function generateBatchFiles(
+async function generateOneEpisode(
+  item: BatchEpisodeWorkItem,
+  projectService: ProjectService,
+  topicRegistry: TopicRegistryService,
+  shortRequired: boolean,
+): Promise<BatchEpisodeWorkItem> {
+  if (!needsGenerate(item.status)) {
+    logger.info(`⏭  Skip generate (status=${item.status}): ${item.projectId} — ${item.topic}`);
+    return item;
+  }
+
+  const ready = await markReadyFromDisk(item, projectService, topicRegistry, shortRequired);
+  if (ready) {
+    logger.info(`⏭  Skip generate (long+short videos exist): ${item.projectId} — ${item.topic}`);
+    return ready;
+  }
+
+  const projectId = item.projectId;
+  if (!projectId) {
+    throw new Error(`Missing projectId for topic "${item.topic}" before generate`);
+  }
+
+  logger.info(`Generating — ${item.topic}`);
+  await topicRegistry.updateRecord(item.channelId, item.topic, {
+    projectId,
+    status: 'generating',
+  });
+
+  try {
+    await runGenerateProjectWithLog(projectId, item.topic);
+    await topicRegistry.setStatus(item.channelId, item.topic, 'generated');
+    logger.success(`Generated: ${projectId}`);
+    return { ...item, projectId, status: 'generated' };
+  } catch (err) {
+    await topicRegistry.setStatus(item.channelId, item.topic, 'failed');
+    throw err;
+  }
+}
+
+async function publishOneEpisode(
+  item: BatchEpisodeWorkItem,
+  topicRegistry: TopicRegistryService,
+): Promise<BatchEpisodeWorkItem> {
+  if (!needsPublish(item.status)) {
+    logger.info(`⏭  Skip publish (status=${item.status}): ${item.projectId} — ${item.topic}`);
+    return item;
+  }
+
+  const projectId = item.projectId;
+  if (!projectId) {
+    throw new Error(`Missing projectId for topic "${item.topic}" before publish`);
+  }
+
+  const shortSlot = shortPublishSlotForLongSlot(item.slot, item.timezone);
+  const longAt = scheduledTimeOnDate(item.longTime, item.timezone, item.slot.date);
+  const shortAt = scheduledTimeOnDate(item.longTime, item.timezone, shortSlot.date);
+
+  logger.divider('─');
+  logger.info(`Publishing — ${item.topic}`);
+  logger.info(
+    `Scheduled : long ${formatPublishTime(longAt, item.timezone)} (${item.slot.dateIso}), `
+    + `short ${formatPublishTime(shortAt, item.timezone)} (${shortSlot.dateIso})`,
+  );
+  logger.divider('─');
+
+  try {
+    await publishWithSchedule(item.channelId, projectId, longAt, shortAt);
+    await topicRegistry.setStatus(item.channelId, item.topic, 'published');
+    logger.success(`Published: ${projectId} → ${item.slot.dateIso}`);
+    return { ...item, status: 'published' };
+  } catch (err) {
+    await topicRegistry.setStatus(item.channelId, item.topic, 'failed');
+    throw err;
+  }
+}
+
+/** Phase 2 — generate each episode, then publish it immediately before the next one. */
+async function generateAndPublishEpisodes(
   items: BatchEpisodeWorkItem[],
   projectService: ProjectService,
   topicRegistry: TopicRegistryService,
   shortRequired: boolean,
-): Promise<BatchEpisodeWorkItem[]> {
-  logger.divider('═');
-  logger.info(`Phase 2/3 — Generate files`);
-  logger.divider('═');
-
-  const updated = new Map(items.map((item) => [item.topic, item]));
-  const toGenerate: BatchEpisodeWorkItem[] = [];
-
-  for (const item of items) {
-    if (!needsGenerate(item.status)) {
-      logger.info(`⏭  Skip generate (status=${item.status}): ${item.projectId} — ${item.topic}`);
-      continue;
-    }
-
-    const ready = await markReadyFromDisk(item, projectService, topicRegistry, shortRequired);
-    if (ready) {
-      logger.info(`⏭  Skip generate (long+short videos exist): ${item.projectId} — ${item.topic}`);
-      updated.set(item.topic, ready);
-      continue;
-    }
-
-    toGenerate.push(item);
-  }
-
-  if (toGenerate.length === 0) {
-    logger.info('All episodes already generated — skipping.');
-    return items.map((item) => updated.get(item.topic) ?? item);
-  }
-
-  logger.info(`Generating ${toGenerate.length}/${items.length} episode(s)...`);
-
-  for (let index = 0; index < toGenerate.length; index++) {
-    const item = toGenerate[index];
-    const projectId = item.projectId;
-    if (!projectId) {
-      throw new Error(`Missing projectId for topic "${item.topic}" before generate`);
-    }
-
-    logger.info(`Generating ${index + 1}/${toGenerate.length} — ${item.topic}`);
-    await topicRegistry.updateRecord(item.channelId, item.topic, {
-      projectId,
-      status: 'generating',
-    });
-
-    try {
-      await runGenerateProjectWithLog(projectId, item.topic);
-      await topicRegistry.setStatus(item.channelId, item.topic, 'generated');
-      updated.set(item.topic, { ...item, projectId, status: 'generated' });
-      logger.success(`Generated: ${projectId}`);
-    } catch (err) {
-      await topicRegistry.setStatus(item.channelId, item.topic, 'failed');
-      throw err;
-    }
-  }
-
-  return items.map((item) => updated.get(item.topic) ?? item);
-}
-
-/** Phase 3 — publish every episode that is not already published. */
-async function publishBatchEpisodes(
-  items: BatchEpisodeWorkItem[],
-  topicRegistry: TopicRegistryService,
 ): Promise<void> {
-  const toPublish = items.filter((item) => needsPublish(item.status));
-
   logger.divider('═');
-  logger.info(`Phase 3/3 — Publish (${toPublish.length}/${items.length})`);
+  logger.info(`Phase 2/2 — Generate then publish each episode (${items.length})`);
   logger.divider('═');
 
-  if (toPublish.length === 0) {
-    logger.info('All episodes already published — skipping.');
-    return;
-  }
+  for (let index = 0; index < items.length; index++) {
+    const item = items[index];
+    logger.divider('═');
+    logger.info(`[${index + 1}/${items.length}] ${item.topic}`);
+    logger.divider('═');
 
-  for (let index = 0; index < toPublish.length; index++) {
-    const item = toPublish[index];
-    const projectId = item.projectId;
-    if (!projectId) {
-      throw new Error(`Missing projectId for topic "${item.topic}" before publish`);
-    }
-
-    const shortSlot = shortPublishSlotForLongSlot(item.slot, item.timezone);
-    const longAt = scheduledTimeOnDate(item.longTime, item.timezone, item.slot.date);
-    const shortAt = scheduledTimeOnDate(item.longTime, item.timezone, shortSlot.date);
-
-    logger.divider('─');
-    logger.info(`Publishing ${index + 1}/${toPublish.length} — ${item.topic}`);
-    logger.info(
-      `Scheduled : long ${formatPublishTime(longAt, item.timezone)} (${item.slot.dateIso}), `
-      + `short ${formatPublishTime(shortAt, item.timezone)} (${shortSlot.dateIso})`,
+    const generated = await generateOneEpisode(
+      item,
+      projectService,
+      topicRegistry,
+      shortRequired,
     );
-    logger.divider('─');
-
-    try {
-      await publishWithSchedule(item.channelId, projectId, longAt, shortAt);
-      await topicRegistry.setStatus(item.channelId, item.topic, 'published');
-      logger.success(`Published: ${projectId} → ${item.slot.dateIso}`);
-    } catch (err) {
-      await topicRegistry.setStatus(item.channelId, item.topic, 'failed');
-      throw err;
-    }
+    await publishOneEpisode(generated, topicRegistry);
   }
 }
 
@@ -421,8 +414,7 @@ async function runBatchPhases(
   shortRequired: boolean,
 ): Promise<void> {
   const withFolders = await createBatchFolders(items, projectService, topicRegistry, shortRequired);
-  const generated = await generateBatchFiles(withFolders, projectService, topicRegistry, shortRequired);
-  await publishBatchEpisodes(generated, topicRegistry);
+  await generateAndPublishEpisodes(withFolders, projectService, topicRegistry, shortRequired);
 }
 
 async function resumeIncompleteBatch(input: {
@@ -452,7 +444,7 @@ async function resumeIncompleteBatch(input: {
   logger.divider('═');
   printIncompleteBatch(records);
 
-  logger.info('\nStarting batch resume (folders → generate → publish)...\n');
+  logger.info('\nStarting batch resume (folders → generate+publish each episode)...\n');
 
   const items: BatchEpisodeWorkItem[] = remaining.map((record) => ({
     channelId,
@@ -556,7 +548,7 @@ async function runNewBatch(input: {
     })),
   );
 
-  logger.info('\nStarting batch (folders → generate → publish)...\n');
+  logger.info('\nStarting batch (folders → generate+publish each episode)...\n');
 
   const items: BatchEpisodeWorkItem[] = confirmedTopics.map((topic, index) => ({
     channelId,
