@@ -88,11 +88,7 @@ export class FacebookPublisherService {
     const url = `https://www.facebook.com/${videoId}`;
     logger.success(`Facebook video uploaded (${visibility}) → ${url}`);
 
-    await this.setVideoThumbnail(videoId, input.thumbnailPath);
-
-    const commentPosted = scheduled
-      ? (logger.info('Skipping Facebook first comment — video is scheduled (post manually after it goes live)'), false)
-      : await this.maybePostFirstComment(videoId, input.firstComment);
+    const commentPosted = await this.afterUpload(videoId, input, scheduled);
 
     return {
       platform: 'facebook',
@@ -286,11 +282,7 @@ export class FacebookPublisherService {
       : `https://www.facebook.com/${videoId}`;
     logger.success(`Facebook Reel uploaded (${visibility}) → ${url}`);
 
-    await this.setVideoThumbnail(videoId, input.thumbnailPath);
-
-    const commentPosted = scheduled
-      ? (logger.info('Skipping Facebook first comment — Reel is scheduled (post manually after it goes live)'), false)
-      : await this.maybePostFirstComment(videoId, input.firstComment);
+    const commentPosted = await this.afterUpload(videoId, input, scheduled);
 
     return {
       platform: 'facebook',
@@ -299,6 +291,20 @@ export class FacebookPublisherService {
       url,
       commentPosted,
     };
+  }
+
+  /** Scheduled videos are unpublished, so Graph cannot set a thumbnail or comments yet. */
+  private async afterUpload(
+    videoId: string,
+    input: FacebookUploadInput,
+    scheduled: boolean,
+  ): Promise<boolean> {
+    if (scheduled) {
+      logger.info('Skipping Facebook thumbnail and first comment — video is scheduled');
+      return false;
+    }
+    await this.setVideoThumbnail(videoId, input.thumbnailPath);
+    return this.maybePostFirstComment(videoId, input.firstComment);
   }
 
   private async setVideoThumbnail(videoId: string, thumbnailPath: string | undefined): Promise<void> {

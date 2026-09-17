@@ -213,7 +213,7 @@
       "scheduledDate": "2026-09-14",
       "weekday": "monday",
       "createdAt": "2026-09-13T14:19:54.666Z",
-      "status": "generated",
+      "status": "published",
       "projectId": "004-20260913"
     },
     {
@@ -221,7 +221,7 @@
       "scheduledDate": "2026-09-16",
       "weekday": "wednesday",
       "createdAt": "2026-09-13T14:19:54.666Z",
-      "status": "generated",
+      "status": "published",
       "projectId": "005-20260913"
     },
     {
@@ -229,7 +229,7 @@
       "scheduledDate": "2026-09-18",
       "weekday": "friday",
       "createdAt": "2026-09-13T14:19:54.666Z",
-      "status": "pending",
+      "status": "failed",
       "projectId": "006-20260913"
     }
   ]

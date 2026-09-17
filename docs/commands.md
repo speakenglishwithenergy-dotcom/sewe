@@ -627,8 +627,8 @@ When a schedule is configured, the video is uploaded immediately and held as sch
 Use `--now` on `npm run publish` or `npm run generate -- --publish` to skip scheduling and publish live immediately (respects `YOUTUBE_PUBLISH_PRIVACY` and `FACEBOOK_PUBLISH_LIVE`).
 
 - **YouTube**: uploaded with `privacyStatus: private` + `publishAt`.
-- **Facebook video**: uploaded with `published: false` + `scheduled_publish_time`. First comment must be posted manually after it goes live.
-- **Facebook Reel**: uploaded with `video_state: SCHEDULED` + `scheduled_publish_time`. First comment must be posted manually after it goes live.
+- **Facebook video**: uploaded with `published: false` + `scheduled_publish_time`. Thumbnail and first comment are skipped (Graph cannot operate on unpublished scheduled videos).
+- **Facebook Reel**: uploaded with `video_state: SCHEDULED` + `scheduled_publish_time`. Thumbnail and first comment are skipped.
 
 ### Facebook publish
 
@@ -637,7 +637,7 @@ Use `--now` on `npm run publish` or `npm run generate -- --publish` to skip sche
 | `FACEBOOK_PAGE_ID` | yes | — | Facebook Page ID. |
 | `FACEBOOK_PAGE_ACCESS_TOKEN` | yes | — | Long-lived Page access token. See [docs.md](../docs.md) for setup. |
 | `FACEBOOK_PUBLISH_LIVE` | no | `false` | `true` to publish live; `false` for draft/unpublished. Ignored when `facebookSchedule` is set. |
-| `FACEBOOK_FIRST_COMMENT` | no | `true` | `true` to auto-post the first comment after live publish; `false` to skip (post manually). Ignored when video is scheduled or draft. |
+| `FACEBOOK_FIRST_COMMENT` | no | `true` | `true` to auto-post the first comment after live publish; `false` to skip. Ignored when video is scheduled or draft. |
 
 ### TikTok publish
 
