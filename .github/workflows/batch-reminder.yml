@@ -29,4 +29,4 @@ jobs:
           REMINDER_EMAIL_FROM: ${{ secrets.REMINDER_EMAIL_FROM }}
           REMINDER_TIMEZONE: ${{ secrets.REMINDER_TIMEZONE }}
           REMINDER_CHANNEL_ID: ${{ secrets.REMINDER_CHANNEL_ID }}
-        run: npm run remind
+        run: npm run remind -- --force

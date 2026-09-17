@@ -14,7 +14,7 @@ npm run <script> -- [flags]
 |---------|---------|
 | `npm run generate` | Create or resume a podcast/short video project |
 | `npm run batch` | Weekly batch: AI topics → generate then publish each of 2–3 episodes (supports `--resume`) |
-| `npm run remind` | Send Monday batch reminder email |
+| `npm run remind` | Send batch reminder email (Tue/Thu/Sat/Sun) |
 | `npm run remind:install` | Install macOS launchd job for weekly Monday reminder |
 | `npm run publish` | Upload an existing project to YouTube, Facebook, and/or TikTok |
 | `npm run youtube:auth` | One-time YouTube OAuth setup |
@@ -134,7 +134,7 @@ Past topics live in `channels/<channel-id>/topics.json`, not in project folders.
 
 ## `npm run remind`
 
-Email reminder every **Monday morning** to run the weekly batch.
+Email reminder on **Tue / Thu / Sat / Sun at 20:00** (Asia/Ho_Chi_Minh) to run a batch.
 
 **Entry point:** `src/remind.ts`
 
@@ -153,8 +153,8 @@ Email reminder every **Monday morning** to run the weekly batch.
 | `REMINDER_TIMEZONE` | no | `Asia/Ho_Chi_Minh` |
 | `REMINDER_CHANNEL_ID` | no | `speak-english-with-energy` |
 
-3. Workflow `.github/workflows/batch-reminder.yml` chạy **mỗi thứ 2 lúc 8:00 sáng** (giờ Việt Nam)
-4. Test thủ công: **Actions → Batch reminder → Run workflow**
+3. Workflow `.github/workflows/batch-reminder.yml` chạy **20:00** (giờ Việt Nam) các ngày **Thứ 3, 5, 7, Chủ nhật**
+4. Test thủ công: **Actions → Batch reminder → Run workflow** (workflow luôn gửi vì dùng `--force`)
 
 **Option B — macOS launchd** — chạy local, Mac phải bật lúc 8h sáng.
 
@@ -191,7 +191,7 @@ Uses `launchd` — runs even when Terminal is closed (Mac must be on and awake).
 | Flag | Description |
 |------|-------------|
 | `--dry-run` | Preview email without sending |
-| `--force` | Send even if not Monday or already sent today |
+| `--force` | Send even if not a reminder day (Tue/Thu/Sat/Sun) or already sent today |
 
 Logs: `.sewe/reminder.log`
 

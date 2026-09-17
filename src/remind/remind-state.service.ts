@@ -45,10 +45,13 @@ export function getTodayIso(timezone: string, date = new Date()): string {
   }).format(date);
 }
 
-export function isMondayInTimezone(timezone: string, date = new Date()): boolean {
+/** Matches `.github/workflows/batch-reminder.yml`: Tue, Thu, Sat, Sun. */
+const REMINDER_WEEKDAYS = new Set(['Tue', 'Thu', 'Sat', 'Sun']);
+
+export function isReminderDayInTimezone(timezone: string, date = new Date()): boolean {
   const weekday = new Intl.DateTimeFormat('en-US', {
     timeZone: timezone,
     weekday: 'short',
   }).format(date);
-  return weekday === 'Mon';
+  return REMINDER_WEEKDAYS.has(weekday);
 }

@@ -37,7 +37,7 @@ export async function buildRemindEmailContent(
 
   const text = `Chào bạn,
 
-Đến thứ Hai rồi — đã đến lúc làm video cho tuần này.
+Đến giờ làm video rồi.
 
 Chạy lệnh sau trong thư mục project:
 
@@ -57,7 +57,7 @@ Chúc bạn một tuần sản xuất vui vẻ!
 
   const html = `
 <p>Chào bạn,</p>
-<p><strong>Đến thứ Hai rồi</strong> — đã đến lúc làm video cho tuần này.</p>
+<p><strong>Đến giờ làm video rồi.</strong></p>
 <p>Chạy lệnh sau trong thư mục project:</p>
 <pre style="background:#f4f4f5;padding:12px;border-radius:8px;font-size:14px;">${batchCommand}</pre>
 <p><strong>Gợi ý workflow:</strong></p>
