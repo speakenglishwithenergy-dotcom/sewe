@@ -83,17 +83,21 @@ export function parseApiKeys(...raw: Array<string | undefined>): string[] {
   return keys;
 }
 
+type ChatApiError = {
+  status?: number;
+  code?: string;
+  message?: string;
+  error?: { code?: string | number; message?: string };
+};
+
+const TRANSIENT_STATUSES = new Set([500, 502, 503, 504]);
+export const TRANSIENT_RETRY_ATTEMPTS = 3;
+
 export function isQuotaError(error: unknown): boolean {
-  if (!error || typeof error !== 'object') {
+  const err = asChatApiError(error);
+  if (!err) {
     return false;
   }
-
-  const err = error as {
-    status?: number;
-    code?: string;
-    message?: string;
-    error?: { code?: string | number; message?: string };
-  };
 
   if (err.status === 429 || err.status === 402) {
     return true;
@@ -109,6 +113,66 @@ export function isQuotaError(error: unknown): boolean {
     return true;
   }
   return /quota|rate.?limit|resource.?exhausted|too many requests/i.test(message);
+}
+
+/** Overload / gateway errors that should be retried, then failed over — not sticky-skipped. */
+export function isTransientError(error: unknown): boolean {
+  const err = asChatApiError(error);
+  if (!err) {
+    return false;
+  }
+
+  if (err.status !== undefined && TRANSIENT_STATUSES.has(err.status)) {
+    return true;
+  }
+
+  const code = String(err.error?.code ?? err.code ?? '');
+  if (/UNAVAILABLE|DEADLINE_EXCEEDED|overloaded/i.test(code)) {
+    return true;
+  }
+
+  const message = `${err.error?.message ?? ''} ${err.message ?? ''}`;
+  if (
+    /\b(500|502|503|504)\b/.test(message) &&
+    /status code|unavailable|overloaded|no body/i.test(message)
+  ) {
+    return true;
+  }
+  return /service unavailable|temporarily unavailable|overloaded|try again later/i.test(message);
+}
+
+export function transientRetryDelayMs(attempt: number): number {
+  return Math.min(1000 * 2 ** (attempt - 1), 8_000);
+}
+
+export async function withTransientRetries<T>(
+  call: () => Promise<T>,
+  options?: {
+    attempts?: number;
+    sleep?: (ms: number) => Promise<void>;
+    onRetry?: (attempt: number, delayMs: number, error: unknown) => void;
+  },
+): Promise<T> {
+  const attempts = options?.attempts ?? TRANSIENT_RETRY_ATTEMPTS;
+  const sleep = options?.sleep ?? defaultSleep;
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await call();
+    } catch (error) {
+      lastError = error;
+      if (isTransientError(error) && attempt < attempts) {
+        const delayMs = transientRetryDelayMs(attempt);
+        options?.onRetry?.(attempt, delayMs, error);
+        await sleep(delayMs);
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw lastError;
 }
 
 export function resolveChatBackends(env: Env = process.env): ChatBackendConfig[] {
@@ -145,7 +209,7 @@ export async function callWithQuotaFallback<
   backends: TBackend[],
   call: (backend: TBackend) => Promise<TResult>,
   options?: {
-    onFallback?: (from: string, to: string) => void;
+    onFallback?: (from: string, to: string, reason: 'quota' | 'transient') => void;
     /** Backend ids already known to be over quota — skipped for this and future calls. */
     skipped?: Set<string>;
   },
@@ -169,9 +233,12 @@ export async function callWithQuotaFallback<
       if (isQuotaError(error)) {
         skipped?.add(backend.id);
         if (next) {
-          options?.onFallback?.(backend.id, next.id);
+          options?.onFallback?.(backend.id, next.id, 'quota');
           continue;
         }
+      } else if (isTransientError(error) && next) {
+        options?.onFallback?.(backend.id, next.id, 'transient');
+        continue;
       }
       throw toError(error);
     }
@@ -204,9 +271,20 @@ function toError(error: unknown): Error {
   return new Error(extractMessage(error));
 }
 
+function asChatApiError(error: unknown): ChatApiError | undefined {
+  if (!error || typeof error !== 'object') {
+    return undefined;
+  }
+  return error as ChatApiError;
+}
+
+function defaultSleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function extractMessage(error: unknown): string {
-  if (error && typeof error === 'object') {
-    const err = error as { message?: string; error?: { message?: string } };
+  const err = asChatApiError(error);
+  if (err) {
     return err.error?.message ?? err.message ?? String(error);
   }
   return String(error);

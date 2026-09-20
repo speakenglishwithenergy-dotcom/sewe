@@ -3,8 +3,10 @@ import { describe, it } from 'node:test';
 import {
   callWithQuotaFallback,
   isQuotaError,
+  isTransientError,
   parseApiKeys,
   resolveChatBackends,
+  withTransientRetries,
 } from './llm-providers';
 
 describe('isQuotaError', () => {
@@ -54,6 +56,101 @@ describe('isQuotaError', () => {
 
   it('does not treat auth errors as quota', () => {
     assert.equal(isQuotaError({ status: 401, message: 'Incorrect API key' }), false);
+  });
+
+  it('does not treat Gemini 503 as quota', () => {
+    assert.equal(isQuotaError({ status: 503, message: '503 status code (no body)' }), false);
+  });
+});
+
+describe('isTransientError', () => {
+  it('treats HTTP 503 as transient', () => {
+    assert.equal(isTransientError({ status: 503, message: '503 status code (no body)' }), true);
+  });
+
+  it('treats HTTP 500 / 502 / 504 as transient', () => {
+    assert.equal(isTransientError({ status: 500, message: 'internal' }), true);
+    assert.equal(isTransientError({ status: 502, message: 'bad gateway' }), true);
+    assert.equal(isTransientError({ status: 504, message: 'timeout' }), true);
+  });
+
+  it('treats wrapped gemini 503 messages as transient', () => {
+    assert.equal(
+      isTransientError(new Error('gemini 503 503 status code (no body)')),
+      true,
+    );
+  });
+
+  it('does not treat 400 JSON validation as transient', () => {
+    assert.equal(
+      isTransientError({ status: 400, error: { code: 'json_validate_failed' } }),
+      false,
+    );
+  });
+
+  it('does not treat quota 429 as transient', () => {
+    assert.equal(isTransientError({ status: 429, message: 'Too Many Requests' }), false);
+  });
+});
+
+describe('withTransientRetries', () => {
+  it('retries a 503 then returns the success', async () => {
+    const delays: number[] = [];
+    let calls = 0;
+    const result = await withTransientRetries(
+      async () => {
+        calls += 1;
+        if (calls === 1) {
+          throw { status: 503, message: '503 status code (no body)' };
+        }
+        return 'ok';
+      },
+      {
+        sleep: async (ms) => {
+          delays.push(ms);
+        },
+      },
+    );
+
+    assert.equal(result, 'ok');
+    assert.equal(calls, 2);
+    assert.deepEqual(delays, [1000]);
+  });
+
+  it('throws after exhausting 503 retries', async () => {
+    let calls = 0;
+    await assert.rejects(
+      () =>
+        withTransientRetries(
+          async () => {
+            calls += 1;
+            throw { status: 503, message: '503 status code (no body)' };
+          },
+          { sleep: async () => undefined },
+        ),
+      (error: unknown) => {
+        assert.equal((error as { status?: number }).status, 503);
+        return true;
+      },
+    );
+    assert.equal(calls, 3);
+  });
+
+  it('does not retry a 400', async () => {
+    let calls = 0;
+    await assert.rejects(
+      () =>
+        withTransientRetries(async () => {
+          calls += 1;
+          throw { status: 400, message: 'Failed to validate JSON' };
+        }),
+      (error: unknown) => {
+        assert.equal((error as { status?: number }).status, 400);
+        assert.equal((error as { message?: string }).message, 'Failed to validate JSON');
+        return true;
+      },
+    );
+    assert.equal(calls, 1);
   });
 });
 
@@ -275,6 +372,41 @@ describe('callWithQuotaFallback', () => {
         ),
       /quota exceeded/,
     );
+  });
+
+  it('falls back to Groq on Gemini 503 without skipping Gemini for later calls', async () => {
+    const backends = [
+      { id: 'gemini#1', name: 'gemini' as const },
+      { id: 'groq#1', name: 'groq' as const },
+    ];
+    const skipped = new Set<string>();
+    const calls: string[] = [];
+    const reasons: string[] = [];
+    let geminiCalls = 0;
+
+    const call = async (backend: { id: string }) => {
+      calls.push(backend.id);
+      if (backend.id === 'gemini#1') {
+        geminiCalls += 1;
+        if (geminiCalls === 1) {
+          throw { status: 503, message: '503 status code (no body)' };
+        }
+        return 'gemini-ok';
+      }
+      return 'groq-ok';
+    };
+
+    assert.equal(
+      await callWithQuotaFallback(backends, call, {
+        skipped,
+        onFallback: (_from, _to, reason) => reasons.push(reason),
+      }),
+      'groq-ok',
+    );
+    assert.equal(await callWithQuotaFallback(backends, call, { skipped }), 'gemini-ok');
+    assert.deepEqual(calls, ['gemini#1', 'groq#1', 'gemini#1']);
+    assert.deepEqual([...skipped], []);
+    assert.deepEqual(reasons, ['transient']);
   });
 
   it('remembers quota skips so the next call starts at the next key, not the exhausted one', async () => {

@@ -9,7 +9,10 @@ import {
 import {
   callWithQuotaFallback,
   isQuotaError,
+  isTransientError,
   resolveChatBackends,
+  TRANSIENT_RETRY_ATTEMPTS,
+  withTransientRetries,
   type ChatBackendConfig,
 } from './llm-providers';
 
@@ -54,7 +57,7 @@ export class OpenAIService {
       (backend) => this.completeJSON(backend, userPrompt, systemPrompt, validator, options),
       {
         skipped: this.quotaSkipped,
-        onFallback: (from, to) => logger.warn(`${from} quota exceeded, falling back to ${to}`),
+        onFallback: (from, to, reason) => logger.warn(fallbackMessage(from, to, reason)),
       },
     );
   }
@@ -70,7 +73,7 @@ export class OpenAIService {
       (backend) => this.completeText(backend, userPrompt, systemPrompt, options),
       {
         skipped: this.quotaSkipped,
-        onFallback: (from, to) => logger.warn(`${from} quota exceeded, falling back to ${to}`),
+        onFallback: (from, to, reason) => logger.warn(fallbackMessage(from, to, reason)),
       },
     );
   }
@@ -119,17 +122,26 @@ export class OpenAIService {
     let lastError: unknown;
     for (let attempt = 1; attempt <= JSON_VALIDATE_ATTEMPTS; attempt++) {
       try {
-        response = await backend.client.chat.completions.create({
-          model: backend.model,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-          ],
-          response_format: { type: 'json_object' },
-          temperature: options?.temperature ?? 0.85,
-          max_tokens: maxTokens,
-          ...jsonExtras,
-        });
+        response = await withTransientRetries(
+          () =>
+            backend.client.chat.completions.create({
+              model: backend.model,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt },
+              ],
+              response_format: { type: 'json_object' },
+              temperature: options?.temperature ?? 0.85,
+              max_tokens: maxTokens,
+              ...jsonExtras,
+            }),
+          {
+            onRetry: (retry, delayMs, error) =>
+              logger.warn(
+                `${backend.id} ${formatChatCompletionError(backend.name, error)} — retry ${retry}/${TRANSIENT_RETRY_ATTEMPTS} in ${delayMs / 1000}s`,
+              ),
+          },
+        );
         lastError = undefined;
         break;
       } catch (error) {
@@ -174,15 +186,24 @@ export class OpenAIService {
 
     let response;
     try {
-      response = await backend.client.chat.completions.create({
-        model: backend.model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        temperature: options?.temperature ?? 0.7,
-        max_tokens: maxTokens,
-      });
+      response = await withTransientRetries(
+        () =>
+          backend.client.chat.completions.create({
+            model: backend.model,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt },
+            ],
+            temperature: options?.temperature ?? 0.7,
+            max_tokens: maxTokens,
+          }),
+        {
+          onRetry: (retry, delayMs, error) =>
+            logger.warn(
+              `${backend.id} ${formatChatCompletionError(backend.name, error)} — retry ${retry}/${TRANSIENT_RETRY_ATTEMPTS} in ${delayMs / 1000}s`,
+            ),
+        },
+      );
     } catch (error) {
       throw wrapChatError(backend.name, error);
     }
@@ -197,8 +218,14 @@ export class OpenAIService {
 }
 
 function wrapChatError(provider: ChatBackend['name'], error: unknown): unknown {
-  if (isQuotaError(error)) {
+  if (isQuotaError(error) || isTransientError(error)) {
     return error;
   }
   return new Error(formatChatCompletionError(provider, error));
+}
+
+function fallbackMessage(from: string, to: string, reason: 'quota' | 'transient'): string {
+  return reason === 'quota'
+    ? `${from} quota exceeded, falling back to ${to}`
+    : `${from} unavailable, falling back to ${to}`;
 }

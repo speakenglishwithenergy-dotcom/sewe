@@ -579,7 +579,7 @@ Variables read by the CLI and pipeline (set in `.env`):
 | `GEMINI_API_KEY` | generate, shadowing | Gemini API key(s) for LLM. Comma/semicolon-separated list supported; exhausted keys are skipped. |
 | `GEMINI_API_KEYS` | generate, shadowing | Extra Gemini keys (merged with `GEMINI_API_KEY`). |
 | `GEMINI_MODEL` | generate, shadowing | Gemini model (default: `gemini-3.6-flash`). |
-| `GROQ_API_KEY` | generate, shadowing | Groq API key(s). Used after all Gemini keys hit quota. Comma/semicolon-separated list supported. |
+| `GROQ_API_KEY` | generate, shadowing | Groq API key(s). Used after all Gemini keys hit quota, or if Gemini returns a transient 5xx (503). Comma/semicolon-separated list supported. |
 | `GROQ_API_KEYS` | generate, shadowing | Extra Groq keys (merged with `GROQ_API_KEY`). |
 | `GROQ_MODEL` | generate, shadowing | Groq model (default: `qwen/qwen3.6-27b`). |
 | `CEREBRAS_API_KEY` | generate, shadowing | Cerebras API key(s). Used after Gemini and Groq keys hit quota. |
