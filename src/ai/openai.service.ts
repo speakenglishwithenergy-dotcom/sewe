@@ -10,6 +10,7 @@ import {
   callWithQuotaFallback,
   isQuotaError,
   isTransientError,
+  isModelAccessError,
   resolveChatBackends,
   TRANSIENT_RETRY_ATTEMPTS,
   withTransientRetries,
@@ -218,14 +219,22 @@ export class OpenAIService {
 }
 
 function wrapChatError(provider: ChatBackend['name'], error: unknown): unknown {
-  if (isQuotaError(error) || isTransientError(error)) {
+  if (isQuotaError(error) || isTransientError(error) || isModelAccessError(error)) {
     return error;
   }
   return new Error(formatChatCompletionError(provider, error));
 }
 
-function fallbackMessage(from: string, to: string, reason: 'quota' | 'transient'): string {
-  return reason === 'quota'
-    ? `${from} quota exceeded, falling back to ${to}`
-    : `${from} unavailable, falling back to ${to}`;
+function fallbackMessage(
+  from: string,
+  to: string,
+  reason: 'quota' | 'transient' | 'model',
+): string {
+  if (reason === 'quota') {
+    return `${from} quota exceeded, falling back to ${to}`;
+  }
+  if (reason === 'model') {
+    return `${from} model unavailable, falling back to ${to}`;
+  }
+  return `${from} unavailable, falling back to ${to}`;
 }

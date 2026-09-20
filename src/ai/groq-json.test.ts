@@ -9,7 +9,7 @@ import {
 
 describe('groqJsonModeExtras', () => {
   it('disables Qwen reasoning so JSON mode is not truncated by thinking tokens', () => {
-    assert.deepEqual(groqJsonModeExtras('qwen/qwen3.6-27b'), {
+    assert.deepEqual(groqJsonModeExtras('qwen/qwen3.8-27b'), {
       reasoning_effort: 'none',
       reasoning_format: 'parsed',
     });

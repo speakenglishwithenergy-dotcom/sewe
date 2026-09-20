@@ -15,7 +15,7 @@ type GroqApiError = {
 export function groqJsonModeExtras(model: string): Record<string, unknown> {
   const id = model.toLowerCase();
   if (id.includes('qwen')) {
-    // Qwen 3.6 reasons by default. Those tokens share max_tokens with the
+    // Qwen 3.x reasons by default. Those tokens share max_tokens with the
     // JSON body, so Groq JSON mode often truncates and returns 400 json_validate_failed.
     return {
       reasoning_effort: 'none',

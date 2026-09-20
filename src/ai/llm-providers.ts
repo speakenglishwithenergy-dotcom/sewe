@@ -36,7 +36,7 @@ const PROVIDER_SPECS: Record<ChatProvider, ProviderSpec> = {
     envKey: 'GROQ_API_KEY',
     envKeysPlural: 'GROQ_API_KEYS',
     modelEnv: 'GROQ_MODEL',
-    defaultModel: 'qwen/qwen3.6-27b',
+    defaultModel: 'qwen/qwen3.8-27b',
     baseURL: 'https://api.groq.com/openai/v1',
     defaultMaxTokens: 4_096,
   },
@@ -141,6 +141,35 @@ export function isTransientError(error: unknown): boolean {
   return /service unavailable|temporarily unavailable|overloaded|try again later/i.test(message);
 }
 
+/** Model removed or gated — skip this provider's remaining keys, then fail over. */
+export function isModelAccessError(error: unknown): boolean {
+  const err = asChatApiError(error);
+  if (!err) {
+    return false;
+  }
+
+  const code = String(err.error?.code ?? err.code ?? '');
+  if (/model_not_found/i.test(code)) {
+    return true;
+  }
+
+  const message = `${err.error?.message ?? ''} ${err.message ?? ''}`;
+  return /does not exist or you do not have access|model_not_found/i.test(message);
+}
+
+function fallbackReason(error: unknown): 'quota' | 'transient' | 'model' | undefined {
+  if (isQuotaError(error)) {
+    return 'quota';
+  }
+  if (isModelAccessError(error)) {
+    return 'model';
+  }
+  if (isTransientError(error)) {
+    return 'transient';
+  }
+  return undefined;
+}
+
 export function transientRetryDelayMs(attempt: number): number {
   return Math.min(1000 * 2 ** (attempt - 1), 8_000);
 }
@@ -209,7 +238,7 @@ export async function callWithQuotaFallback<
   backends: TBackend[],
   call: (backend: TBackend) => Promise<TResult>,
   options?: {
-    onFallback?: (from: string, to: string, reason: 'quota' | 'transient') => void;
+    onFallback?: (from: string, to: string, reason: 'quota' | 'transient' | 'model') => void;
     /** Backend ids already known to be over quota — skipped for this and future calls. */
     skipped?: Set<string>;
   },
@@ -225,22 +254,43 @@ export async function callWithQuotaFallback<
   let lastError: unknown;
   for (let i = 0; i < chain.length; i++) {
     const backend = chain[i];
-    const next = chain[i + 1];
     try {
       return await call(backend);
     } catch (error) {
       lastError = error;
-      if (isQuotaError(error)) {
-        skipped?.add(backend.id);
-        if (next) {
-          options?.onFallback?.(backend.id, next.id, 'quota');
-          continue;
-        }
-      } else if (isTransientError(error) && next) {
-        options?.onFallback?.(backend.id, next.id, 'transient');
-        continue;
+      const reason = fallbackReason(error);
+      if (!reason) {
+        throw toError(error);
       }
-      throw toError(error);
+
+      if (reason === 'quota') {
+        skipped?.add(backend.id);
+      } else if (reason === 'model') {
+        for (const b of backends) {
+          if (b.name === backend.name) {
+            skipped?.add(b.id);
+          }
+        }
+      }
+
+      const nextIndex = chain.findIndex((candidate, index) => {
+        if (index <= i) {
+          return false;
+        }
+        if (skipped?.has(candidate.id)) {
+          return false;
+        }
+        if (reason === 'model' && candidate.name === backend.name) {
+          return false;
+        }
+        return true;
+      });
+      if (nextIndex === -1) {
+        throw toError(error);
+      }
+
+      options?.onFallback?.(backend.id, chain[nextIndex].id, reason);
+      i = nextIndex - 1;
     }
   }
 

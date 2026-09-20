@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   callWithQuotaFallback,
+  isModelAccessError,
   isQuotaError,
   isTransientError,
   parseApiKeys,
@@ -90,6 +91,36 @@ describe('isTransientError', () => {
 
   it('does not treat quota 429 as transient', () => {
     assert.equal(isTransientError({ status: 429, message: 'Too Many Requests' }), false);
+  });
+});
+
+describe('isModelAccessError', () => {
+  it('treats Groq model_not_found as a model access error', () => {
+    assert.equal(
+      isModelAccessError({
+        status: 404,
+        error: {
+          message: 'The model `qwen/qwen3.6-27b` does not exist or you do not have access to it.',
+          code: 'model_not_found',
+        },
+      }),
+      true,
+    );
+  });
+
+  it('treats wrapped groq 404 messages as a model access error', () => {
+    assert.equal(
+      isModelAccessError(
+        new Error(
+          'groq 404 The model `qwen/qwen3.6-27b` does not exist or you do not have access to it.',
+        ),
+      ),
+      true,
+    );
+  });
+
+  it('does not treat a generic 404 page as a model access error', () => {
+    assert.equal(isModelAccessError({ status: 404, message: 'Not Found' }), false);
   });
 });
 
@@ -252,7 +283,7 @@ describe('resolveChatBackends', () => {
   it('uses default models when model env vars are unset', () => {
     const backends = resolveChatBackends(allKeys);
     assert.equal(backends[0].model, 'gemini-3.6-flash');
-    assert.equal(backends[1].model, 'qwen/qwen3.6-27b');
+    assert.equal(backends[1].model, 'qwen/qwen3.8-27b');
     assert.equal(backends[2].model, 'gpt-oss-120b');
   });
 });
@@ -372,6 +403,43 @@ describe('callWithQuotaFallback', () => {
         ),
       /quota exceeded/,
     );
+  });
+
+  it('skips remaining Groq keys and falls back to Cerebras on model 404', async () => {
+    const backends = [
+      { id: 'groq#1', name: 'groq' as const },
+      { id: 'groq#2', name: 'groq' as const },
+      { id: 'cerebras#1', name: 'cerebras' as const },
+    ];
+    const skipped = new Set<string>();
+    const calls: string[] = [];
+    const reasons: string[] = [];
+
+    const result = await callWithQuotaFallback(
+      backends,
+      async (backend) => {
+        calls.push(backend.id);
+        if (backend.name === 'groq') {
+          throw {
+            status: 404,
+            error: {
+              code: 'model_not_found',
+              message: 'The model `qwen/qwen3.6-27b` does not exist or you do not have access to it.',
+            },
+          };
+        }
+        return 'cerebras-ok';
+      },
+      {
+        skipped,
+        onFallback: (_from, _to, reason) => reasons.push(reason),
+      },
+    );
+
+    assert.equal(result, 'cerebras-ok');
+    assert.deepEqual(calls, ['groq#1', 'cerebras#1']);
+    assert.deepEqual([...skipped], ['groq#1', 'groq#2']);
+    assert.deepEqual(reasons, ['model']);
   });
 
   it('falls back to Groq on Gemini 503 without skipping Gemini for later calls', async () => {
