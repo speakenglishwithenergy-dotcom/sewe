@@ -6,8 +6,16 @@ export interface ImageProviderConfig {
   provider: ImageProvider;
   apiKey: string;
   model: string;
-  /** Cloudflare Workers AI account id. */
+  /** Cloudflare Workers AI account id (first account when multiple are configured). */
   accountId?: string;
+}
+
+/** One Cloudflare Workers AI account (account id + API token pair). */
+export interface CloudflareAccount {
+  /** Stable id for sticky quota skips, e.g. `cloudflare#1`. */
+  id: string;
+  accountId: string;
+  apiKey: string;
 }
 
 type Env = Record<string, string | undefined>;
@@ -104,9 +112,8 @@ function buildConfig(provider: ImageProvider, env: Env, requireKey: boolean): Im
 }
 
 function buildCloudflareConfig(env: Env, requireKey: boolean): ImageProviderConfig | null {
-  const accountId = env.CLOUDFLARE_ACCOUNT_ID?.trim();
-  const apiKey = env.CLOUDFLARE_API_TOKEN?.trim();
-  if (!accountId || !apiKey) {
+  const accounts = resolveCloudflareAccounts(env);
+  if (accounts.length === 0) {
     if (requireKey) {
       throw new Error(
         'CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN are required when IMAGE_PROVIDER=cloudflare',
@@ -114,12 +121,53 @@ function buildCloudflareConfig(env: Env, requireKey: boolean): ImageProviderConf
     }
     return null;
   }
+  const first = accounts[0]!;
   return {
     provider: 'cloudflare',
-    apiKey,
-    accountId,
+    apiKey: first.apiKey,
+    accountId: first.accountId,
     model: env.CLOUDFLARE_IMAGE_MODEL?.trim() || DEFAULT_CLOUDFLARE_IMAGE_MODEL,
   };
+}
+
+/**
+ * Pair Cloudflare account IDs with API tokens (by index).
+ * Supports singular + plural env vars (comma / semicolon / newline separated):
+ *   CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_ACCOUNT_IDS
+ *   CLOUDFLARE_API_TOKEN  / CLOUDFLARE_API_TOKENS
+ * Order is preserved (no dedupe) so index pairing stays aligned.
+ * Exhausted accounts are skipped at call time by ImageService.
+ */
+export function resolveCloudflareAccounts(env: Env = process.env): CloudflareAccount[] {
+  const accountIds = parseListPreserveOrder(env.CLOUDFLARE_ACCOUNT_ID, env.CLOUDFLARE_ACCOUNT_IDS);
+  const tokens = parseListPreserveOrder(env.CLOUDFLARE_API_TOKEN, env.CLOUDFLARE_API_TOKENS);
+  const count = Math.min(accountIds.length, tokens.length);
+  const accounts: CloudflareAccount[] = [];
+  for (let i = 0; i < count; i++) {
+    accounts.push({
+      id: `cloudflare#${i + 1}`,
+      accountId: accountIds[i]!,
+      apiKey: tokens[i]!,
+    });
+  }
+  return accounts;
+}
+
+/** Split env lists without deduping — index pairing must stay aligned. */
+function parseListPreserveOrder(...raw: Array<string | undefined>): string[] {
+  const values: string[] = [];
+  for (const value of raw) {
+    if (!value) continue;
+    for (const part of value.split(/[,;\n\r]+/)) {
+      const trimmed = part.trim();
+      if (trimmed) values.push(trimmed);
+    }
+  }
+  return values;
+}
+
+export function cloudflareImageModel(env: Env = process.env): string {
+  return env.CLOUDFLARE_IMAGE_MODEL?.trim() || DEFAULT_CLOUDFLARE_IMAGE_MODEL;
 }
 
 function geminiApiKeys(env: Env): string[] {

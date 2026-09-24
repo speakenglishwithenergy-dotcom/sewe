@@ -112,6 +112,10 @@ export function isQuotaError(error: unknown): boolean {
   if (/payment required|visit your billing/i.test(message)) {
     return true;
   }
+  // Cloudflare Workers AI free tier: "used up your daily free allocation of … neurons"
+  if (/daily free allocation|used up your.*neurons|\bneurons\b/i.test(message)) {
+    return true;
+  }
   return /quota|rate.?limit|resource.?exhausted|too many requests/i.test(message);
 }
 

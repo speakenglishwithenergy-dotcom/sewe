@@ -15,6 +15,17 @@ describe('isQuotaError', () => {
     assert.equal(isQuotaError({ status: 429, message: 'Too Many Requests' }), true);
   });
 
+  it('treats Cloudflare daily neuron allocation as quota', () => {
+    assert.equal(
+      isQuotaError({
+        status: 400,
+        message:
+          'AiError: you have used up your daily free allocation of 10,000 neurons, please upgrade',
+      }),
+      true,
+    );
+  });
+
   it('treats Gemini RESOURCE_EXHAUSTED as quota', () => {
     assert.equal(
       isQuotaError({

@@ -2,7 +2,15 @@ import OpenAI from 'openai';
 import fs from 'fs/promises';
 import path from 'path';
 import { Blob } from 'buffer';
-import { resolveImageProvider, type ImageProvider, type ImageProviderConfig } from './image-providers';
+import {
+  cloudflareImageModel,
+  resolveCloudflareAccounts,
+  resolveImageProvider,
+  type CloudflareAccount,
+  type ImageProvider,
+  type ImageProviderConfig,
+} from './image-providers';
+import { isQuotaError } from './llm-providers';
 import { logger } from '../utils/logger';
 
 export type ImageAspectRatio = '16:9' | '9:16' | '1:1' | '3:2' | '2:3';
@@ -24,11 +32,14 @@ type GeminiInlinePart = {
  * Thumbnails use text→image (no reference); channel logo is composited afterward.
  * No cross-provider fallback — set IMAGE_PROVIDER to choose explicitly.
  * Config resolves lazily so manual thumbnail mode can skip API keys.
+ * Cloudflare: multiple ACCOUNT_ID/TOKEN pairs rotate on daily neuron quota exhaustion.
  */
 export class ImageService {
   private resolved: ImageProviderConfig | null = null;
   private openaiClient: OpenAI | null = null;
   private readonly env: Record<string, string | undefined>;
+  /** Cloudflare account ids that hit daily free allocation — skipped for rest of process. */
+  private readonly cloudflareQuotaSkipped = new Set<string>();
 
   constructor(env: Record<string, string | undefined> = process.env) {
     this.env = env;
@@ -226,19 +237,54 @@ export class ImageService {
     referenceImages: Array<string | Buffer>,
     options?: ImageEditOptions,
   ): Promise<Buffer> {
-    const accountId = this.config.accountId;
-    if (!accountId) {
+    const accounts = resolveCloudflareAccounts(this.env);
+    if (accounts.length === 0) {
       throw new Error('CLOUDFLARE_ACCOUNT_ID is required for Cloudflare image generation');
     }
 
     const aspectRatio =
       options?.aspectRatio ?? aspectRatioFromSize(options?.size) ?? '16:9';
     const { width, height } = dimensionsForAspect(aspectRatio);
+    const model = cloudflareImageModel(this.env);
 
-    logger.info(
-      `Calling ${this.config.model} (cloudflare, ${width}x${height}) for image generation...`,
-    );
+    const usable = accounts.filter((a) => !this.cloudflareQuotaSkipped.has(a.id));
+    const queue = usable.length > 0 ? usable : accounts; // if all skipped, retry all once
+    if (usable.length === 0) {
+      this.cloudflareQuotaSkipped.clear();
+    }
 
+    let lastError: Error | undefined;
+    for (let i = 0; i < queue.length; i++) {
+      const account = queue[i]!;
+      try {
+        logger.info(
+          `Calling ${model} (cloudflare ${account.id}, ${width}x${height}) for image generation...`,
+        );
+        const form = await this.buildCloudflareForm(prompt, referenceImages, width, height);
+        return await this.runCloudflareRequest(account, model, form);
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        if (isQuotaError(error) && i < queue.length - 1) {
+          this.cloudflareQuotaSkipped.add(account.id);
+          const next = queue[i + 1]!;
+          logger.warn(
+            `${account.id} daily allocation exhausted, falling back to ${next.id}`,
+          );
+          continue;
+        }
+        throw lastError;
+      }
+    }
+
+    throw lastError ?? new Error('Cloudflare image generation failed');
+  }
+
+  private async buildCloudflareForm(
+    prompt: string,
+    referenceImages: Array<string | Buffer>,
+    width: number,
+    height: number,
+  ): Promise<FormData> {
     const form = new FormData();
     form.append('prompt', prompt);
     form.append('width', String(width));
@@ -254,11 +300,18 @@ export class ImageService {
         `reference-${i + 1}.png`,
       );
     }
+    return form;
+  }
 
-    const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${this.config.model}`;
+  private async runCloudflareRequest(
+    account: CloudflareAccount,
+    model: string,
+    form: FormData,
+  ): Promise<Buffer> {
+    const url = `https://api.cloudflare.com/client/v4/accounts/${account.accountId}/ai/run/${model}`;
     const response = await fetch(url, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${this.config.apiKey}` },
+      headers: { Authorization: `Bearer ${account.apiKey}` },
       body: form,
     });
 

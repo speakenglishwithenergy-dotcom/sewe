@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { resolveImageProvider } from './image-providers';
+import { resolveCloudflareAccounts, resolveImageProvider } from './image-providers';
 
 describe('resolveImageProvider', () => {
   it('defaults to Gemini when GEMINI_API_KEY is set and IMAGE_PROVIDER is unset', () => {
@@ -67,6 +67,16 @@ describe('resolveImageProvider', () => {
     assert.equal(config.model, '@cf/black-forest-labs/flux-2-dev');
   });
 
+  it('uses the first Cloudflare account when multiple are configured', () => {
+    const config = resolveImageProvider({
+      IMAGE_PROVIDER: 'cloudflare',
+      CLOUDFLARE_ACCOUNT_ID: 'acct-a,acct-b',
+      CLOUDFLARE_API_TOKEN: 'tok-a,tok-b',
+    });
+    assert.equal(config.accountId, 'acct-a');
+    assert.equal(config.apiKey, 'tok-a');
+  });
+
   it('throws when IMAGE_PROVIDER=cloudflare but credentials are missing', () => {
     assert.throws(
       () => resolveImageProvider({ IMAGE_PROVIDER: 'cloudflare', GEMINI_API_KEY: 'gem-key' }),
@@ -101,5 +111,55 @@ describe('resolveImageProvider', () => {
 
   it('throws when no image keys are configured', () => {
     assert.throws(() => resolveImageProvider({}), /No image API key/);
+  });
+});
+
+describe('resolveCloudflareAccounts', () => {
+  it('pairs account IDs with tokens by index', () => {
+    const accounts = resolveCloudflareAccounts({
+      CLOUDFLARE_ACCOUNT_ID: 'acct-a, acct-b',
+      CLOUDFLARE_API_TOKEN: 'tok-a;tok-b',
+    });
+    assert.deepEqual(accounts, [
+      { id: 'cloudflare#1', accountId: 'acct-a', apiKey: 'tok-a' },
+      { id: 'cloudflare#2', accountId: 'acct-b', apiKey: 'tok-b' },
+    ]);
+  });
+
+  it('merges plural env vars with singular', () => {
+    const accounts = resolveCloudflareAccounts({
+      CLOUDFLARE_ACCOUNT_ID: 'acct-a',
+      CLOUDFLARE_ACCOUNT_IDS: 'acct-b',
+      CLOUDFLARE_API_TOKEN: 'tok-a',
+      CLOUDFLARE_API_TOKENS: 'tok-b',
+    });
+    assert.equal(accounts.length, 2);
+    assert.equal(accounts[0]?.accountId, 'acct-a');
+    assert.equal(accounts[1]?.accountId, 'acct-b');
+  });
+
+  it('pairs only up to the shorter list length', () => {
+    const accounts = resolveCloudflareAccounts({
+      CLOUDFLARE_ACCOUNT_ID: 'acct-a,acct-b,acct-c',
+      CLOUDFLARE_API_TOKEN: 'tok-a,tok-b',
+    });
+    assert.equal(accounts.length, 2);
+    assert.equal(accounts[1]?.accountId, 'acct-b');
+  });
+
+  it('keeps duplicate account IDs so token pairing stays aligned', () => {
+    const accounts = resolveCloudflareAccounts({
+      CLOUDFLARE_ACCOUNT_ID: 'same-acct,same-acct',
+      CLOUDFLARE_API_TOKEN: 'tok-a,tok-b',
+    });
+    assert.equal(accounts.length, 2);
+    assert.equal(accounts[0]?.accountId, 'same-acct');
+    assert.equal(accounts[1]?.accountId, 'same-acct');
+    assert.equal(accounts[0]?.apiKey, 'tok-a');
+    assert.equal(accounts[1]?.apiKey, 'tok-b');
+  });
+
+  it('returns empty when credentials are missing', () => {
+    assert.deepEqual(resolveCloudflareAccounts({}), []);
   });
 });
