@@ -323,6 +323,14 @@
       "weekday": "wednesday",
       "createdAt": "2026-09-20T09:23:27.904Z",
       "status": "published"
+    },
+    {
+      "topic": "Small Talk at the Office: 5 Safe Questions to Break the Ice",
+      "scheduledDate": "2026-09-25",
+      "weekday": "friday",
+      "createdAt": "2026-09-24T09:29:49.754Z",
+      "status": "generating",
+      "projectId": "001-20260924"
     }
   ]
 }
