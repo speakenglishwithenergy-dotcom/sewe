@@ -307,6 +307,13 @@ async function createBatchFolders(
     const item = items[index];
     let projectId = item.projectId;
 
+    if (projectId && !(await projectService.exists(projectId, item.channelId))) {
+      logger.warn(
+        `Project folder missing for ${projectId} — creating a new folder (common on CI)`,
+      );
+      projectId = undefined;
+    }
+
     if (!projectId) {
       const project = await projectService.create(item.topic, item.channelId);
       projectId = project.id;
@@ -663,7 +670,12 @@ async function main(): Promise<void> {
   const shortTime = channelCtx.publish.youtubeSchedule?.shortTime ?? '17:30';
 
   const registry = await topicRegistry.migrateFromProjects(args.channelId);
-  const incompleteBatch = topicRegistry.findLatestIncompleteBatch(registry);
+  // --yes (CI): only auto-resume in-progress batches, not stale `failed` rows
+  // (those often point at local-only output/ folders missing on GitHub Actions).
+  // Explicit --resume still retries failed episodes.
+  const incompleteBatch = topicRegistry.findLatestIncompleteBatch(registry, {
+    includeFailed: args.resume || !args.yes,
+  });
 
   let shouldResume = args.resume;
   if (args.resume) {
@@ -673,10 +685,20 @@ async function main(): Promise<void> {
     }
   } else if (incompleteBatch) {
     if (args.yes) {
-      logger.info('Incomplete batch found — auto-resuming (--yes)');
+      logger.info('Incomplete in-progress batch found — auto-resuming (--yes)');
       shouldResume = true;
     } else {
       shouldResume = await askResumeBatchInteractive(incompleteBatch);
+    }
+  } else if (args.yes) {
+    const failedOnly = topicRegistry.findLatestIncompleteBatch(registry, {
+      includeFailed: true,
+    });
+    if (failedOnly?.some((r) => r.status === 'failed')) {
+      logger.info(
+        'Skipping stale failed batch in topics.json — starting a new episode (--yes). '
+        + 'Use --resume to retry the failed one.',
+      );
     }
   }
 

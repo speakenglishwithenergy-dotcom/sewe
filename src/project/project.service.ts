@@ -71,6 +71,10 @@ export class ProjectService {
     return path.join(channelProjectsDir(project.channelId), project.id);
   }
 
+  async exists(id: string, channelId: string): Promise<boolean> {
+    return this.dirExists(this.getDir({ id, channelId }));
+  }
+
   async resolveDir(id: string): Promise<string> {
     const located = await this.findProjectDir(id);
     if (!located) {

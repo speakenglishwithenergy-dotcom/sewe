@@ -14,12 +14,23 @@ const INCOMPLETE_STATUSES: ReadonlySet<TopicStatus> = new Set([
   'failed',
 ]);
 
+/** In-progress statuses that CI `--yes` will auto-resume (excludes `failed`). */
+const AUTO_RESUME_STATUSES: ReadonlySet<TopicStatus> = new Set([
+  'pending',
+  'generating',
+  'generated',
+]);
+
 function normalizeTopic(topic: string): string {
   return topic.trim().toLowerCase();
 }
 
 export function isIncompleteTopicStatus(status: TopicStatus): boolean {
   return INCOMPLETE_STATUSES.has(status);
+}
+
+export function isAutoResumeTopicStatus(status: TopicStatus): boolean {
+  return AUTO_RESUME_STATUSES.has(status);
 }
 
 export class TopicRegistryService {
@@ -171,8 +182,18 @@ export class TopicRegistryService {
   /**
    * Latest batch group (same createdAt) that still has unfinished topics.
    * Returns every record in that group, including already-published siblings.
+   *
+   * @param includeFailed When false (CI `--yes`), skip batches that only have
+   *   `failed` leftovers so a stale local failure does not block a fresh run.
+   *   Explicit `--resume` should pass includeFailed: true.
    */
-  findLatestIncompleteBatch(registry: TopicRegistryFile): TopicRecord[] | null {
+  findLatestIncompleteBatch(
+    registry: TopicRegistryFile,
+    options: { includeFailed?: boolean } = {},
+  ): TopicRecord[] | null {
+    const includeFailed = options.includeFailed ?? true;
+    const isOpen = includeFailed ? isIncompleteTopicStatus : isAutoResumeTopicStatus;
+
     const byCreatedAt = new Map<string, TopicRecord[]>();
 
     for (const record of registry.topics) {
@@ -182,7 +203,7 @@ export class TopicRegistryService {
     }
 
     const incompleteCreatedAts = [...byCreatedAt.entries()]
-      .filter(([, records]) => records.some((record) => isIncompleteTopicStatus(record.status)))
+      .filter(([, records]) => records.some((record) => isOpen(record.status)))
       .map(([createdAt]) => createdAt)
       .sort((a, b) => b.localeCompare(a));
 

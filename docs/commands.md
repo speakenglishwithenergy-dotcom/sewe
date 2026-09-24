@@ -83,7 +83,7 @@ npm run batch -- --channel=speak-english-with-energy --resume
 | `--channel=` | Channel id (default `speak-english-with-energy`) |
 | `--count=1\|2\|3` | Episodes this run (`--yes` defaults to `1` if omitted) |
 | `--dates=` | 1–3 publish dates: weekday `2`–`8` or `YYYY-MM-DD` |
-| `--yes` / `-y` | Non-interactive: auto-accept AI topics + schedule (for CI). Auto-resumes incomplete batches. Picks the next **future** Mon/Wed/Fri slot(s) so evening runs never schedule a past `publishAt`. |
+| `--yes` / `-y` | Non-interactive: auto-accept AI topics + schedule (for CI). Auto-resumes **in-progress** batches (`pending`/`generating`/`generated`) only — skips stale `failed` rows so CI is not blocked by a missing local `output/` folder. Use `--resume` to retry failed. Picks the next **future** Mon/Wed/Fri slot(s). |
 | `--resume` | Continue incomplete batch from `topics.json` |
 
 ### GitHub Actions auto episode
