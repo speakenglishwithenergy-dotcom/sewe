@@ -106,6 +106,9 @@ export class ChannelService {
     if (config.assets.logo) {
       assets.logo = resolve(config.assets.logo);
     }
+    if (config.assets.logoWordmark) {
+      assets.logoWordmark = resolve(config.assets.logoWordmark);
+    }
     if (config.assets.backgroundMusic) {
       assets.backgroundMusic = resolve(config.assets.backgroundMusic);
     }

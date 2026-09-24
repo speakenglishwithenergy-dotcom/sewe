@@ -108,11 +108,27 @@ export const WaveVisualizerSchema = z.object({
   }).optional(),
 });
 
+const LogoAnchorSchema = z.enum([
+  'top-left',
+  'top-right',
+  'top-center',
+  'bottom-left',
+  'bottom-right',
+]);
+
+export const LogoOverlayPlacementSchema = z.object({
+  anchor: LogoAnchorSchema,
+  /** Logo width as fraction of canvas width (e.g. 0.2). */
+  widthRatio: z.number().positive().max(0.5).optional(),
+  /** Edge margin as fraction of the smaller canvas side. */
+  marginRatio: z.number().positive().max(0.2).optional(),
+});
+
 export const ThumbnailBrandingSchema = z.object({
   templateType: z.enum(['podcast-hosts', 'overlay-template']).optional(),
   /**
-   * template = strict demo layout (legacy).
-   * fresh-episode = lock logo + host identity only; reinvent setting/palette/interaction per episode.
+   * template = strict layout hints from branding copy (legacy).
+   * fresh-episode = reinvent setting/palette/interaction per episode; logo is composited from assets.logo.
    */
   freshnessMode: z.enum(['template', 'fresh-episode']).optional(),
   brandColors: z.string().min(1),
@@ -137,6 +153,20 @@ export const ThumbnailBrandingSchema = z.object({
   freshnessRules: z.string().optional(),
   /** How to design the stacked thumbnail headline for CTR. */
   headlineDesign: z.string().optional(),
+  /** Where to composite assets.logo / assets.logoWordmark after text→image generation. */
+  logoOverlay: z
+    .object({
+      podcast: LogoOverlayPlacementSchema.optional(),
+      short: LogoOverlayPlacementSchema.optional(),
+      background: LogoOverlayPlacementSchema.optional(),
+      /** Circular assets.logo placement (defaults to podcast/short/background above). */
+      logo: LogoOverlayPlacementSchema.optional(),
+      /** Wordmark assets.logoWordmark placement. */
+      wordmark: LogoOverlayPlacementSchema.optional(),
+      logoShort: LogoOverlayPlacementSchema.optional(),
+      wordmarkShort: LogoOverlayPlacementSchema.optional(),
+    })
+    .optional(),
 });
 
 export const ChannelBrandingSchema = z.object({
@@ -195,7 +225,10 @@ export const ChannelAssetsConfigSchema = z.object({
   shortBackground: z.string().min(1),
   demoThumbnail: z.string().min(1),
   demoShortThumbnail: z.string().min(1),
+  /** Circular badge logo (typically bottom-left). */
   logo: z.string().min(1).optional(),
+  /** Vertical wordmark logo (typically top-right). */
+  logoWordmark: z.string().min(1).optional(),
   backgroundMusic: z.string().min(1).optional(),
 });
 
@@ -207,6 +240,7 @@ export interface ResolvedChannelAssets {
   demoThumbnail: string;
   demoShortThumbnail: string;
   logo?: string;
+  logoWordmark?: string;
   backgroundMusic?: string;
 }
 

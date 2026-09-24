@@ -16,26 +16,23 @@ export type ManualThumbnailKind = 'podcast' | 'short';
 
 const TARGETS: Record<
   ManualThumbnailKind,
-  { width: number; height: number; label: string; referenceFile: string }
+  { width: number; height: number; label: string }
 > = {
   podcast: {
     width: YOUTUBE_THUMB_WIDTH,
     height: YOUTUBE_THUMB_HEIGHT,
     label: '16:9 podcast / YouTube thumbnail',
-    referenceFile: 'demo-thumbnail.png',
   },
   short: {
     width: SHORT_THUMB_WIDTH,
     height: SHORT_THUMB_HEIGHT,
     label: '9:16 short-form thumbnail',
-    referenceFile: 'demo-short-thumbnail.png',
   },
 };
 
 export function printManualThumbnailInstructions(
   kind: ManualThumbnailKind,
   outputPath: string,
-  referencePath: string,
   prompt: string,
 ): void {
   const target = TARGETS[kind];
@@ -45,19 +42,17 @@ export function printManualThumbnailInstructions(
   logger.info(`Manual thumbnail mode (${target.label})`);
   logger.divider('─');
   console.log(`
-1. Open ChatGPT (https://chatgpt.com) — use image edit / upload reference + prompt.
-2. Upload the reference template:
-   ${referencePath}
-3. Paste this prompt:
+1. Open ChatGPT / Gemini (image generation) — text→image, no reference required.
+2. Paste this prompt:
 
 ${prompt}
 
-4. Download the generated image and save it as:
+3. Download the generated image and save it as:
    ${outputPath}
    (filename must be exactly "${fileName}")
 
 Recommended size: ${target.width}x${target.height} (${target.label}).
-Other sizes are OK — the pipeline will normalize before rendering video.
+Other sizes are OK — the pipeline will normalize and composite the channel logo.
 `);
 }
 

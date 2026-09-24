@@ -129,6 +129,24 @@ Return ONLY a valid JSON object (no markdown):
 }`;
 }
 
+const THUMBNAIL_TEXT_FRESH =
+  'CLICKBAIT stacked headline — 3–4 lines, ALL CAPS, 5–8 words TOTAL. ' +
+  "Pattern: opener (STOP/NEVER/WHY/DON'T) + punch phrase on its OWN line in quotes + consequence. " +
+  'Use \\n between lines. ' +
+  'Examples: NEVER\\nSAY\\n"I DON\'T KNOW"\\nIN INTERVIEWS | THIS\\nPHRASE\\nKILLS\\nYOUR JOB. ' +
+  'Forbidden/emotional phrase MUST be quoted so it renders orange. No soft/neutral titles.';
+
+const THUMBNAIL_TEXT_TEMPLATE =
+  'Stacked headline — 4 lines max, ALL CAPS, 5–8 words total, use \\n between lines';
+
+const THUMBNAIL_SCENE_FRESH =
+  'Cute cartoon CTR beat — ONE clear conflict (shock/no/pointing at WRONG). ' +
+  'Topic props readable at phone size (red X, checklist fail, sticky WRONG). ' +
+  'NOT two people smiling generically. Same cartoon style only.';
+
+const THUMBNAIL_SCENE_TEMPLATE =
+  'Topic-specific changes only — host expressions, gestures, props, book spine titles (uppercase, topic-related)';
+
 export function buildMetadataPrompt(
   ctx: ChannelContext,
   topic: string,
@@ -137,6 +155,8 @@ export function buildMetadataPrompt(
   const { name, niche } = ctx.config;
   const hostsBlock = buildHostsBlock(ctx.config.hosts);
   const draftBlock = formatCustomScriptBlock(customScript);
+  const fresh =
+    (ctx.config.branding.thumbnail.freshnessMode ?? 'template') === 'fresh-episode';
 
   return `You are a professional podcast script writer for the YouTube channel "${name}".
 Channel niche: ${niche}
@@ -149,16 +169,8 @@ ${draftBlock}
 Return ONLY a valid JSON object (no markdown). Do NOT include a "title" field — the episode title is already set.
 {
   "description": "YouTube SEO description using \\n line breaks:\\n1) Hook line ≤125 chars with main keyword\\n2) Blank line\\n3) 📌 In this episode you'll learn: + exactly 3 bullet takeaways (• prefix)\\n4) Blank line\\n5) Warm 2-sentence summary\\n6) 🔔 Subscribe CTA aligned with the channel niche",
-  "thumbnailText": "${
-    (ctx.config.branding.thumbnail.freshnessMode ?? 'template') === 'fresh-episode'
-      ? 'Stacked CTR headline — 3–4 lines max, ALL CAPS, 5–8 words total, use \\n between lines. Put the punch/forbidden phrase on its own line (often in quotes) so it can be colored orange in the thumbnail'
-      : 'Stacked headline — 4 lines max, ALL CAPS, 5–8 words total, use \\n between lines'
-  }",
-  "thumbnailScene": "${
-    (ctx.config.branding.thumbnail.freshnessMode ?? 'template') === 'fresh-episode'
-      ? 'Same illustration style as demo — only change host beat + topic props (NOT a new art style / setting genre)'
-      : 'Topic-specific changes only — host expressions, gestures, props, book spine titles (uppercase, topic-related)'
-  }"
+  "thumbnailText": "${fresh ? THUMBNAIL_TEXT_FRESH : THUMBNAIL_TEXT_TEMPLATE}",
+  "thumbnailScene": "${fresh ? THUMBNAIL_SCENE_FRESH : THUMBNAIL_SCENE_TEMPLATE}"
 }`;
 }
 
@@ -288,8 +300,8 @@ ${getContinuesStoryRules()}
 Return ONLY a valid JSON object. Do NOT include a "title" field — the episode title is already set.
 {
   "description": "Short description.",
-  "thumbnailText": "WHY\\nSMART\\nPEOPLE STAY\\nSTUCK?",
-  "thumbnailScene": "Topic-specific scene for hosts.",
+  "thumbnailText": "NEVER\\nSAY\\n\\"I DON'T KNOW\\"\\nIN INTERVIEWS",
+  "thumbnailScene": "Cartoon Victor points at a red X on a sticky note; Lisa shakes her head coaching — clear conflict beat, not generic smiles.",
   "script": [
     { "speaker": "${ctx.speakers[0]}", "text": "...", "ipa": "/.../", "continuesStory": false }
   ]

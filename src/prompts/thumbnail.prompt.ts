@@ -1,4 +1,5 @@
 import { ChannelContext } from '../channel/channel.types';
+import type { LogoAnchor } from '../ai/logo-overlay.util';
 
 export interface ThumbnailPromptInput {
   topic: string;
@@ -26,11 +27,6 @@ function getExpressionGuidance(ctx: ChannelContext): string {
   return parts.join('\n\n');
 }
 
-function getHeadlineDesignBlock(ctx: ChannelContext): string {
-  const design = ctx.config.branding.thumbnail.headlineDesign;
-  return design?.trim() ? `\n${design.trim()}\n` : '';
-}
-
 export function isFreshEpisodeThumbnail(ctx: ChannelContext): boolean {
   return (ctx.config.branding.thumbnail.freshnessMode ?? 'template') === 'fresh-episode';
 }
@@ -50,6 +46,51 @@ export function composeFreshThumbnailScene(parts: FreshThumbnailSceneParts): str
   return lines.join('\n');
 }
 
+export function resolvePodcastLogoAnchor(ctx: ChannelContext): LogoAnchor {
+  return (
+    ctx.config.branding.thumbnail.logoOverlay?.podcast?.anchor ??
+    (ctx.config.branding.thumbnail.templateType === 'overlay-template'
+      ? 'bottom-left'
+      : 'top-right')
+  );
+}
+
+export function resolveShortLogoAnchor(ctx: ChannelContext): LogoAnchor {
+  return ctx.config.branding.thumbnail.logoOverlay?.short?.anchor ?? 'top-right';
+}
+
+export function resolveBackgroundLogoAnchor(ctx: ChannelContext): LogoAnchor {
+  return (
+    ctx.config.branding.thumbnail.logoOverlay?.background?.anchor ??
+    (ctx.config.branding.thumbnail.templateType === 'overlay-template'
+      ? 'top-left'
+      : 'top-right')
+  );
+}
+
+function logoSpaceInstruction(): string {
+  return `LOGO SPACE (critical): Leave clear empty areas in BOTH the BOTTOM LEFT (~10% width, circular badge) and TOP RIGHT (~12% width, vertical wordmark). Do NOT draw any channel logo, wordmark, or "Speak English With Energy" branding — official PNGs will be composited later.`;
+}
+
+function ctrHeadlineInstruction(thumbnailText: string, headlineDesign?: string): string {
+  const design =
+    headlineDesign?.trim() ||
+    `Paint a MAXIMUM-CTR YouTube headline on the LEFT ~40% of the frame:
+- Huge ultra-bold condensed ALL-CAPS stacked lines
+- High contrast: cream/white text on a dark navy rounded panel, OR navy text on cream with thick orange accents
+- Put the punch / forbidden phrase (usually the quoted line) in bright orange #FF7A00 — larger/heavier than other lines
+- Perfect spelling; crisp edges; no warped letters; readable at phone-grid size
+- Optional: orange underline / brush stroke under the punch line`;
+
+  return `═══ CTR HEADLINE — PAINT THIS TEXT IN THE IMAGE (exact spelling) ═══
+Stack these lines with \\n breaks preserved:
+"${thumbnailText}"
+
+${design}
+
+The headline is the #1 click magnet. Make it bigger and punchier than the characters.`;
+}
+
 function buildOverlayTemplateThumbnailPrompt(
   ctx: ChannelContext,
   input: ThumbnailPromptInput,
@@ -58,43 +99,28 @@ function buildOverlayTemplateThumbnailPrompt(
   const { name, branding } = ctx.config;
   const thumb = branding.thumbnail;
 
-  return `Edit the provided reference thumbnail template for the "${name}" channel.
+  return `Create a brand-new YouTube thumbnail (16:9) for the "${name}" channel. Generate from scratch — there is no reference image.
 
-This is a STRICT TEMPLATE EDIT. Copy the reference image's fixed branding blocks exactly. Only replace (1) the left headline text, (2) the blurred workspace background photo, and (3) the host pose/expression on the right.
+${logoSpaceInstruction()}
 
-${thumb.logoLockRules}
+${ctrHeadlineInstruction(thumbnailText, thumb.headlineDesign)}
 
-═══ DO NOT MODIFY — copy pixel-perfect from reference ═══
-
-${thumb.logoUnchanged}
-
-${thumb.badgeUnchanged}
-
-ALSO UNCHANGED:
-- Landscape 16:9 composition with safe margins — nothing touches frame edges
+Composition:
+- Landscape 16:9 with safe margins
+- LEFT: CTR headline (painted)
+- RIGHT: host / topic visual
 ${thumb.charactersBlock ? `${thumb.charactersBlock}` : ''}
 - Art style: ${thumb.artStyle}
 - Brand colors: ${thumb.brandColors}
 ${thumb.characterColorReference ? `- ${thumb.characterColorReference}` : ''}
-- Episode tag brush-stroke style and badge icon row layout
 
-═══ CHANGE ONLY — left headline (keep demo character/logo style) ═══
-
-Episode title: "${episodeTitle}"
-
-Replace the demo title with this stacked ALL-CAPS text (spell exactly, preserve \\n line breaks):
-"${thumbnailText}"
-${getHeadlineDesignBlock(ctx)}
-═══ CHANGE ONLY — blurred workspace background + host context (right side) ═══
-
-Episode topic: "${topic}"
-Every background detail, expression, gesture, and prop below MUST connect to this topic.
+Episode topic: "${topic}" (context — do not paint the full episode title "${episodeTitle}" as a second headline)
 
 ${thumbnailScene}
 
 ${getExpressionGuidance(ctx)}
 
-Heavy background blur (bokeh) so text stays readable. High contrast, readable at small size, no watermarks, no extra text beyond what is specified.`;
+High contrast, readable at small size. No watermarks. No channel logo. Only the CTR headline text plus optional tiny prop marks.`;
 }
 
 function buildPodcastHostsTemplatePrompt(
@@ -105,43 +131,31 @@ function buildPodcastHostsTemplatePrompt(
   const { name, branding } = ctx.config;
   const thumb = branding.thumbnail;
 
-  return `Edit the provided reference thumbnail template for the "${name}" channel.
+  return `Create a brand-new YouTube thumbnail (16:9) for the "${name}" channel. Generate from scratch — there is no reference image.
 
-This is a STRICT TEMPLATE EDIT. Copy the reference image's fixed branding blocks exactly. Only replace (1) the left headline text and (2) host topic context.
+CRITICAL ART STYLE: cute flat 2D CARTOON characters only — never photoreal / semi-real / creepy faces.
 
-${thumb.logoLockRules}
+${logoSpaceInstruction()}
 
-═══ DO NOT MODIFY — copy pixel-perfect from reference ═══
+${ctrHeadlineInstruction(thumbnailText, thumb.headlineDesign)}
 
-${thumb.logoUnchanged}
-
-${thumb.badgeUnchanged}
-
-ALSO UNCHANGED:
-- Landscape 16:9 composition with safe margins — nothing touches frame edges
+Composition:
+- Landscape 16:9 cartoon podcast-desk framing
+- LEFT: CTR headline (painted)
+- RIGHT ~55%: hosts + topic props
 ${thumb.charactersBlock ?? ''}
-- Desk layout: wooden table, mics on stands, succulent, open notebook with pen
+- Desk: wooden table, mics, cozy podcast feel
 - Art style: ${thumb.artStyle}
 - Brand colors: ${thumb.brandColors}
 ${thumb.characterColorReference ? `- ${thumb.characterColorReference}` : ''}
 
-═══ CHANGE ONLY — left headline (keep demo character/logo style) ═══
-
-Episode title: "${episodeTitle}"
-
-Replace the demo title with this stacked ALL-CAPS text (spell exactly, preserve \\n line breaks):
-"${thumbnailText}"
-${getHeadlineDesignBlock(ctx)}
-═══ CHANGE ONLY — host scene context (right ~60%) ═══
-
-Episode topic: "${topic}"
-Every expression, gesture, prop, and scene detail below MUST connect to this topic.
+Episode topic: "${topic}" (do not paint episode title "${episodeTitle}" as a duplicate headline)
 
 ${thumbnailScene}
 
 ${getExpressionGuidance(ctx)}
 
-High contrast, readable at small size, no watermarks, no extra text beyond what is specified.`;
+No watermarks. No channel logo. Cute cartoon only. Spell the CTR headline EXACTLY.`;
 }
 
 function buildFreshEpisodeThumbnailPrompt(
@@ -152,18 +166,17 @@ function buildFreshEpisodeThumbnailPrompt(
   const { name, branding } = ctx.config;
   const thumb = branding.thumbnail;
 
-  return `Edit the provided reference thumbnail for the "${name}" channel.
+  return `Create a brand-new YouTube thumbnail (16:9) for the "${name}" channel. Generate from scratch — there is no reference image.
 
-CRITICAL: Keep the SAME illustration style, character designs, logo, badge, desk-host composition, and brand look as the reference.
-This is a SAME-STYLE episode refresh — change topic content so it feels like a NEW video, without changing the art style.
+GOAL: maximum YouTube CTR — clickbait-clear in under 1 second at phone-grid size.
 
-${thumb.logoLockRules}
+CRITICAL ART STYLE: cute flat 2D CARTOON / friendly animated characters only.
+- Simple rounded cartoon faces, clean outlines, soft cel shading
+- NEVER photorealistic, NEVER semi-realistic, NEVER uncanny-valley / creepy faces, NEVER 3D render
 
-═══ KEEP MATCHING THE REFERENCE ═══
+${logoSpaceInstruction()}
 
-${thumb.logoUnchanged}
-
-${thumb.badgeUnchanged}
+${ctrHeadlineInstruction(thumbnailText, thumb.headlineDesign)}
 
 ${thumb.charactersBlock ?? ''}
 ${thumb.characterColorReference ? `\n${thumb.characterColorReference}` : ''}
@@ -171,26 +184,21 @@ ${thumb.characterColorReference ? `\n${thumb.characterColorReference}` : ''}
 - Landscape 16:9 with safe margins
 - Art style: ${thumb.artStyle}
 - Brand colors: ${thumb.brandColors}
-- Keep wooden-desk podcast-host framing similar to the reference (two hosts, mics OK)
-
-═══ CHANGE FOR THIS EPISODE (content only) ═══
+- Hosts + props on the RIGHT; CTR headline dominates the LEFT
 
 ${thumb.freshnessRules ?? ''}
 
 ${thumb.ctrRules ?? ''}
 
-Episode title: "${episodeTitle}"
 Episode topic: "${topic}"
+Do NOT paint the full episode title "${episodeTitle}" as a second headline — only the CTR stack above.
 
-Replace the headline with this stacked ALL-CAPS text (spell exactly, preserve \\n line breaks):
-"${thumbnailText}"
-${getHeadlineDesignBlock(ctx)}
-Art director brief (topic props + host beat only — do not change art style):
+Art director brief (topic props + host beat):
 ${thumbnailScene}
 
 ${getExpressionGuidance(ctx)}
 
-No watermarks. No meta labels. No extra text beyond the headline (and the existing badge). Readable at small size.`;
+No watermarks. No channel logo / wordmark. Spell every CTR headline letter PERFECTLY. Friendly cute cartoon only.`;
 }
 
 export function buildThumbnailImagePrompt(ctx: ChannelContext, input: ThumbnailPromptInput): string {
@@ -219,7 +227,11 @@ Episode title: "${episodeTitle}"
 Topic: "${topic}"
 Thumbnail headline: "${thumbnailText}"
 
-Design a SAME-STYLE episode refresh. The final image must still look like the channel's illustrated podcast thumbnails (Victor + Lisa, flat digital illustration). Only the episode content should feel new.
+Design a SAME-STYLE episode refresh. The final image must still look like the channel's illustrated podcast thumbnails (flat digital illustration hosts). Only the episode content should feel new.
+
+CLICKBAIT VISUAL BEAT (required):
+- ONE clear conflict — shock / stop / pointing at WRONG — not two people smiling
+- Topic props readable at phone-grid size (red X, failed checklist, sticky WRONG)
 
 ${thumb.freshnessRules ?? ''}
 
@@ -234,7 +246,8 @@ ${thumb.charactersExpressionGuidance ?? ''}
 Choose ONE light scene twist from this pack (same art world — not a new style):
 ${thumb.visualGenres ?? '- same studio desk with new topic props'}
 
-LOCKED by the image model: logo, badge, character designs, illustration style.
+Logo PNGs are composited later — never describe drawing a channel logo.
+The image model will ALSO paint the CTR headline from thumbnailText on the LEFT — focus your scene JSON on the RIGHT-side conflict beat + props.
 CHANGE: host interaction, topic props, shelf/wall details, small accents.
 
 Return ONLY valid JSON:
@@ -242,9 +255,9 @@ Return ONLY valid JSON:
   "visualGenre": "short label from the pack",
   "colorMood": "subtle mood within the warm brand palette (e.g. warm daylight, soft evening lamps)",
   "setting": "one sentence — still a podcast/desk-friendly illustrated setting",
-  "interaction": "one sentence — Victor and Lisa gestures for this hook",
+  "interaction": "one sentence — CONFLICT beat between hosts for this hook (not matching smiles)",
   "badgePlacement": "keep-bottom-left",
-  "thumbnailScene": "2–4 sentences: topic props + focal host beat (no style changes, no photo/3D/split panels)"
+  "thumbnailScene": "2–4 sentences: topic props + focal conflict beat (no style changes, no photo/3D/split panels, no logo)"
 }`;
 }
 
@@ -265,7 +278,7 @@ Episode title: "${episodeTitle}"
 Topic: "${topic}"
 Thumbnail headline: "${thumbnailText}"
 
-The thumbnail uses a fixed overlay template. Logo and badges are locked — never describe redrawing them. Write ONLY the topic-specific visual changes.
+Write ONLY the topic-specific visual scene. Logo will be composited later — never describe drawing it.
 
 ${thumb.topicRelevance ?? ''}
 
@@ -273,12 +286,12 @@ ${thumb.expressionModeration ?? ''}
 
 ${thumb.charactersExpressionGuidance ?? ''}
 
-Describe what to change from the default template — all choices driven by topic "${topic}":
-- Blurred dev workspace photo (scene, desk props, monitor content, lighting mood)
-- Alex's expression and pose on the right
+Describe scene choices driven by topic "${topic}":
+- Blurred / atmospheric workspace background
+- Host expression and pose
 - One small topic callout or accent if it fits the hook
 
-Do NOT describe logo, badge icons, headline typography, brush-stroke shapes, or episode tag layout — those stay fixed.
+Do NOT describe channel logo or wordmark.
 
 Return ONLY valid JSON:
 {
@@ -296,7 +309,7 @@ Episode title: "${episodeTitle}"
 Topic: "${topic}"
 Thumbnail headline: "${thumbnailText}"
 
-The thumbnail uses a fixed template. Logo and badge are locked — never describe redrawing them. Write ONLY the host scene changes for this episode.
+Write ONLY the host scene changes for this episode. Logo will be composited later — never describe drawing it.
 
 ${thumb.topicRelevance ?? ''}
 
@@ -304,13 +317,12 @@ ${thumb.expressionModeration ?? ''}
 
 ${thumb.charactersExpressionGuidance ?? ''}
 
-Describe what to change from the default template — all choices driven by topic "${topic}":
+Describe scene choices driven by topic "${topic}":
 - Host expressions + gestures tied to this topic
 - One topic-specific visual metaphor
-- Three book spine titles — short uppercase phrases about this episode
 - Background/shelf accents that reflect this episode's topic
 
-Do NOT describe host core appearance, mugs, mics, logo, badge, headline, or desk layout — those stay fixed.
+Do NOT describe channel logo or wordmark.
 
 Return ONLY valid JSON:
 {

@@ -2,6 +2,7 @@ import { ChannelContext } from '../channel/channel.types';
 import {
   composeFreshThumbnailScene,
   isFreshEpisodeThumbnail,
+  resolveShortLogoAnchor,
   type FreshThumbnailSceneParts,
 } from './thumbnail.prompt';
 
@@ -22,6 +23,24 @@ function getExpressionGuidance(ctx: ChannelContext): string {
   return parts.join('\n\n');
 }
 
+function logoSpaceInstruction(): string {
+  return `LOGO SPACE (critical): Leave BOTTOM LEFT empty for circular badge and TOP RIGHT empty for vertical wordmark. Do NOT paint any channel logo/wordmark — official PNGs are composited later.`;
+}
+
+function ctrHeadlineInstruction(thumbnailText: string, headlineDesign?: string): string {
+  const design =
+    headlineDesign?.trim() ||
+    `Paint a MAXIMUM-CTR stacked ALL-CAPS headline:
+- Huge bold condensed type, high contrast
+- Punch/quoted phrase in bright orange #FF7A00
+- Perfect spelling; readable on a phone`;
+
+  return `═══ CTR HEADLINE — PAINT THIS TEXT (exact spelling) ═══
+"${thumbnailText}"
+
+${design}`;
+}
+
 export function buildShortThumbnailImagePrompt(
   ctx: ChannelContext,
   input: ShortThumbnailPromptInput,
@@ -31,65 +50,50 @@ export function buildShortThumbnailImagePrompt(
   const thumb = branding.thumbnail;
 
   if (isFreshEpisodeThumbnail(ctx)) {
-    return `Edit the provided VERTICAL 9:16 reference thumbnail for the "${name}" channel.
+    return `Create a brand-new VERTICAL 9:16 short-form thumbnail for the "${name}" channel. Generate from scratch.
 
-CRITICAL: Keep the SAME illustration style, character designs, logo, and badge look as the reference.
-Same-style episode refresh only — change topic content, not the art style.
+GOAL: maximum CTR on TikTok / YouTube Shorts.
 
-${thumb.logoLockRules}
+CRITICAL ART STYLE: cute flat 2D CARTOON hosts only — NEVER photoreal or uncanny faces.
 
-═══ KEEP MATCHING THE REFERENCE ═══
+${logoSpaceInstruction()}
 
-${thumb.shortLogoUnchanged}
-${thumb.shortBadgeUnchanged}
+${ctrHeadlineInstruction(thumbnailText, thumb.headlineDesign)}
+Place the headline in the UPPER portion (below the top-right wordmark space).
+
 ${thumb.charactersBlock ?? ''}
 ${thumb.characterColorReference ? `\n${thumb.characterColorReference}` : ''}
 
 Art style: ${thumb.artStyle}
 Brand colors: ${thumb.brandColors}
 
-═══ CHANGE FOR THIS EPISODE (content only) ═══
-
 ${thumb.freshnessRules ?? ''}
 
 ${thumb.ctrRules ?? ''}
 
-Episode title: "${episodeTitle}"
 Episode topic: "${topic}"
+Do not paint episode title "${episodeTitle}" as a duplicate headline.
 
-Headline — spell EXACTLY (preserve \\n line breaks):
-"${thumbnailText}"
-${ctx.config.branding.thumbnail.headlineDesign ? `\n${ctx.config.branding.thumbnail.headlineDesign}\n` : ''}
 Art director brief:
 ${thumbnailScene}
 
 ${getExpressionGuidance(ctx)}
 
-Phone-screen readable, no watermarks, no meta labels, no extra text beyond the headline and existing badge.`;
+No watermarks. No channel logo. Spell CTR headline PERFECTLY. Cute cartoon only.`;
   }
 
-  return `Edit the provided reference thumbnail template for the "${name}" channel — VERTICAL 9:16 short-form format.
+  return `Create a brand-new VERTICAL 9:16 short-form thumbnail for the "${name}" channel. Generate from scratch.
 
-This is a STRICT TEMPLATE EDIT. Keep the vertical reference layout and branding identical. Only change the headline text and topic-specific context.
+CRITICAL ART STYLE: cute flat 2D CARTOON only — never photoreal / creepy faces.
 
-${thumb.logoLockRules}
+${logoSpaceInstruction()}
 
-KEEP UNCHANGED (match the provided vertical reference exactly):
-- Vertical 9:16 portrait composition with safe margins
-${thumb.shortLogoUnchanged}
-${thumb.shortBadgeUnchanged}
-${thumb.charactersBlock}
+${ctrHeadlineInstruction(thumbnailText, thumb.headlineDesign)}
+
+Vertical 9:16 portrait composition with safe margins.
+${thumb.charactersBlock ?? ''}
 - Art style: ${thumb.artStyle}
 - Brand colors: ${thumb.brandColors}
-
-CHANGE ONLY — headline text at the top:
-
-Episode title: "${episodeTitle}"
-
-Replace the reference headline with this new stacked ALL-CAPS text (spell exactly, preserve \\n line breaks):
-"${thumbnailText}"
-
-CHANGE ONLY — topic context on the characters:
 
 Episode topic: "${topic}"
 
@@ -97,7 +101,7 @@ ${thumbnailScene}
 
 ${getExpressionGuidance(ctx)}
 
-High contrast, readable on a phone screen, no watermarks, no extra text beyond what is specified.`;
+No watermarks. No channel logo. Spell CTR headline PERFECTLY. Cute cartoon only.`;
 }
 
 export function buildShortThumbnailScenePrompt(
@@ -116,7 +120,9 @@ Episode title: "${episodeTitle}"
 Topic: "${topic}"
 Thumbnail headline: "${thumbnailText}"
 
-Design a SAME-STYLE vertical refresh. Must still look like the channel's illustrated podcast hosts — only episode content changes.
+Design a SAME-STYLE vertical CTR refresh. Cute cartoon hosts + conflict beat.
+The image model will paint the CTR headline — focus on the host conflict for this hook.
+Logo PNGs are composited later — never describe drawing a logo.
 
 ${thumb.freshnessRules ?? ''}
 
@@ -134,9 +140,9 @@ Return ONLY valid JSON:
   "visualGenre": "short label",
   "colorMood": "subtle mood within the warm brand palette",
   "setting": "one sentence — vertical-friendly, still illustrated podcast world",
-  "interaction": "one sentence — Victor/Lisa gestures",
+  "interaction": "one sentence — conflict / coaching gestures",
   "badgePlacement": "keep",
-  "thumbnailScene": "2–4 sentences — topic props + focal action (no style change)"
+  "thumbnailScene": "2–4 sentences — topic props + focal action (no style change, no logo)"
 }`;
   }
 
@@ -146,13 +152,14 @@ Episode title: "${episodeTitle}"
 Topic: "${topic}"
 Thumbnail headline: "${thumbnailText}"
 
-The thumbnail uses a fixed VERTICAL 9:16 template. Write ONLY the topic-specific changes.
+Write ONLY the topic-specific visual scene for a VERTICAL 9:16 thumbnail.
+Logo is composited later — never describe drawing a logo.
 
 ${thumb.topicRelevance ?? ''}
 ${thumb.expressionModeration ?? ''}
 ${thumb.charactersExpressionGuidance ?? ''}
 
-Describe what to change from the default template — all choices driven by topic "${topic}".
+Describe scene choices driven by topic "${topic}".
 
 Return ONLY valid JSON:
 {

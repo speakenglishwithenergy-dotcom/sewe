@@ -3,14 +3,12 @@ import { ImageService } from './image.service';
 import { OpenAIService } from './openai.service';
 import {
   getImageDimensions,
-  loadReferenceImagePng,
   normalizePodcastThumbnail,
-  prepareReferenceImage,
-  prepareShortReferenceImage,
   scaleShortThumbnailToVideoSize,
   SHORT_THUMB_HEIGHT,
   SHORT_THUMB_WIDTH,
 } from './thumbnail-image.util';
+import { compositeChannelLogo, type LogoOverlayOptions } from './logo-overlay.util';
 import { DISABLE_THUMBNAIL_GENERATION } from './thumbnail.config';
 import {
   normalizeManualThumbnail,
@@ -92,8 +90,6 @@ export class ThumbnailService {
       return;
     }
 
-    const demoPath = this.ctx.assets.demoThumbnail;
-
     const thumbnailScene =
       resolveCachedScene(this.ctx, script.thumbnailScene) ??
       (await this.generateScene(topic, script.title, script.thumbnailText));
@@ -106,29 +102,25 @@ export class ThumbnailService {
     });
 
     if (DISABLE_THUMBNAIL_GENERATION) {
-      printManualThumbnailInstructions('podcast', outputPath, demoPath, prompt);
+      printManualThumbnailInstructions('podcast', outputPath, prompt);
       await waitForManualThumbnailFile(outputPath);
       await normalizeManualThumbnail('podcast', outputPath);
+      await this.applyLogoIfConfigured(outputPath, 'podcast');
       logger.success(`Manual thumbnail ready → ${outputPath}`);
       return;
     }
 
     logger.info(`Generating thumbnail image for: "${script.thumbnailText}"`);
 
-    const referenceBuffer = await this.prepareLandscapeReference(demoPath);
-    const refSize = await getImageDimensions(referenceBuffer);
-    logger.info(`Reference prepared → ${refSize.width}x${refSize.height} (${this.images.provider})`);
+    const apiBuffer = await this.images.generateImage(prompt, {
+      size: '1536x1024',
+      aspectRatio: '16:9',
+    });
+    let finalBuffer = await normalizePodcastThumbnail(apiBuffer);
+    finalBuffer = await this.withLogo(finalBuffer, 'podcast');
 
-    const apiBuffer = await this.images.generateImageEdit(
-      prompt,
-      [referenceBuffer],
-      ['demo-thumbnail.png'],
-      { size: '1536x1024', aspectRatio: '16:9' },
-    );
-    const finalBuffer =
-      this.images.provider === 'openai' ? apiBuffer : await normalizePodcastThumbnail(apiBuffer);
     const apiSize = await getImageDimensions(finalBuffer);
-    logger.info(`API returned → ${apiSize.width}x${apiSize.height}`);
+    logger.info(`Final thumbnail → ${apiSize.width}x${apiSize.height}`);
 
     await fs.writeFile(outputPath, finalBuffer);
 
@@ -139,7 +131,7 @@ export class ThumbnailService {
     script: PodcastScript,
     topic: string,
     outputPath: string,
-    templatePath: string,
+    _templatePath: string,
   ): Promise<void> {
     if (await this.fileExists(outputPath)) {
       logger.info(`⏭  Background already exists — skipping → ${outputPath}`);
@@ -157,27 +149,23 @@ export class ThumbnailService {
     });
 
     if (DISABLE_THUMBNAIL_GENERATION) {
-      printManualThumbnailInstructions('podcast', outputPath, templatePath, prompt);
+      printManualThumbnailInstructions('podcast', outputPath, prompt);
       await waitForManualThumbnailFile(outputPath);
       await normalizeManualThumbnail('podcast', outputPath);
+      await this.applyLogoIfConfigured(outputPath, 'background');
       logger.success(`Manual background ready → ${outputPath}`);
       return;
     }
 
     logger.info(`Generating episode background for: "${script.title}"`);
 
-    const referenceBuffer = await this.prepareLandscapeReference(templatePath);
-    const refSize = await getImageDimensions(referenceBuffer);
-    logger.info(`Background reference prepared → ${refSize.width}x${refSize.height}`);
+    const apiBuffer = await this.images.generateImage(prompt, {
+      size: '1536x1024',
+      aspectRatio: '16:9',
+    });
+    let finalBuffer = await normalizePodcastThumbnail(apiBuffer);
+    finalBuffer = await this.withLogo(finalBuffer, 'background');
 
-    const apiBuffer = await this.images.generateImageEdit(
-      prompt,
-      [referenceBuffer],
-      ['background.png'],
-      { size: '1536x1024', aspectRatio: '16:9' },
-    );
-    const finalBuffer =
-      this.images.provider === 'openai' ? apiBuffer : await normalizePodcastThumbnail(apiBuffer);
     const apiSize = await getImageDimensions(finalBuffer);
     logger.info(`API returned → ${apiSize.width}x${apiSize.height}`);
 
@@ -200,8 +188,6 @@ export class ThumbnailService {
       return;
     }
 
-    const demoShortPath = this.ctx.assets.demoShortThumbnail;
-
     const thumbnailScene =
       resolveCachedScene(this.ctx, episode.thumbnailScene) ??
       resolveCachedScene(this.ctx, script.thumbnailScene) ??
@@ -215,29 +201,25 @@ export class ThumbnailService {
     });
 
     if (DISABLE_THUMBNAIL_GENERATION) {
-      printManualThumbnailInstructions('short', outputPath, demoShortPath, prompt);
+      printManualThumbnailInstructions('short', outputPath, prompt);
       await waitForManualThumbnailFile(outputPath);
       await normalizeManualThumbnail('short', outputPath);
+      await this.applyLogoIfConfigured(outputPath, 'short');
       logger.success(`Manual short thumbnail ready → ${outputPath}`);
       return;
     }
 
     logger.info(`Generating short thumbnail for: "${episode.thumbnailText}"`);
 
-    const shortReferenceBuffer = await this.preparePortraitReference(demoShortPath);
-    const refSize = await getImageDimensions(shortReferenceBuffer);
-    logger.info(`Reference prepared → ${refSize.width}x${refSize.height} (${this.images.provider})`);
-
-    const apiBuffer = await this.images.generateImageEdit(
-      prompt,
-      [shortReferenceBuffer],
-      ['demo-short-thumbnail.png'],
-      { size: '1024x1536', aspectRatio: '9:16' },
-    );
+    const apiBuffer = await this.images.generateImage(prompt, {
+      size: '1024x1536',
+      aspectRatio: '9:16',
+    });
     const apiSize = await getImageDimensions(apiBuffer);
     logger.info(`API returned → ${apiSize.width}x${apiSize.height}`);
 
-    const finalBuffer = await scaleShortThumbnailToVideoSize(apiBuffer);
+    let finalBuffer = await scaleShortThumbnailToVideoSize(apiBuffer);
+    finalBuffer = await this.withLogo(finalBuffer, 'short');
     const finalSize = await getImageDimensions(finalBuffer);
     logger.info(
       `Short thumbnail scaled → ${finalSize.width}x${finalSize.height} (full image, no crop)`,
@@ -250,6 +232,82 @@ export class ThumbnailService {
     );
   }
 
+  private async withLogo(
+    imageBuffer: Buffer,
+    kind: 'podcast' | 'short' | 'background',
+  ): Promise<Buffer> {
+    let buf = imageBuffer;
+    const overlays = this.resolveLogoLayers(kind);
+
+    for (const layer of overlays) {
+      logger.info(
+        `Compositing ${layer.label} (${layer.options.anchor}, widthRatio=${layer.options.widthRatio ?? 0.2})`,
+      );
+      buf = await compositeChannelLogo(buf, layer.path, layer.options);
+    }
+
+    if (overlays.length === 0) {
+      logger.info('No logo assets configured — skipping logo composite');
+    }
+
+    return buf;
+  }
+
+  private resolveLogoLayers(
+    kind: 'podcast' | 'short' | 'background',
+  ): Array<{ path: string; label: string; options: LogoOverlayOptions }> {
+    const cfg = this.ctx.config.branding.thumbnail.logoOverlay;
+    const layers: Array<{ path: string; label: string; options: LogoOverlayOptions }> = [];
+
+    const circularPath = this.ctx.assets.logo;
+    if (circularPath) {
+      const configured =
+        kind === 'short'
+          ? (cfg?.logoShort ?? cfg?.logo ?? cfg?.short)
+          : kind === 'background'
+            ? (cfg?.logo ?? cfg?.background ?? cfg?.podcast)
+            : (cfg?.logo ?? cfg?.podcast);
+      layers.push({
+        path: circularPath,
+        label: 'circular logo',
+        options: {
+          anchor: configured?.anchor ?? 'bottom-left',
+          widthRatio: configured?.widthRatio ?? (kind === 'short' ? 0.14 : 0.09),
+          marginRatio: configured?.marginRatio ?? 0.025,
+          punchBlack: true,
+        },
+      });
+    }
+
+    const wordmarkPath = this.ctx.assets.logoWordmark;
+    if (wordmarkPath && kind !== 'background') {
+      const configured =
+        kind === 'short' ? (cfg?.wordmarkShort ?? cfg?.wordmark) : cfg?.wordmark;
+      layers.push({
+        path: wordmarkPath,
+        label: 'wordmark',
+        options: {
+          anchor: configured?.anchor ?? 'top-right',
+          widthRatio: configured?.widthRatio ?? (kind === 'short' ? 0.2 : 0.11),
+          marginRatio: configured?.marginRatio ?? 0.02,
+          punchBlack: false,
+        },
+      });
+    }
+
+    return layers;
+  }
+
+  private async applyLogoIfConfigured(
+    outputPath: string,
+    kind: 'podcast' | 'short' | 'background',
+  ): Promise<void> {
+    if (!this.ctx.assets.logo && !this.ctx.assets.logoWordmark) return;
+    const raw = await fs.readFile(outputPath);
+    const withLogo = await this.withLogo(raw, kind);
+    await fs.writeFile(outputPath, withLogo);
+  }
+
   private async fileExists(filePath: string): Promise<boolean> {
     try {
       await fs.access(filePath);
@@ -257,18 +315,6 @@ export class ThumbnailService {
     } catch {
       return false;
     }
-  }
-
-  private prepareLandscapeReference(inputPath: string): Promise<Buffer> {
-    return this.images.provider === 'openai'
-      ? prepareReferenceImage(inputPath)
-      : loadReferenceImagePng(inputPath);
-  }
-
-  private preparePortraitReference(inputPath: string): Promise<Buffer> {
-    return this.images.provider === 'openai'
-      ? prepareShortReferenceImage(inputPath)
-      : loadReferenceImagePng(inputPath);
   }
 
   private async generateScene(

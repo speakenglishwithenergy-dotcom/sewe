@@ -100,6 +100,16 @@ branding:
     opacity: 0.85
   thumbnail:
     templateType: overlay-template
+    logoOverlay:
+      podcast:
+        anchor: bottom-left
+        widthRatio: 0.16
+      short:
+        anchor: top-center
+        widthRatio: 0.28
+      background:
+        anchor: top-left
+        widthRatio: 0.14
     brandColors: "Dark Teal #0a2e2e, Cyan Teal #14B8A6, White #FFFFFF, Dark Navy #0D1B3D, Yellow accent for emphasis"
     charactersBlock: |
       - Alex (thumbnail only): young Asian male developer, glasses, black hoodie, positioned on RIGHT ~35% of frame

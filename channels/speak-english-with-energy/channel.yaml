@@ -93,75 +93,102 @@ branding:
     y: 200
   thumbnail:
     freshnessMode: fresh-episode
+    logoOverlay:
+      podcast:
+        anchor: bottom-left
+        widthRatio: 0.09
+        marginRatio: 0.025
+      short:
+        anchor: bottom-left
+        widthRatio: 0.14
+        marginRatio: 0.03
+      # Circular badge
+      logo:
+        anchor: bottom-left
+        widthRatio: 0.09
+        marginRatio: 0.025
+      logoShort:
+        anchor: bottom-left
+        widthRatio: 0.14
+        marginRatio: 0.03
+      # Vertical wordmark
+      wordmark:
+        anchor: top-right
+        widthRatio: 0.13
+        marginRatio: 0.015
+      wordmarkShort:
+        anchor: top-right
+        widthRatio: 0.22
+        marginRatio: 0.025
     brandColors: "Dark Navy #0D1B3D, Royal Blue #1E3A8A, Bright Orange #FF7A00, Off-white #F2F4F7"
     charactersBlock: |
-      BOTH HOSTS REQUIRED — match the reference illustration style exactly:
-      - Victor: male, brown hair, short beard, forest green / olive green sweater (NOT navy/black), black headphones, navy mug labeled "Victor"
-      - Lisa: female, long wavy brown hair, bright orange #FF7A00 sweater, black headphones, orange mug labeled "Lisa"
-      - Same flat digital-illustration faces/bodies as the reference — NEVER photorealistic, NEVER 3D/Pixar, NEVER anime
-    logoLockRules: "LOGO IS A LOCKED ASSET: copy the channel logo pixel-for-pixel from the reference image. Never redraw, regenerate, or reinterpret logo icons (microphone, book) or wordmark."
+      BOTH HOSTS REQUIRED — cute flat CARTOON characters (friendly animated podcast duo):
+      - Victor: cartoon man, brown hair, short beard, forest green / olive green sweater (NOT navy/black), black headphones, navy mug labeled "Victor"
+      - Lisa: cartoon woman, long wavy brown hair, bright orange #FF7A00 sweater, black headphones, orange mug labeled "Lisa"
+      - Simple rounded cartoon faces, big friendly eyes, clean outlines — like a kids' education cartoon or sticker art
+      - NEVER photorealistic, NEVER semi-realistic/uncanny-valley faces, NEVER 3D/Pixar, NEVER anime, NEVER creepy detailed skin
+    logoLockRules: "LOGO IS COMPOSITED LATER from the official PNG. Never draw, invent, or place any channel logo or wordmark."
     logoUnchanged: |
-      TOP RIGHT — logo block (ABSOLUTELY UNTOUCHED — copy verbatim from reference):
-      - CRITICAL: Do NOT generate, redraw, reinterpret, restyle, or "fix" ANY part of this logo block
-      - Microphone icon + open book + "Speak ENGLISH" + orange "WITH ENERGY" banner — exact same graphics from reference
-      - Same size, colors, fonts, and icon shapes as reference — ZERO redesign
+      Leave BOTTOM LEFT empty for the circular logo composite, and TOP RIGHT empty for the wordmark composite. Do not draw any logo in either corner.
     badgeUnchanged: |
-      BOTTOM LEFT — keep the green ENGLISH PODCAST badge from the reference (same icon + pill). You may nudge position slightly for layout, but do not invent a new badge or render words like "optional" / "omit".
+      Optional small cartoon badge OK (e.g. ENGLISH PODCAST pill) — keep simple. No channel logo.
     shortLogoUnchanged: |
-      TOP — logo block ABSOLUTELY UNTOUCHED (copy verbatim from reference):
-      - Same wordmark + microphone + book icons as reference — ZERO redesign
+      Leave BOTTOM LEFT empty for circular logo and TOP RIGHT empty for wordmark. Do not draw any logo.
     shortBadgeUnchanged: |
-      Keep the green ENGLISH PODCAST badge from the reference (same style). Do not invent new badges or meta labels.
-    artStyle: "modern clean digital illustration matching the reference exactly — warm soft shading, flat 2D (not photo, not 3D), cozy English-learning podcast look"
+      Optional small cartoon badge OK. No channel logo.
+    artStyle: "cute flat 2D cartoon / friendly animated illustration — bold clean outlines, simple shapes, soft cel shading, bright cozy colors. NOT photoreal, NOT semi-real, NOT uncanny-valley, NOT 3D render, NOT hyper-detailed faces"
     characterColorReference: |
-      CHARACTER COLORS — match the reference:
+      CHARACTER COLORS:
       - Victor sweater: forest green / olive green — NEVER navy, black, or dark blue
       - Lisa sweater: bright orange #FF7A00
     visualGenres: |
-      Stay inside the SAME illustration world as the demo. Pick ONE light scene twist (not a new art style):
+      Stay in a cute cartoon podcast world. Pick ONE light scene twist:
       - same studio desk, different topic props + host beat
       - bookshelf + whiteboard coaching moment
       - sticky-note brainstorm on the wall behind them
       - checklist / clipboard teaching moment
-      - before-vs-after props on the desk (still one continuous illustrated scene — NO split photo panels)
+      - before-vs-after props on the desk (one continuous cartoon scene — NO split panels)
       - coffee-on-desk casual coaching chat
       - notebook practice / role-play moment
       - interview-prep flashcards on the desk
     freshnessRules: |
-      SAME STYLE, FRESH EPISODE CONTENT:
-      - MUST match the reference art style, character designs, logo, and overall podcast-illustration look
-      - CHANGE enough to feel like a new episode: host gestures/interaction, topic props, shelf/wall details, small background accents, optional lighting mood within the same palette family
-      - Do NOT change into a different visual genre (no neon cyber, no photoreal, no 3D, no outdoor photography, no split-screen red/green panels)
-      - Keep a desk / podcast-host composition similar to the reference (two hosts + headline space)
-      - Spell the headline EXACTLY as given; make the typography punchier than plain flat text (see headlineDesign)
+      CUTE CARTOON, FRESH EPISODE:
+      - Keep the same cartoon host designs and cozy podcast look
+      - CHANGE gestures, topic props, shelf/wall details per episode
+      - Do NOT go photoreal / semi-real / creepy / 3D / neon cyber
+      - LEFT ~40%: paint the CTR headline (huge, exact spelling)
+      - RIGHT: hosts + conflict props
     ctrRules: |
-      CTR WITHIN THE DEMO STYLE:
-      - Clear topic props + readable host reactions at phone-grid size
-      - One focal story beat between Victor and Lisa
-      - High contrast headline, clean negative space
-      - Energetic but still on-brand illustration — not meme faces, not style swaps
+      MAXIMUM CTR (YouTube phone-grid):
+      - Headline must be the first thing you notice — bigger than the hosts
+      - ONE clear conflict beat (shock / stop / point at red X) — never matching smiles
+      - High contrast navy + cream + orange #FF7A00 only for the punch phrase
+      - Props sell the hook in under 1 second (red X, failed checklist)
+      - FORBIDDEN: painted channel logo/wordmark (composited later)
+      - FORBIDDEN: duplicate episode-title text besides the CTR stack
+      - FORBIDDEN: soft/neutral headlines
     headlineDesign: |
-      HEADLINE DESIGN — make the title the #1 click magnet (still on-brand):
-      - Huge, ultra-bold condensed sans-serif ALL-CAPS — thicker than body props text
-      - High contrast: dark navy #0D1B3D on cream, OR cream/white on a dark navy rounded panel behind the stack
-      - Emphasize the HOOK words (usually the quoted phrase, the forbidden phrase, or the emotional punch) in bright orange #FF7A00 — larger or heavier than the surrounding lines
-      - Supporting lines stay navy; 1 accent line max in orange (do not rainbow the whole title)
-      - Tight line spacing, slight upward energy; leave clear left-side negative space so it reads at phone-grid size
-      - Optional tasteful accents ONLY if they help CTR: soft orange underline / brush stroke under the punch line, or a subtle rounded navy plate behind the stack — never messy stickers, never extra words
-      - Perfect spelling; crisp edges; no warped letters, no thin fonts, no low-contrast gray text
-      - The headline must feel bigger and more intentional than a plain label — like a YouTube thumbnail title, not a caption
+      PAINT the CTR headline yourself (exact lines from thumbnailText):
+      - Stacked 3–4 lines, ultra-bold condensed ALL-CAPS
+      - Dark navy rounded panel behind the stack OR high-contrast cream-on-navy
+      - Punch/quoted line in bright orange #FF7A00 + optional thick orange underline
+      - Supporting lines cream/white; perfect spelling; no warped letters
+      - Leave bottom-left corner clear for circular logo; top-right clear for wordmark
+      - Fill ~35–42% of frame width with the headline block — dominant CTR magnet
     topicRelevance: |
       TOPIC RELEVANCE — REQUIRED:
-      - Props, gestures, and wall/shelf details must clearly sell THIS episode's hook
-      - AVOID: generic smiles with no topic props, or a scene that could belong to any episode
+      - Props and gestures must instantly sell THIS episode's forbidden phrase / hook
+      - A viewer must "get it" in under 1 second at thumbnail size
+      - AVOID: generic smiles, empty desk, props that could belong to any episode
     expressionModeration: |
-      EXPRESSION INTENSITY — clear at thumbnail size, still matching the demo's illustrated faces:
-      - Medium expressiveness — specific to the hook
-      - NOT flat, NOT clownish, NOT photoreal drama
+      EXPRESSION — cute cartoon, HIGH clarity at thumbnail size:
+      - One host reacts (shock/worry); the other coaches / corrects
+      - Slightly exaggerated cartoon faces OK for CTR
+      - NOT creepy, NOT photoreal, NOT blank/dead eyes
     charactersExpressionGuidance: |
-      Victor — ONE clear illustrated reaction for THIS hook.
-      Lisa — ONE clear coaching / contrasting reaction that pairs with Victor.
-      Vary the beat; avoid repeating the exact same thumbs-up + point every episode.
+      Victor — ONE clear cartoon reaction tied to the mistake/hook (e.g. pointing at WRONG, surprised).
+      Lisa — ONE contrasting coaching beat (stop gesture, shake head, "try this instead").
+      Never both smiling the same way. Vary the beat every episode.
 
 backgroundSlideshow:
   directory: assets/background-images
@@ -188,6 +215,7 @@ assets:
   demoThumbnail: assets/demo-thumbnail.png
   demoShortThumbnail: assets/demo-short-thumbnail.png
   logo: assets/sewe-logo.png
+  logoWordmark: assets/sewe-wordmark.png
   backgroundMusic: assets/background-music.mp3
 
 publish:

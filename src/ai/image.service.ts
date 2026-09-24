@@ -21,6 +21,7 @@ type GeminiInlinePart = {
 
 /**
  * Thumbnail / background image generation with a pinned provider.
+ * Thumbnails use text→image (no reference); channel logo is composited afterward.
  * No cross-provider fallback — set IMAGE_PROVIDER to choose explicitly.
  * Config resolves lazily so manual thumbnail mode can skip API keys.
  */
@@ -52,7 +53,21 @@ export class ImageService {
   }
 
   /**
-   * Generate an image using reference images for style/brand consistency.
+   * Text-to-image generation (no reference). Prefer this for thumbnails —
+   * channel logo is composited afterward from assets.logo.
+   */
+  async generateImage(prompt: string, options?: ImageEditOptions): Promise<Buffer> {
+    if (this.config.provider === 'gemini') {
+      return this.generateWithGemini(prompt, [], options);
+    }
+    if (this.config.provider === 'cloudflare') {
+      return this.generateWithCloudflare(prompt, [], options);
+    }
+    return this.generateWithOpenAIText(prompt, options);
+  }
+
+  /**
+   * @deprecated Prefer generateImage + logo composite. Kept for callers that still pass refs.
    */
   async generateImageEdit(
     prompt: string,
@@ -66,10 +81,38 @@ export class ImageService {
     if (this.config.provider === 'cloudflare') {
       return this.generateWithCloudflare(prompt, referenceImages, options);
     }
-    return this.generateWithOpenAI(prompt, referenceImages, referenceNames, options);
+    if (referenceImages.length === 0) {
+      return this.generateWithOpenAIText(prompt, options);
+    }
+    return this.generateWithOpenAIEdit(prompt, referenceImages, referenceNames, options);
   }
 
-  private async generateWithOpenAI(
+  private async generateWithOpenAIText(
+    prompt: string,
+    options?: ImageEditOptions,
+  ): Promise<Buffer> {
+    if (!this.openaiClient) {
+      throw new Error('OPENAI_API_KEY is required for image generation');
+    }
+
+    logger.info(`Calling ${this.config.model} (openai text→image)...`);
+
+    const response = await this.openaiClient.images.generate({
+      model: this.config.model,
+      prompt,
+      size: options?.size ?? '1536x1024',
+      quality: 'high',
+    });
+
+    const b64 = response.data?.[0]?.b64_json;
+    if (!b64) {
+      throw new Error('OpenAI returned no image data');
+    }
+
+    return Buffer.from(b64, 'base64');
+  }
+
+  private async generateWithOpenAIEdit(
     prompt: string,
     referenceImages: Array<string | Buffer>,
     referenceNames: string[] | undefined,
@@ -79,7 +122,7 @@ export class ImageService {
       throw new Error('OPENAI_API_KEY is required for image generation');
     }
 
-    logger.info(`Calling ${this.config.model} (openai) for image generation...`);
+    logger.info(`Calling ${this.config.model} (openai image edit)...`);
 
     const images = await Promise.all(
       referenceImages.map(async (source, index) => {
@@ -116,7 +159,7 @@ export class ImageService {
       options?.aspectRatio ?? aspectRatioFromSize(options?.size) ?? '16:9';
 
     logger.info(
-      `Calling ${this.config.model} (gemini, ${aspectRatio}) for image generation...`,
+      `Calling ${this.config.model} (gemini, ${aspectRatio}${referenceImages.length ? ', with refs' : ', text→image'})...`,
     );
 
     const parts: Array<Record<string, unknown>> = [];
@@ -152,10 +195,16 @@ export class ImageService {
 
     if (!response.ok) {
       const message = body.error?.message ?? response.statusText;
-      const err = new Error(`Gemini image generation failed: ${message}`) as Error & {
-        status?: number;
-        code?: string;
-      };
+      const status = body.error?.status ?? '';
+      const isQuota =
+        response.status === 429 ||
+        status === 'RESOURCE_EXHAUSTED' ||
+        /quota|rate limit|resource exhausted/i.test(message);
+      const err = new Error(
+        isQuota
+          ? `Gemini image generation failed — out of tokens/quota (no fallback): ${message}`
+          : `Gemini image generation failed: ${message}`,
+      ) as Error & { status?: number; code?: string };
       err.status = response.status;
       err.code = body.error?.status;
       throw err;
