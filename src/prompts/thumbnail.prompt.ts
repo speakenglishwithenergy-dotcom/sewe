@@ -69,7 +69,11 @@ export function resolveBackgroundLogoAnchor(ctx: ChannelContext): LogoAnchor {
 }
 
 function logoSpaceInstruction(): string {
-  return `LOGO SPACE (critical): Leave clear empty areas in BOTH the BOTTOM LEFT (~10% width, circular badge) and TOP RIGHT (~12% width, vertical wordmark). Do NOT draw any channel logo, wordmark, or "Speak English With Energy" branding — official PNGs will be composited later.`;
+  return `LOGO SPACE (critical):
+- Leave BOTTOM LEFT as continuous desk/floor/wall — do NOT paint any dark circle, navy disc, badge plate, or empty logo placeholder
+- Leave TOP RIGHT as continuous background — do NOT paint any wordmark or channel name
+- Official circular logo + wordmark PNGs are composited later onto clean background only
+- Forbidden: blue/navy circular voids, empty medal shapes, fake logo frames, "Speak English With Energy" text`;
 }
 
 function ctrHeadlineInstruction(thumbnailText: string, headlineDesign?: string): string {

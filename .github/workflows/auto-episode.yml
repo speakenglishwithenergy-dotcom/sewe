@@ -134,8 +134,9 @@ jobs:
               ;;
           esac
 
-      - name: Run auto batch (1 episode, non-interactive)
+      - name: Run auto batch (1 new episode, never resume)
         run: |
+          # --yes always creates a NEW project (ignores incomplete rows in topics.json)
           npm run batch -- --channel="$CHANNEL_ID" --count=1 --yes
 
       - name: Commit topics.json if changed

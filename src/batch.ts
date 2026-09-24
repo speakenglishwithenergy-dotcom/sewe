@@ -670,36 +670,27 @@ async function main(): Promise<void> {
   const shortTime = channelCtx.publish.youtubeSchedule?.shortTime ?? '17:30';
 
   const registry = await topicRegistry.migrateFromProjects(args.channelId);
-  // --yes (CI): only auto-resume in-progress batches, not stale `failed` rows
-  // (those often point at local-only output/ folders missing on GitHub Actions).
-  // Explicit --resume still retries failed episodes.
+  // Explicit --resume retries failed / in-progress. --yes (CI) never resumes —
+  // always starts a brand-new episode so GitHub Actions is not blocked by stale
+  // topics.json rows pointing at missing local output/ folders.
   const incompleteBatch = topicRegistry.findLatestIncompleteBatch(registry, {
-    includeFailed: args.resume || !args.yes,
+    includeFailed: true,
   });
 
-  let shouldResume = args.resume;
+  let shouldResume = false;
   if (args.resume) {
     if (!incompleteBatch) {
       logger.error('No incomplete batch found in topics.json (nothing to --resume)');
       process.exit(1);
     }
+    shouldResume = true;
+  } else if (incompleteBatch && args.yes) {
+    logger.info(
+      'Ignoring incomplete batch in topics.json — --yes always starts a new episode. '
+      + 'Pass --resume to continue the incomplete one.',
+    );
   } else if (incompleteBatch) {
-    if (args.yes) {
-      logger.info('Incomplete in-progress batch found — auto-resuming (--yes)');
-      shouldResume = true;
-    } else {
-      shouldResume = await askResumeBatchInteractive(incompleteBatch);
-    }
-  } else if (args.yes) {
-    const failedOnly = topicRegistry.findLatestIncompleteBatch(registry, {
-      includeFailed: true,
-    });
-    if (failedOnly?.some((r) => r.status === 'failed')) {
-      logger.info(
-        'Skipping stale failed batch in topics.json — starting a new episode (--yes). '
-        + 'Use --resume to retry the failed one.',
-      );
-    }
+    shouldResume = await askResumeBatchInteractive(incompleteBatch);
   }
 
   if (shouldResume && incompleteBatch) {

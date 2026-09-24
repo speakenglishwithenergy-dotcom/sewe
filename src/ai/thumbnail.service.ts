@@ -9,6 +9,7 @@ import {
   SHORT_THUMB_WIDTH,
 } from './thumbnail-image.util';
 import { compositeChannelLogo, type LogoOverlayOptions } from './logo-overlay.util';
+import { clearLogoAnchorBackground } from './logo-anchor-clear.util';
 import { DISABLE_THUMBNAIL_GENERATION } from './thumbnail.config';
 import {
   normalizeManualThumbnail,
@@ -238,6 +239,19 @@ export class ThumbnailService {
   ): Promise<Buffer> {
     let buf = imageBuffer;
     const overlays = this.resolveLogoLayers(kind);
+
+    // Clear AI-painted placeholder discs under circular logo only (not wordmark —
+    // clearing top-right often damages the headline panel).
+    for (const layer of overlays) {
+      if (layer.label !== 'circular logo') continue;
+      buf = await clearLogoAnchorBackground(buf, {
+        anchor: layer.options.anchor,
+        widthRatio: layer.options.widthRatio ?? (kind === 'short' ? 0.14 : 0.09),
+        marginRatio: layer.options.marginRatio ?? 0.025,
+        padRatio: 1.2,
+        shape: 'circle',
+      });
+    }
 
     for (const layer of overlays) {
       logger.info(

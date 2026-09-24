@@ -24,7 +24,11 @@ function getExpressionGuidance(ctx: ChannelContext): string {
 }
 
 function logoSpaceInstruction(): string {
-  return `LOGO SPACE (critical): Leave BOTTOM LEFT empty for circular badge and TOP RIGHT empty for vertical wordmark. Do NOT paint any channel logo/wordmark — official PNGs are composited later.`;
+  return `LOGO SPACE (critical):
+- Leave BOTTOM LEFT as continuous desk/floor background — do NOT paint any dark circle, navy disc, badge plate, or empty logo placeholder there
+- Leave TOP RIGHT as continuous background — do NOT paint any wordmark or channel name
+- Official circular logo + wordmark PNGs are composited later onto clean background only
+- Forbidden: blue/navy circular voids, empty medal shapes, fake logo frames`;
 }
 
 function ctrHeadlineInstruction(thumbnailText: string, headlineDesign?: string): string {
