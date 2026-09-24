@@ -17,7 +17,7 @@ import {
 } from '../types';
 import { buildShortVideoPath } from '../utils/filename.util';
 import { logger } from '../utils/logger';
-import { shortDurationTargets } from '../channel/episode-profile';
+import { isTestEpisodeProfile, shortDurationTargets } from '../channel/episode-profile';
 
 export interface ShortPipelinePaths {
   projectDir: string;
@@ -111,7 +111,9 @@ export async function runShortPipeline(
     totalSteps,
     DISABLE_THUMBNAIL_GENERATION
       ? 'Waiting for manual short thumbnail (ChatGPT)...'
-      : 'Generating short thumbnail (9:16)...',
+      : isTestEpisodeProfile()
+        ? 'Using demo short thumbnail (EPISODE_PROFILE=test)...'
+        : 'Generating short thumbnail (9:16)...',
   );
   await services.thumbnailService.generateShort(
     shortScript,

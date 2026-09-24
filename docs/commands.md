@@ -91,13 +91,13 @@ npm run batch -- --channel=speak-english-with-energy --resume
 Workflow: `.github/workflows/auto-episode.yml`
 
 - **Schedule (cron):** Mon / Wed / Fri **20:00** Asia/Ho_Chi_Minh — production **short** (~90–120s), scheduled publish
-- **Manual Run workflow:** default **`mode=test`** → ~**30–60s** short, compact script, publish **immediately** (uses `YOUTUBE_PUBLISH_PRIVACY`, set `private` while testing)
+- **Manual Run workflow:** default **`mode=test`** → ~**30–60s** short, **demo thumbnail** (no image API), publish **immediately** (uses `YOUTUBE_PUBLISH_PRIVACY`, set `private` while testing)
 - **Command:** `npm run batch -- --channel=… --count=1 --yes`
 - Downloads/caches Supertonic from Hugging Face; installs FFmpeg; commits updated `topics.json`
 
 | Mode | When | Length | Publish |
 |------|------|--------|---------|
-| `test` | Manual default | ~30–60s short | `--now` (privacy from secret) |
+| `test` | Manual default | ~30–60s short, **demo thumbnail** (no image API) | `--now` (privacy from secret) |
 | `short` | Cron default / manual | ~90–120s short | Schedule Mon/Wed/Fri morning |
 | `full` | Manual only | Long + short | Schedule |
 

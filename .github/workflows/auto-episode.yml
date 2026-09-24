@@ -116,7 +116,7 @@ jobs:
             test)
               echo "EPISODE_PROFILE=test" >> "$GITHUB_ENV"
               echo "BATCH_GENERATE_FLAGS=--short" >> "$GITHUB_ENV"
-              echo "Using TEST profile: ~30–60s short, compact script, publish --now (privacy from secret)"
+              echo "Using TEST profile: ~30–60s short, demo thumbnail (no image API), publish --now"
               ;;
             short)
               echo "EPISODE_PROFILE=production" >> "$GITHUB_ENV"

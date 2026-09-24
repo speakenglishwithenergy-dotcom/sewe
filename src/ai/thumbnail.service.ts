@@ -33,6 +33,7 @@ import {
   buildShortThumbnailScenePrompt,
 } from '../prompts/short-thumbnail.prompt';
 import { logger } from '../utils/logger';
+import { isTestEpisodeProfile } from '../channel/episode-profile';
 
 function parseSceneResponse(data: unknown, label: string): string {
   if (typeof data !== 'object' || data === null || !('thumbnailScene' in data)) {
@@ -189,6 +190,12 @@ export class ThumbnailService {
       return;
     }
 
+    // CI / EPISODE_PROFILE=test: skip image API (quota) and reuse channel demo asset.
+    if (isTestEpisodeProfile()) {
+      await this.copyDemoShortThumbnail(outputPath);
+      return;
+    }
+
     const thumbnailScene =
       resolveCachedScene(this.ctx, episode.thumbnailScene) ??
       resolveCachedScene(this.ctx, script.thumbnailScene) ??
@@ -230,6 +237,24 @@ export class ThumbnailService {
 
     logger.success(
       `Short thumbnail saved → ${outputPath} (${SHORT_THUMB_WIDTH}x${SHORT_THUMB_HEIGHT})`,
+    );
+  }
+
+  /** Fast path for CI test runs — no Gemini/Cloudflare image quota. */
+  private async copyDemoShortThumbnail(outputPath: string): Promise<void> {
+    const demoPath = this.ctx.assets.demoShortThumbnail;
+    logger.info(
+      `EPISODE_PROFILE=test — using demo short thumbnail (skip image API) → ${demoPath}`,
+    );
+
+    const raw = await fs.readFile(demoPath);
+    let finalBuffer = await scaleShortThumbnailToVideoSize(raw);
+    finalBuffer = await this.withLogo(finalBuffer, 'short');
+    await fs.writeFile(outputPath, finalBuffer);
+
+    const finalSize = await getImageDimensions(finalBuffer);
+    logger.success(
+      `Short thumbnail ready from demo → ${outputPath} (${finalSize.width}x${finalSize.height})`,
     );
   }
 

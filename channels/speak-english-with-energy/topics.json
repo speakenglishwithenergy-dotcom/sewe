@@ -1,10 +1,24 @@
 {
   "topics": [
     {
+      "topic": "Unlock Your Potential: Why Smart People Get Stuck",
+      "scheduledDate": "2026-06-14",
+      "weekday": "sunday",
+      "createdAt": "2026-06-14T12:00:00.000Z",
+      "status": "published"
+    },
+    {
+      "topic": "Why Smart People Feel Lonely",
+      "scheduledDate": "2026-06-15",
+      "weekday": "monday",
+      "createdAt": "2026-06-15T12:00:00.000Z",
+      "status": "published"
+    },
+    {
       "topic": "Why Most Advice Fails",
       "projectId": "20260617-104706",
       "scheduledDate": "2026-06-17",
-      "weekday": "monday",
+      "weekday": "wednesday",
       "createdAt": "2026-06-17T03:47:06.009Z",
       "status": "published"
     },
@@ -12,23 +26,93 @@
       "topic": "Why Life Feels Different After 25",
       "projectId": "20260619-083916",
       "scheduledDate": "2026-06-19",
-      "weekday": "monday",
+      "weekday": "friday",
       "createdAt": "2026-06-19T01:39:16.179Z",
+      "status": "published"
+    },
+    {
+      "topic": "Why We Can't Focus Anymore",
+      "scheduledDate": "2026-06-21",
+      "weekday": "sunday",
+      "createdAt": "2026-06-21T12:00:00.000Z",
+      "status": "published"
+    },
+    {
+      "topic": "Stop Comparing",
+      "scheduledDate": "2026-06-23",
+      "weekday": "tuesday",
+      "createdAt": "2026-06-23T12:00:00.000Z",
+      "status": "published"
+    },
+    {
+      "topic": "What If Nothing Changes?",
+      "scheduledDate": "2026-06-25",
+      "weekday": "thursday",
+      "createdAt": "2026-06-25T12:00:00.000Z",
       "status": "published"
     },
     {
       "topic": "Successful People Protect Their Energy",
       "projectId": "003-20260626",
-      "scheduledDate": "2026-06-26",
-      "weekday": "monday",
+      "scheduledDate": "2026-06-27",
+      "weekday": "saturday",
       "createdAt": "2026-06-26T08:43:34.339Z",
+      "status": "published"
+    },
+    {
+      "topic": "Why You Never Finish What You Start",
+      "scheduledDate": "2026-06-29",
+      "weekday": "monday",
+      "createdAt": "2026-06-29T12:00:00.000Z",
+      "status": "published"
+    },
+    {
+      "topic": "Why You Understand English But Can't Speak It",
+      "scheduledDate": "2026-07-01",
+      "weekday": "wednesday",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "status": "published"
+    },
+    {
+      "topic": "One Year of English Can Change Your",
+      "scheduledDate": "2026-07-04",
+      "weekday": "saturday",
+      "createdAt": "2026-07-04T12:00:00.000Z",
+      "status": "published"
+    },
+    {
+      "topic": "The Real Reason You Can't Remember",
+      "scheduledDate": "2026-07-07",
+      "weekday": "tuesday",
+      "createdAt": "2026-07-07T12:00:00.000Z",
+      "status": "published"
+    },
+    {
+      "topic": "The 15-Minute English Habit",
+      "scheduledDate": "2026-07-09",
+      "weekday": "thursday",
+      "createdAt": "2026-07-09T12:00:00.000Z",
+      "status": "published"
+    },
+    {
+      "topic": "Stop Studying. Start Using English!",
+      "scheduledDate": "2026-07-12",
+      "weekday": "sunday",
+      "createdAt": "2026-07-12T12:00:00.000Z",
+      "status": "published"
+    },
+    {
+      "topic": "The English Routine That Actually Works",
+      "scheduledDate": "2026-07-14",
+      "weekday": "tuesday",
+      "createdAt": "2026-07-14T12:00:00.000Z",
       "status": "published"
     },
     {
       "topic": "The Confidence Trick Fluent Speakers Use",
       "projectId": "012-20260716",
-      "scheduledDate": "2026-07-15",
-      "weekday": "monday",
+      "scheduledDate": "2026-07-16",
+      "weekday": "thursday",
       "createdAt": "2026-07-15T17:20:43.323Z",
       "status": "published"
     },
@@ -36,7 +120,7 @@
       "topic": "How I Use ChatGPT to Learn English Every Day",
       "projectId": "013-20260718",
       "scheduledDate": "2026-07-18",
-      "weekday": "monday",
+      "weekday": "saturday",
       "createdAt": "2026-07-18T08:08:53.645Z",
       "status": "published"
     },
@@ -50,43 +134,43 @@
     },
     {
       "topic": "Morning Routines to Boost Your Day",
+      "projectId": "015-20260720",
       "scheduledDate": "2026-07-22",
       "weekday": "wednesday",
       "createdAt": "2026-07-20T11:14:08.536Z",
-      "status": "published",
-      "projectId": "015-20260720"
+      "status": "published"
     },
     {
       "topic": "English Phrases to Order Food Like a Local",
+      "projectId": "016-20260720",
       "scheduledDate": "2026-07-24",
       "weekday": "friday",
       "createdAt": "2026-07-20T11:14:08.536Z",
-      "status": "published",
-      "projectId": "016-20260720"
+      "status": "published"
     },
     {
       "topic": "Why You Keep Failing English Interviews",
+      "projectId": "017-20260727",
       "scheduledDate": "2026-07-27",
       "weekday": "monday",
       "createdAt": "2026-07-27T01:04:05.670Z",
-      "status": "published",
-      "projectId": "017-20260727"
+      "status": "published"
     },
     {
       "topic": "The #1 Interview Mistake Non-Native Speakers Make",
+      "projectId": "018-20260727",
       "scheduledDate": "2026-07-29",
       "weekday": "wednesday",
       "createdAt": "2026-07-27T01:04:05.670Z",
-      "status": "published",
-      "projectId": "018-20260727"
+      "status": "published"
     },
     {
       "topic": "Speak English Confidently Even If You're Nervous",
+      "projectId": "019-20260727",
       "scheduledDate": "2026-07-31",
       "weekday": "friday",
       "createdAt": "2026-07-27T01:04:05.670Z",
-      "status": "published",
-      "projectId": "019-20260727"
+      "status": "published"
     },
     {
       "topic": "Stop Memorizing Interview Answers",
@@ -98,19 +182,19 @@
     },
     {
       "topic": "How to Sound Professional in English",
+      "projectId": "021-20260804",
       "scheduledDate": "2026-08-05",
       "weekday": "wednesday",
       "createdAt": "2026-08-04T03:03:52.514Z",
-      "status": "published",
-      "projectId": "021-20260804"
+      "status": "published"
     },
     {
       "topic": "The Secret to Passing an English Interview",
+      "projectId": "022-20260804",
       "scheduledDate": "2026-08-07",
       "weekday": "friday",
       "createdAt": "2026-08-04T03:03:52.514Z",
-      "status": "published",
-      "projectId": "022-20260804"
+      "status": "published"
     },
     {
       "topic": "What Great Candidates Do Before Saying a Word",
@@ -122,19 +206,19 @@
     },
     {
       "topic": "You Know English, But You Freeze in Interviews",
+      "projectId": "025-20260810",
       "scheduledDate": "2026-08-12",
       "weekday": "wednesday",
       "createdAt": "2026-08-10T04:43:42.762Z",
-      "status": "published",
-      "projectId": "025-20260810"
+      "status": "published"
     },
     {
       "topic": "What to Say When You Don’t Understand the Interviewer",
+      "projectId": "026-20260810",
       "scheduledDate": "2026-08-14",
       "weekday": "friday",
       "createdAt": "2026-08-10T04:43:42.762Z",
-      "status": "published",
-      "projectId": "026-20260810"
+      "status": "published"
     },
     {
       "topic": "How to Buy Time Without Saying “Umm…”",
@@ -146,123 +230,99 @@
     },
     {
       "topic": "How to Sound Professional Without Using Difficult English",
+      "projectId": "002-20260817",
       "scheduledDate": "2026-08-19",
       "weekday": "wednesday",
       "createdAt": "2026-08-17T04:23:33.059Z",
-      "status": "published",
-      "projectId": "002-20260817"
+      "status": "published"
     },
     {
       "topic": "English Phrases That Make You Sound More Confident",
+      "projectId": "003-20260817",
       "scheduledDate": "2026-08-21",
       "weekday": "friday",
       "createdAt": "2026-08-17T04:23:33.059Z",
-      "status": "published",
-      "projectId": "003-20260817"
+      "status": "published"
     },
     {
       "topic": "Stop Saying “I Don’t Know” in Interviews",
+      "projectId": "001-20260823",
       "scheduledDate": "2026-08-24",
       "weekday": "monday",
       "createdAt": "2026-08-23T09:16:06.099Z",
-      "status": "published",
-      "projectId": "001-20260823"
+      "status": "published"
     },
     {
       "topic": "What Native Speakers Say When They’re Stuck in an Interview",
+      "projectId": "002-20260823",
       "scheduledDate": "2026-08-26",
       "weekday": "wednesday",
       "createdAt": "2026-08-23T09:16:06.099Z",
-      "status": "published",
-      "projectId": "002-20260823"
+      "status": "published"
     },
     {
       "topic": "How to Explain Your Experience When Your English Is Limited",
+      "projectId": "003-20260823",
       "scheduledDate": "2026-08-28",
       "weekday": "friday",
       "createdAt": "2026-08-23T09:16:06.099Z",
-      "status": "published",
-      "projectId": "003-20260823"
+      "status": "published"
     },
     {
       "topic": "How to Answer Unexpected Phone Calls in English Without Panic",
+      "projectId": "001-20260831",
       "scheduledDate": "2026-09-07",
       "weekday": "monday",
       "createdAt": "2026-08-31T10:19:58.813Z",
-      "status": "published",
-      "projectId": "001-20260831"
+      "status": "published"
     },
     {
       "topic": "Polite Ways to Say 'No' to Friends and Colleagues",
+      "projectId": "002-20260831",
       "scheduledDate": "2026-09-09",
       "weekday": "wednesday",
       "createdAt": "2026-08-31T10:19:58.813Z",
-      "status": "published",
-      "projectId": "002-20260831"
+      "status": "published"
     },
     {
       "topic": "How to Tell Great Stories Using Everyday English",
+      "projectId": "003-20260831",
       "scheduledDate": "2026-09-11",
       "weekday": "friday",
       "createdAt": "2026-08-31T10:19:58.813Z",
-      "status": "published",
-      "projectId": "003-20260831"
+      "status": "published"
     },
     {
       "topic": "You Understand English… So Why Can’t You Speak?",
+      "projectId": "004-20260913",
       "scheduledDate": "2026-09-14",
       "weekday": "monday",
       "createdAt": "2026-09-13T14:19:54.666Z",
-      "status": "published",
-      "projectId": "004-20260913"
+      "status": "published"
     },
     {
       "topic": "You’re Learning English Every Day — But Getting Nowhere",
+      "projectId": "005-20260913",
       "scheduledDate": "2026-09-16",
       "weekday": "wednesday",
       "createdAt": "2026-09-13T14:19:54.666Z",
-      "status": "published",
-      "projectId": "005-20260913"
-    },
-    {
-      "topic": "Why You Forget English Words So Quickly",
-      "scheduledDate": "2026-09-18",
-      "weekday": "friday",
-      "createdAt": "2026-09-13T14:19:54.666Z",
-      "status": "published",
-      "projectId": "006-20260913"
+      "status": "published"
     },
     {
       "topic": "How to Complain Politely in English (And Get What You Want)",
+      "projectId": "007-20260920",
       "scheduledDate": "2026-09-21",
       "weekday": "monday",
       "createdAt": "2026-09-20T09:23:27.904Z",
-      "status": "published",
-      "projectId": "007-20260920"
+      "status": "published"
     },
     {
       "topic": "Modern English Phrases for Slack, WhatsApp, and Work Chat",
+      "projectId": "008-20260920",
       "scheduledDate": "2026-09-23",
       "weekday": "wednesday",
       "createdAt": "2026-09-20T09:23:27.904Z",
-      "status": "published",
-      "projectId": "008-20260920"
-    },
-    {
-      "topic": "How to Keep Up When English Speakers Talk Too Fast",
-      "scheduledDate": "2026-09-25",
-      "weekday": "friday",
-      "createdAt": "2026-09-20T09:23:27.904Z",
-      "status": "published",
-      "projectId": "009-20260920"
-    },
-    {
-      "topic": "One Simple Tip to Speak English with Confidence",
-      "projectId": "011-20260924",
-      "scheduledDate": "2026-09-24",
-      "weekday": "thursday",
-      "createdAt": "2026-09-24T06:03:35.282Z",
-      "status": "failed"
+      "status": "published"
     }
   ]
 }
