@@ -15,6 +15,10 @@ import {
   VIDEO_WIDTH,
 } from './background-motion.util';
 import {
+  isFfmpegWaveDisabled,
+  resolveLibx264Preset,
+} from './ffmpeg-fast.util';
+import {
   buildWaveOverlayFilters,
   defaultWaveVisualizer,
   ResolvedWaveVisualizer,
@@ -66,6 +70,7 @@ export class FFmpegService {
   private ffmpegBin = 'ffmpeg';
   private ffprobeBin = 'ffprobe';
   private useVideoToolbox = false;
+  private libx264Preset = 'medium';
 
   constructor(private readonly wave: ResolvedWaveVisualizer = defaultWaveVisualizer()) {}
 
@@ -77,16 +82,17 @@ export class FFmpegService {
     // Resolve the best available ffmpeg binary.
     this.ffmpegBin = await this.resolveBin(FFMPEG_CANDIDATES, 'ffmpeg');
     this.ffprobeBin = await this.resolveBin(FFPROBE_CANDIDATES, 'ffprobe');
+    this.libx264Preset = resolveLibx264Preset();
 
     if (process.platform === 'darwin') {
       this.useVideoToolbox = await this.hasEncoder('h264_videotoolbox');
       if (this.useVideoToolbox) {
         logger.info('Using hardware encoder: h264_videotoolbox');
       } else {
-        logger.info('Using software encoder: libx264 (preset medium)');
+        logger.info(`Using software encoder: libx264 (preset ${this.libx264Preset})`);
       }
     } else {
-      logger.info('Using software encoder: libx264 (preset medium)');
+      logger.info(`Using software encoder: libx264 (preset ${this.libx264Preset})`);
     }
   }
 
@@ -104,12 +110,12 @@ export class FFmpegService {
     return this.ffmpegBin;
   }
 
-  /** H.264 encode args — VideoToolbox on macOS when available, else libx264 medium. */
+  /** H.264 encode args — VideoToolbox on macOS when available, else libx264. */
   private getVideoEncodeArgs(): string[] {
     if (this.useVideoToolbox) {
       return ['-c:v', 'h264_videotoolbox', '-q:v', '65'];
     }
-    return ['-c:v', 'libx264', '-preset', 'medium', '-crf', '20'];
+    return ['-c:v', 'libx264', '-preset', this.libx264Preset, '-crf', '20'];
   }
 
   private async resolveBin(candidates: string[], name: string): Promise<string> {
@@ -307,16 +313,29 @@ export class FFmpegService {
     }
 
     const audioInputIndex = bgInputs.bgInputIndices.length + (bgInputs.particlesInputIndex !== undefined ? 1 : 0);
-    const waveFilters = buildWaveOverlayFilters(this.wave);
-    const { x: waveX, y: waveY } = this.wave.podcast;
+    const skipWave = isFfmpegWaveDisabled();
     const overlayOpts = isFiniteBackground ? ':shortest=1' : '';
 
-    const filterComplex = [
-      ...filterParts,
-      `[${audioInputIndex}:a]volume=${PODCAST_VOLUME},asplit=2[aout][awave]`,
-      ...waveFilters,
-      `[${bgLabel}][waves]overlay=${waveX}:${waveY}${overlayOpts},format=yuv420p,${subtitleFilter}[vout]`,
-    ].join(';');
+    const filterComplex = skipWave
+      ? [
+          ...filterParts,
+          `[${audioInputIndex}:a]volume=${PODCAST_VOLUME}[aout]`,
+          `[${bgLabel}]format=yuv420p,${subtitleFilter}[vout]`,
+        ].join(';')
+      : (() => {
+          const waveFilters = buildWaveOverlayFilters(this.wave);
+          const { x: waveX, y: waveY } = this.wave.podcast;
+          return [
+            ...filterParts,
+            `[${audioInputIndex}:a]volume=${PODCAST_VOLUME},asplit=2[aout][awave]`,
+            ...waveFilters,
+            `[${bgLabel}][waves]overlay=${waveX}:${waveY}${overlayOpts},format=yuv420p,${subtitleFilter}[vout]`,
+          ].join(';');
+        })();
+
+    if (skipWave) {
+      logger.info('Skipping waveform overlay (CI / FFMPEG_SKIP_WAVE)');
+    }
 
     await execFileAsync(
       this.ffmpegBin,
@@ -354,15 +373,28 @@ export class FFmpegService {
     const safeSubs = subtitlesPath.replace(/\\/g, '\\\\').replace(/:/g, '\\:');
 
     const subtitleFilter = `subtitles=filename=${safeSubs}`;
+    const skipWave = isFfmpegWaveDisabled();
 
-    const waveFilters = buildWaveOverlayFilters(this.wave);
-    const { x: waveX, y: waveY } = this.wave.short;
-    const filterComplex = [
-      `[0:v]scale=${SHORT_VIDEO_WIDTH}:${SHORT_VIDEO_HEIGHT}:force_original_aspect_ratio=decrease,pad=${SHORT_VIDEO_WIDTH}:${SHORT_VIDEO_HEIGHT}:(ow-iw)/2:(oh-ih)/2,setsar=1[bg]`,
-      `[1:a]volume=${PODCAST_VOLUME},asplit=2[aout][awave]`,
-      ...waveFilters,
-      `[bg][waves]overlay=${waveX}:${waveY},format=yuv420p,${subtitleFilter}[vout]`,
-    ].join(';');
+    const filterComplex = skipWave
+      ? [
+          `[0:v]scale=${SHORT_VIDEO_WIDTH}:${SHORT_VIDEO_HEIGHT}:force_original_aspect_ratio=decrease,pad=${SHORT_VIDEO_WIDTH}:${SHORT_VIDEO_HEIGHT}:(ow-iw)/2:(oh-ih)/2,setsar=1[bg]`,
+          `[1:a]volume=${PODCAST_VOLUME}[aout]`,
+          `[bg]format=yuv420p,${subtitleFilter}[vout]`,
+        ].join(';')
+      : (() => {
+          const waveFilters = buildWaveOverlayFilters(this.wave);
+          const { x: waveX, y: waveY } = this.wave.short;
+          return [
+            `[0:v]scale=${SHORT_VIDEO_WIDTH}:${SHORT_VIDEO_HEIGHT}:force_original_aspect_ratio=decrease,pad=${SHORT_VIDEO_WIDTH}:${SHORT_VIDEO_HEIGHT}:(ow-iw)/2:(oh-ih)/2,setsar=1[bg]`,
+            `[1:a]volume=${PODCAST_VOLUME},asplit=2[aout][awave]`,
+            ...waveFilters,
+            `[bg][waves]overlay=${waveX}:${waveY},format=yuv420p,${subtitleFilter}[vout]`,
+          ].join(';');
+        })();
+
+    if (skipWave) {
+      logger.info('Skipping waveform overlay (CI / FFMPEG_SKIP_WAVE)');
+    }
 
     await execFileAsync(
       this.ffmpegBin,
@@ -607,6 +639,7 @@ export class FFmpegService {
 
     const waveFilters = buildWaveOverlayFilters(this.wave);
     const { x: waveX, y: waveY } = this.wave.podcast;
+    const skipWave = isFfmpegWaveDisabled();
 
     let isFiniteBackground =
       background.mode === 'slideshow' && !useMotionSlideshow;
@@ -642,6 +675,22 @@ export class FFmpegService {
       ? `,tpad=stop_mode=clone:stop_duration=${fade}`
       : '';
 
+    const podcastBodyFilters = skipWave
+      ? [
+          `[${layout.podcastAudio}:a]volume=${PODCAST_VOLUME},aformat=sample_rates=44100:channel_layouts=stereo[a2]`,
+          `[${bgLabel}]format=yuv420p,${subtitleFilter},fps=${VIDEO_FPS}${podcastVideoPad}[v2]`,
+        ]
+      : [
+          `[${layout.podcastAudio}:a]volume=${PODCAST_VOLUME},asplit=2[apod][awave]`,
+          ...waveFilters,
+          `[${bgLabel}][waves]overlay=${waveX}:${waveY}${overlayOpts},format=yuv420p,${subtitleFilter},fps=${VIDEO_FPS}${podcastVideoPad}[v2]`,
+          `[apod]aformat=sample_rates=44100:channel_layouts=stereo[a2]`,
+        ];
+
+    if (skipWave) {
+      logger.info('Skipping waveform overlay (CI / FFMPEG_SKIP_WAVE)');
+    }
+
     const filters: string[] = [
       normalizeVideo(layout.thumb, 'v0'),
       thumbnailAudioPath
@@ -650,10 +699,7 @@ export class FFmpegService {
       normalizeVideo(layout.intro, 'v1'),
       normalizeAudio(layout.intro, 'a1'),
       ...filterParts,
-      `[${layout.podcastAudio}:a]volume=${PODCAST_VOLUME},asplit=2[apod][awave]`,
-      ...waveFilters,
-      `[${bgLabel}][waves]overlay=${waveX}:${waveY}${overlayOpts},format=yuv420p,${subtitleFilter},fps=${VIDEO_FPS}${podcastVideoPad}[v2]`,
-      `[apod]aformat=sample_rates=44100:channel_layouts=stereo[a2]`,
+      ...podcastBodyFilters,
       normalizeVideo(layout.outro, 'v3'),
       normalizeAudio(layout.outro, 'a3'),
     ];

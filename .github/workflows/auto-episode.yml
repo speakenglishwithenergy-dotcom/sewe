@@ -2,6 +2,7 @@ name: Auto episode (SEWE)
 
 # Schedule: Mon / Wed / Fri 20:00 Asia/Ho_Chi_Minh → production short (~90–120s)
 # Manual Run workflow: default mode=test → ~30–60s private short for CI smoke test
+# Resume: action=resume restores checkpoint (scripts/audio/subs/thumbs, no mp4) then --resume
 
 on:
   schedule:
@@ -10,6 +11,13 @@ on:
     - cron: '0 13 * * 5'
   workflow_dispatch:
     inputs:
+      action:
+        description: 'new = start a new episode. resume = restore checkpoint + continue incomplete batch.'
+        type: choice
+        options:
+          - new
+          - resume
+        default: new
       mode:
         description: 'test = ~30–60s private short (recommended). short = production short. full = podcast+short.'
         type: choice
@@ -22,9 +30,15 @@ on:
         description: 'Channel id'
         type: string
         default: speak-english-with-energy
+      run_id:
+        description: 'Resume only: failed run id to restore checkpoint from (blank = latest workspace artifact)'
+        type: string
+        required: false
+        default: ''
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: auto-episode-${{ github.event.inputs.channel || 'speak-english-with-energy' }}
@@ -36,6 +50,7 @@ jobs:
     timeout-minutes: 360
     env:
       CHANNEL_ID: ${{ github.event.inputs.channel || 'speak-english-with-energy' }}
+      BATCH_ACTION: ${{ github.event.inputs.action || 'new' }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
       GROQ_MODEL: ${{ secrets.GROQ_MODEL }}
@@ -64,12 +79,55 @@ jobs:
       TIKTOK_REFRESH_TOKEN: ${{ secrets.TIKTOK_REFRESH_TOKEN }}
       TIKTOK_PUBLISH_PRIVACY: ${{ secrets.TIKTOK_PUBLISH_PRIVACY }}
       DISABLE_THUMBNAIL_GENERATION: 'false'
+      # Free ubuntu-latest: no GPU. ultrafast + skip motion/wave keeps long encodes usable.
+      FFMPEG_X264_PRESET: ultrafast
+      FFMPEG_DISABLE_MOTION: 'true'
+      FFMPEG_SKIP_WAVE: 'true'
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Restore workspace checkpoint
+        if: env.BATCH_ACTION == 'resume'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCE_RUN_ID: ${{ github.event.inputs.run_id }}
+        run: |
+          set -euo pipefail
+          ARTIFACT="workspace-${CHANNEL_ID}"
+          RUN_ID="${SOURCE_RUN_ID:-}"
+
+          if [ -z "$RUN_ID" ]; then
+            echo "Resolving latest non-expired artifact: $ARTIFACT"
+            RUN_ID="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${ARTIFACT}&per_page=20" \
+              --jq '[.artifacts[] | select(.expired == false)] | .[0].workflow_run.id // empty')"
+            if [ -z "$RUN_ID" ]; then
+              echo "No checkpoint artifact found for $ARTIFACT" >&2
+              exit 1
+            fi
+          fi
+
+          echo "Restoring $ARTIFACT from run_id=$RUN_ID"
+          mkdir -p .checkpoint-restore
+          gh run download "$RUN_ID" -n "$ARTIFACT" -D .checkpoint-restore
+
+          if [ -f .checkpoint-restore/projects.tar.gz ]; then
+            mkdir -p "output/${CHANNEL_ID}"
+            tar -xzf .checkpoint-restore/projects.tar.gz -C "output/${CHANNEL_ID}"
+            echo "Restored project files:"
+            find "output/${CHANNEL_ID}/projects" -type f | head -80 || true
+          else
+            echo "Warning: projects.tar.gz missing in checkpoint (scripts/audio may be absent)" >&2
+          fi
+
+          if [ -f .checkpoint-restore/topics.json ]; then
+            mkdir -p "channels/${CHANNEL_ID}"
+            cp .checkpoint-restore/topics.json "channels/${CHANNEL_ID}/topics.json"
+            echo "Restored channels/${CHANNEL_ID}/topics.json from checkpoint"
+          fi
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -116,17 +174,17 @@ jobs:
             test)
               echo "EPISODE_PROFILE=test" >> "$GITHUB_ENV"
               echo "BATCH_GENERATE_FLAGS=--short" >> "$GITHUB_ENV"
-              echo "Using TEST profile: ~30–60s short, demo thumbnail (no image API), publish --now"
+              echo "Using TEST profile: ~30–60s short, demo thumbnail (no image API), publish --now, ultrafast encode"
               ;;
             short)
               echo "EPISODE_PROFILE=production" >> "$GITHUB_ENV"
               echo "BATCH_GENERATE_FLAGS=--short" >> "$GITHUB_ENV"
-              echo "Using production short (~90–120s)"
+              echo "Using production short (~90–120s), ultrafast encode (no motion/wave on CI)"
               ;;
             full)
               echo "EPISODE_PROFILE=production" >> "$GITHUB_ENV"
               echo "BATCH_GENERATE_FLAGS=" >> "$GITHUB_ENV"
-              echo "Using full podcast + short"
+              echo "Using full podcast + short, ultrafast encode (no motion/wave on CI)"
               ;;
             *)
               echo "Unknown mode: $MODE" >&2
@@ -134,12 +192,20 @@ jobs:
               ;;
           esac
 
-      - name: Run auto batch (1 new episode, never resume)
+      - name: Run auto batch
         run: |
-          # --yes always creates a NEW project (ignores incomplete rows in topics.json)
-          npm run batch -- --channel="$CHANNEL_ID" --count=1 --yes
+          set -euo pipefail
+          if [ "$BATCH_ACTION" = resume ]; then
+            echo "Resuming incomplete batch from topics.json + restored workspace"
+            npm run batch -- --channel="$CHANNEL_ID" --resume
+          else
+            # --yes always creates a NEW project (ignores incomplete rows in topics.json)
+            echo "Starting new episode (--yes)"
+            npm run batch -- --channel="$CHANNEL_ID" --count=1 --yes
+          fi
 
       - name: Commit topics.json if changed
+        if: always()
         run: |
           TOPICS="channels/${CHANNEL_ID}/topics.json"
           if git diff --quiet -- "$TOPICS"; then
@@ -152,11 +218,36 @@ jobs:
           git commit -m "chore(${CHANNEL_ID}): update topics.json after auto episode"
           git push
 
-      - name: Upload run logs artifact
+      - name: Pack workspace checkpoint (no video)
+        if: always()
+        run: |
+          set -euo pipefail
+          rm -rf .checkpoint
+          mkdir -p .checkpoint
+
+          if [ -d "output/${CHANNEL_ID}/projects" ]; then
+            # Scripts, audio, subtitles, thumbnails, publish metadata — skip mp4 re-render on resume
+            tar -czf .checkpoint/projects.tar.gz \
+              --exclude='*.mp4' \
+              --exclude='*/video/*' \
+              -C "output/${CHANNEL_ID}" projects
+            echo "Packed projects.tar.gz ($(du -h .checkpoint/projects.tar.gz | cut -f1))"
+          else
+            echo "No output/${CHANNEL_ID}/projects — skipping projects.tar.gz"
+          fi
+
+          if [ -f "channels/${CHANNEL_ID}/topics.json" ]; then
+            cp "channels/${CHANNEL_ID}/topics.json" .checkpoint/topics.json
+          fi
+
+          ls -lah .checkpoint
+
+      - name: Upload workspace checkpoint
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: auto-episode-${{ github.run_id }}
-          path: |
-            channels/${{ env.CHANNEL_ID }}/topics.json
-          if-no-files-found: ignore
+          name: workspace-${{ env.CHANNEL_ID }}
+          path: .checkpoint/
+          retention-days: 7
+          if-no-files-found: warn
+          compression-level: 0

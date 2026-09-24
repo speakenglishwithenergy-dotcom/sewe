@@ -92,14 +92,21 @@ Workflow: `.github/workflows/auto-episode.yml`
 
 - **Schedule (cron):** Mon / Wed / Fri **20:00** Asia/Ho_Chi_Minh — production **short** (~90–120s), scheduled publish
 - **Manual Run workflow:** default **`mode=test`** → ~**30–60s** short, **demo thumbnail** (no image API), publish **immediately** (uses `YOUTUBE_PUBLISH_PRIVACY`, set `private` while testing)
-- **Command:** `npm run batch -- --channel=… --count=1 --yes`
-- Downloads/caches Supertonic from Hugging Face; installs FFmpeg; commits updated `topics.json`
+- **New episode:** `npm run batch -- --channel=… --count=1 --yes`
+- **Resume failed run:** set **`action=resume`** (optional **`run_id`** = failed run; blank = latest `workspace-<channel>` artifact)
+- Downloads/caches Supertonic from Hugging Face; installs FFmpeg; commits `topics.json` even on failure
+- **Checkpoint artifact** `workspace-<channel>` (7 days): project folder **without** `.mp4` / `video/` (scripts, audio, subtitles, thumbnails, `publish/`) + `topics.json`. Resume re-renders video from those caches.
 
 | Mode | When | Length | Publish |
 |------|------|--------|---------|
 | `test` | Manual default | ~30–60s short, **demo thumbnail** (no image API) | `--now` (privacy from secret) |
 | `short` | Cron default / manual | ~90–120s short | Schedule Mon/Wed/Fri morning |
 | `full` | Manual only | Long + short | Schedule |
+
+| Action | When | Command |
+|--------|------|---------|
+| `new` | Cron + manual default | `batch --count=1 --yes` (never auto-resumes) |
+| `resume` | Manual only | restore checkpoint → `batch --resume` |
 
 Env used by the job:
 
@@ -136,7 +143,7 @@ Optional env in the workflow job:
 
 Manual test: **Actions → Auto episode (SEWE) → Run workflow** (leave `mode=test`).
 
-> Full long-form encode on `ubuntu-latest` can take hours. Prefer `test` / `short` until stable, or a self-hosted runner with GPU/VideoToolbox.
+> Full long-form encode on free `ubuntu-latest` uses `FFMPEG_X264_PRESET=ultrafast` and skips motion overlays + waveform (`FFMPEG_DISABLE_MOTION` / `FFMPEG_SKIP_WAVE`, auto when `CI=true`). Prefer `test` / `short` for smoke runs. Local macOS keeps VideoToolbox + full motion/wave quality.
 
 ### What it does
 

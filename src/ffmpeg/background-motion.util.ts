@@ -5,6 +5,7 @@ import { promisify } from 'util';
 import sharp from 'sharp';
 import type { BackgroundMotionConfig } from '../channel/channel.types';
 import type { SlideshowSegment } from '../video/background-slideshow.util';
+import { isFfmpegMotionDisabled } from './ffmpeg-fast.util';
 import { logger } from '../utils/logger';
 
 const execFileAsync = promisify(execFile);
@@ -50,6 +51,11 @@ export function resolveBackgroundMotion(
   config: BackgroundMotionConfig | undefined,
   channelDir: string,
 ): ResolvedBackgroundMotion | undefined {
+  if (isFfmpegMotionDisabled()) {
+    logger.info('FFmpeg motion overlays disabled (CI / FFMPEG_DISABLE_MOTION) — faster long encode');
+    return undefined;
+  }
+
   const kenBurnsEnabled = config?.kenBurns?.enabled ?? false;
   const grainEnabled = config?.overlay?.grain?.enabled ?? true;
   const particlesEnabled = config?.overlay?.particles?.enabled ?? true;
