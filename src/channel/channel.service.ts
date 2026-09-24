@@ -12,6 +12,7 @@ import {
 } from './channel.types';
 import { CHANNELS_DIR } from './constants';
 import { isTikTokPublishEnabled } from '../social/publish.env';
+import { applyEpisodeProfile } from './episode-profile';
 
 export class ChannelService {
   private readonly rootDir: string;
@@ -72,21 +73,22 @@ export class ChannelService {
 
     validateChannelConfig(config);
 
-    const assets = this.resolveAssets(channelDir, config);
-    const speakers = config.hosts.map((host) => host.name);
-    const voiceMap = Object.fromEntries(config.hosts.map((host) => [host.name, host.voice]));
+    const resolved = applyEpisodeProfile(config);
+    const assets = this.resolveAssets(channelDir, resolved);
+    const speakers = resolved.hosts.map((host) => host.name);
+    const voiceMap = Object.fromEntries(resolved.hosts.map((host) => [host.name, host.voice]));
 
     return {
-      config,
+      config: resolved,
       dir: channelDir,
       assets,
       speakers,
       voiceMap,
       publish: resolvePublishCopy(
-        config.publish,
-        isTikTokPublishEnabled(config.env.prefix, config.id),
+        resolved.publish,
+        isTikTokPublishEnabled(resolved.env.prefix, resolved.id),
       ),
-      closingText: buildClosingText(config.script.closingTemplate, config.name),
+      closingText: buildClosingText(resolved.script.closingTemplate, resolved.name),
     };
   }
 

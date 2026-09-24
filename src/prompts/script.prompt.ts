@@ -1,4 +1,5 @@
 import { ChannelContext, ScriptSectionDef, buildHostsBlock } from '../channel/channel.types';
+import { isTestEpisodeProfile } from '../channel/episode-profile';
 import { DialogueLine } from '../types';
 
 function getDialogueRules(ctx: ChannelContext): string {
@@ -284,6 +285,7 @@ export function buildScriptPrompt(
   const draftBlock = formatCustomScriptBlock(customScript);
 
   if (test) {
+    const lineTarget = isTestEpisodeProfile() ? 8 : 12;
     return `You are a professional podcast script writer.
 
 Episode title (fixed — use exactly): "${topic}"
@@ -291,10 +293,10 @@ ${draftBlock}
 Hosts: ${hostList}.
 
 Requirements:
-- Exactly 12 dialogue lines total
+- Exactly ${lineTarget} dialogue lines total
 - English level: ${ctx.config.script.languageLevel}
-- Natural conversation, short sentences
-- Include an "ipa" field for every line: General American English IPA in slashes
+- Natural conversation, short sentences (about 10–16 words per line)
+- Do NOT include IPA
 ${getContinuesStoryRules()}
 
 Return ONLY a valid JSON object. Do NOT include a "title" field — the episode title is already set.
@@ -303,7 +305,7 @@ Return ONLY a valid JSON object. Do NOT include a "title" field — the episode 
   "thumbnailText": "NEVER\\nSAY\\n\\"I DON'T KNOW\\"\\nIN INTERVIEWS",
   "thumbnailScene": "Cartoon Victor points at a red X on a sticky note; Lisa shakes her head coaching — clear conflict beat, not generic smiles.",
   "script": [
-    { "speaker": "${ctx.speakers[0]}", "text": "...", "ipa": "/.../", "continuesStory": false }
+    { "speaker": "${ctx.speakers[0]}", "text": "...", "continuesStory": false }
   ]
 }`;
   }

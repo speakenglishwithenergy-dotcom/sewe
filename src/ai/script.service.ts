@@ -19,6 +19,7 @@ import {
   countScriptWords,
 } from '../prompts/script.prompt';
 import { logger } from '../utils/logger';
+import { isTestEpisodeProfile } from '../channel/episode-profile';
 
 const MAX_SECTION_ATTEMPTS = 3;
 const MAX_EXPANSION_ATTEMPTS = 3;
@@ -54,18 +55,26 @@ export class ScriptService {
       `Generating podcast script for topic: "${topic}"${test ? ' [TEST MODE]' : ''}${draftNote}`,
     );
 
-    if (test) {
+    if (test || isTestEpisodeProfile()) {
+      const minLines = isTestEpisodeProfile() ? Math.min(8, scriptConfig.targetMinLines) : 10;
       const fields = await this.openai.generateJSON(
         buildScriptPrompt(this.ctx, topic, true, customScript),
         SYSTEM_PROMPT,
         (data) =>
           PodcastMetadataFieldsSchema.extend({
-            script: buildPodcastScriptSchema(this.speakers, 10).shape.script,
+            script: buildPodcastScriptSchema(this.speakers, minLines).shape.script,
           }).parse(data),
       );
-      const script: PodcastScript = { ...fields, title: topic };
+      let script: PodcastScript = { ...fields, title: topic };
+      if (isTestEpisodeProfile()) {
+        script = {
+          ...script,
+          script: appendChannelClosing(this.ctx, script.script),
+        };
+      }
       logger.success(
-        `Script ready — "${script.title}" (${script.script.length} lines, ${countScriptWords(script.script)} words)`,
+        `Script ready — "${script.title}" (${script.script.length} lines, ${countScriptWords(script.script)} words)`
+        + (isTestEpisodeProfile() ? ' [EPISODE_PROFILE=test]' : ''),
       );
       return { script, sections: scriptConfig.sections };
     }

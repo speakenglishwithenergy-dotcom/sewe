@@ -90,10 +90,31 @@ npm run batch -- --channel=speak-english-with-energy --resume
 
 Workflow: `.github/workflows/auto-episode.yml`
 
-- **Schedule:** Mon / Wed / Fri **20:00** Asia/Ho_Chi_Minh (`0 13 * * 1,3,5` UTC)
+- **Schedule (cron):** Mon / Wed / Fri **20:00** Asia/Ho_Chi_Minh — production **short** (~90–120s), scheduled publish
+- **Manual Run workflow:** default **`mode=test`** → ~**30–60s** short, compact script, publish **immediately** (uses `YOUTUBE_PUBLISH_PRIVACY`, set `private` while testing)
 - **Command:** `npm run batch -- --channel=… --count=1 --yes`
-- **Default mode:** `short` (short-only — safer on GitHub-hosted runners). Use **Run workflow → mode=full** for long + short.
-- Downloads/caches Supertonic from Hugging Face; installs FFmpeg; commits updated `topics.json`.
+- Downloads/caches Supertonic from Hugging Face; installs FFmpeg; commits updated `topics.json`
+
+| Mode | When | Length | Publish |
+|------|------|--------|---------|
+| `test` | Manual default | ~30–60s short | `--now` (privacy from secret) |
+| `short` | Cron default / manual | ~90–120s short | Schedule Mon/Wed/Fri morning |
+| `full` | Manual only | Long + short | Schedule |
+
+Env used by the job:
+
+| Env | Purpose |
+|-----|---------|
+| `EPISODE_PROFILE=test` | Compact podcast stub + short target 30–60s |
+| `BATCH_GENERATE_FLAGS=--short` | Short-only generate + publish |
+| `BATCH_PUBLISH_NOW=1` | Optional; implied by `EPISODE_PROFILE=test` |
+
+Local smoke test (same as Actions `test`):
+
+```bash
+EPISODE_PROFILE=test BATCH_GENERATE_FLAGS=--short \
+  npm run batch -- --channel=speak-english-with-energy --count=1 --yes
+```
 
 **Secrets** (Settings → Secrets and variables → Actions) — mirror `.env` / `.env.example`:
 
@@ -110,11 +131,12 @@ Optional env in the workflow job:
 
 | Env | Purpose |
 |-----|---------|
-| `BATCH_GENERATE_FLAGS=--short` | Short-only generate + publish (set automatically when mode=short) |
+| `EPISODE_PROFILE=test` | Fast ~30–60s test short (manual Run workflow default) |
+| `BATCH_GENERATE_FLAGS=--short` | Short-only generate + publish |
 
-Manual test: **Actions → Auto episode (SEWE) → Run workflow**.
+Manual test: **Actions → Auto episode (SEWE) → Run workflow** (leave `mode=test`).
 
-> Full long-form encode on `ubuntu-latest` can take hours. Prefer `short` until stable, or a self-hosted runner with GPU/VideoToolbox.
+> Full long-form encode on `ubuntu-latest` can take hours. Prefer `test` / `short` until stable, or a self-hosted runner with GPU/VideoToolbox.
 
 ### What it does
 

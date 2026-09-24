@@ -1,7 +1,7 @@
 name: Auto episode (SEWE)
 
-# Every Mon / Wed / Fri at 20:00 Asia/Ho_Chi_Minh (UTC+7) = 13:00 UTC
-# Flow: AI topic → script → TTS → video → schedule-publish → commit topics.json
+# Schedule: Mon / Wed / Fri 20:00 Asia/Ho_Chi_Minh → production short (~90–120s)
+# Manual Run workflow: default mode=test → ~30–60s private short for CI smoke test
 
 on:
   schedule:
@@ -11,12 +11,13 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Generate long+short (full) or short-only (faster on CI)'
+        description: 'test = ~30–60s private short (recommended). short = production short. full = podcast+short.'
         type: choice
         options:
+          - test
           - short
           - full
-        default: short
+        default: test
       channel:
         description: 'Channel id'
         type: string
@@ -35,7 +36,6 @@ jobs:
     timeout-minutes: 360
     env:
       CHANNEL_ID: ${{ github.event.inputs.channel || 'speak-english-with-energy' }}
-      # Secrets → process.env (same names as .env / .env.example)
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
       GROQ_MODEL: ${{ secrets.GROQ_MODEL }}
@@ -63,7 +63,6 @@ jobs:
       TIKTOK_ACCESS_TOKEN: ${{ secrets.TIKTOK_ACCESS_TOKEN }}
       TIKTOK_REFRESH_TOKEN: ${{ secrets.TIKTOK_REFRESH_TOKEN }}
       TIKTOK_PUBLISH_PRIVACY: ${{ secrets.TIKTOK_PUBLISH_PRIVACY }}
-      # Never hang on manual thumbnail prompts in CI
       DISABLE_THUMBNAIL_GENERATION: 'false'
 
     steps:
@@ -110,15 +109,30 @@ jobs:
       - name: Resolve generate mode
         id: mode
         run: |
+          # Cron (no inputs) → production short. Manual default → test (~30–60s).
           MODE="${{ github.event.inputs.mode || 'short' }}"
           echo "mode=$MODE" >> "$GITHUB_OUTPUT"
-          if [ "$MODE" = "short" ]; then
-            echo "BATCH_GENERATE_FLAGS=--short" >> "$GITHUB_ENV"
-            echo "Using short-only generate (faster on GitHub-hosted runners)"
-          else
-            echo "BATCH_GENERATE_FLAGS=" >> "$GITHUB_ENV"
-            echo "Using full podcast + short generate"
-          fi
+          case "$MODE" in
+            test)
+              echo "EPISODE_PROFILE=test" >> "$GITHUB_ENV"
+              echo "BATCH_GENERATE_FLAGS=--short" >> "$GITHUB_ENV"
+              echo "Using TEST profile: ~30–60s short, compact script, publish --now (privacy from secret)"
+              ;;
+            short)
+              echo "EPISODE_PROFILE=production" >> "$GITHUB_ENV"
+              echo "BATCH_GENERATE_FLAGS=--short" >> "$GITHUB_ENV"
+              echo "Using production short (~90–120s)"
+              ;;
+            full)
+              echo "EPISODE_PROFILE=production" >> "$GITHUB_ENV"
+              echo "BATCH_GENERATE_FLAGS=" >> "$GITHUB_ENV"
+              echo "Using full podcast + short"
+              ;;
+            *)
+              echo "Unknown mode: $MODE" >&2
+              exit 1
+              ;;
+          esac
 
       - name: Run auto batch (1 episode, non-interactive)
         run: |

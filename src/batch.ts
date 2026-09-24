@@ -38,6 +38,7 @@ import {
 } from './topic/topic-registry.service';
 import { TopicRecord } from './topic/topic.types';
 import { logger } from './utils/logger';
+import { isTestEpisodeProfile } from './channel/episode-profile';
 
 const DEFAULT_CHANNEL_ID = 'speak-english-with-energy';
 
@@ -212,13 +213,19 @@ async function publishWithSchedule(
 
   const publisher = new SocialPublisherService();
   const shortOnly = isBatchShortOnly();
+  const publishNow =
+    isTestEpisodeProfile()
+    || process.env.BATCH_PUBLISH_NOW === '1'
+    || process.env.BATCH_PUBLISH_NOW === 'true';
   const results = await publisher.publishProject(
     channelCtx,
     projectDir,
     socialMeta,
     podcastScript,
     {
-      scheduleOverrides: { long: longAt, short: shortAt },
+      ...(publishNow
+        ? { now: true }
+        : { scheduleOverrides: { long: longAt, short: shortAt } }),
       formats: shortOnly ? ['short'] : undefined,
     },
     shortScript,
@@ -386,10 +393,18 @@ async function publishOneEpisode(
 
   logger.divider('─');
   logger.info(`Publishing — ${item.topic}`);
-  logger.info(
-    `Scheduled : long ${formatPublishTime(longAt, item.timezone)} (${item.slot.dateIso}), `
-    + `short ${formatPublishTime(shortAt, item.timezone)} (${shortSlot.dateIso})`,
-  );
+  if (
+    isTestEpisodeProfile()
+    || process.env.BATCH_PUBLISH_NOW === '1'
+    || process.env.BATCH_PUBLISH_NOW === 'true'
+  ) {
+    logger.info('Publish mode: immediate (--now / EPISODE_PROFILE=test)');
+  } else {
+    logger.info(
+      `Scheduled : long ${formatPublishTime(longAt, item.timezone)} (${item.slot.dateIso}), `
+      + `short ${formatPublishTime(shortAt, item.timezone)} (${shortSlot.dateIso})`,
+    );
+  }
   logger.divider('─');
 
   try {
