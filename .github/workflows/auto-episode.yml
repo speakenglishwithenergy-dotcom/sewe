@@ -1,0 +1,147 @@
+name: Auto episode (SEWE)
+
+# Every Mon / Wed / Fri at 20:00 Asia/Ho_Chi_Minh (UTC+7) = 13:00 UTC
+# Flow: AI topic → script → TTS → video → schedule-publish → commit topics.json
+
+on:
+  schedule:
+    - cron: '0 13 * * 1'
+    - cron: '0 13 * * 3'
+    - cron: '0 13 * * 5'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Generate long+short (full) or short-only (faster on CI)'
+        type: choice
+        options:
+          - short
+          - full
+        default: short
+      channel:
+        description: 'Channel id'
+        type: string
+        default: speak-english-with-energy
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-episode-${{ github.event.inputs.channel || 'speak-english-with-energy' }}
+  cancel-in-progress: false
+
+jobs:
+  generate-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      CHANNEL_ID: ${{ github.event.inputs.channel || 'speak-english-with-energy' }}
+      # Secrets → process.env (same names as .env / .env.example)
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GROQ_MODEL: ${{ secrets.GROQ_MODEL }}
+      CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
+      OPENAI_TTS_MODEL: ${{ secrets.OPENAI_TTS_MODEL }}
+      IMAGE_PROVIDER: ${{ secrets.IMAGE_PROVIDER }}
+      GEMINI_IMAGE_MODEL: ${{ secrets.GEMINI_IMAGE_MODEL }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_IMAGE_MODEL: ${{ secrets.CLOUDFLARE_IMAGE_MODEL }}
+      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+      YOUTUBE_PUBLISH_PRIVACY: ${{ secrets.YOUTUBE_PUBLISH_PRIVACY }}
+      YOUTUBE_CATEGORY_ID: ${{ secrets.YOUTUBE_CATEGORY_ID }}
+      FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+      FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+      FACEBOOK_PUBLISH_LIVE: ${{ secrets.FACEBOOK_PUBLISH_LIVE }}
+      FACEBOOK_FIRST_COMMENT: ${{ secrets.FACEBOOK_FIRST_COMMENT }}
+      TIKTOK_PUBLISH_ENABLED: ${{ secrets.TIKTOK_PUBLISH_ENABLED }}
+      TIKTOK_CLIENT_KEY: ${{ secrets.TIKTOK_CLIENT_KEY }}
+      TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
+      TIKTOK_ACCESS_TOKEN: ${{ secrets.TIKTOK_ACCESS_TOKEN }}
+      TIKTOK_REFRESH_TOKEN: ${{ secrets.TIKTOK_REFRESH_TOKEN }}
+      TIKTOK_PUBLISH_PRIVACY: ${{ secrets.TIKTOK_PUBLISH_PRIVACY }}
+      # Never hang on manual thumbnail prompts in CI
+      DISABLE_THUMBNAIL_GENERATION: 'false'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          ffmpeg -hide_banner -filters 2>/dev/null | grep -E 'subtitles|ass' || true
+          ffmpeg -version | head -1
+
+      - name: Install Git LFS
+        run: |
+          sudo apt-get install -y git-lfs
+          git lfs install
+
+      - name: Cache Supertonic models
+        id: cache-supertonic
+        uses: actions/cache@v4
+        with:
+          path: assets/supertonic-3
+          key: supertonic-3-v1
+
+      - name: Download Supertonic (Hugging Face)
+        if: steps.cache-supertonic.outputs.cache-hit != 'true'
+        run: |
+          rm -rf assets/supertonic-3
+          git clone --depth 1 https://huggingface.co/Supertone/supertonic-3 assets/supertonic-3
+          ls -lh assets/supertonic-3/onnx
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Resolve generate mode
+        id: mode
+        run: |
+          MODE="${{ github.event.inputs.mode || 'short' }}"
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          if [ "$MODE" = "short" ]; then
+            echo "BATCH_GENERATE_FLAGS=--short" >> "$GITHUB_ENV"
+            echo "Using short-only generate (faster on GitHub-hosted runners)"
+          else
+            echo "BATCH_GENERATE_FLAGS=" >> "$GITHUB_ENV"
+            echo "Using full podcast + short generate"
+          fi
+
+      - name: Run auto batch (1 episode, non-interactive)
+        run: |
+          npm run batch -- --channel="$CHANNEL_ID" --count=1 --yes
+
+      - name: Commit topics.json if changed
+        run: |
+          TOPICS="channels/${CHANNEL_ID}/topics.json"
+          if git diff --quiet -- "$TOPICS"; then
+            echo "No topics.json changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$TOPICS"
+          git commit -m "chore(${CHANNEL_ID}): update topics.json after auto episode"
+          git push
+
+      - name: Upload run logs artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auto-episode-${{ github.run_id }}
+          path: |
+            channels/${{ env.CHANNEL_ID }}/topics.json
+          if-no-files-found: ignore

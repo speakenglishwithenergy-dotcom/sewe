@@ -1,13 +1,24 @@
 import { spawn } from 'child_process';
 import { logger } from '../utils/logger';
 
+function parseGenerateExtraFlags(): string[] {
+  const raw = process.env.BATCH_GENERATE_FLAGS?.trim();
+  if (!raw) return [];
+  return raw.split(/\s+/).filter(Boolean);
+}
+
 export function runGenerateProject(projectId: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn('npm', ['run', 'generate', '--', `--project=${projectId}`], {
-      cwd: process.cwd(),
-      stdio: 'inherit',
-      env: process.env,
-    });
+    const extraFlags = parseGenerateExtraFlags();
+    const child = spawn(
+      'npm',
+      ['run', 'generate', '--', `--project=${projectId}`, ...extraFlags],
+      {
+        cwd: process.cwd(),
+        stdio: 'inherit',
+        env: process.env,
+      },
+    );
 
     child.on('error', reject);
     child.on('close', (code) => {

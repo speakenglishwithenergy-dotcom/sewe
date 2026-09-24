@@ -18,6 +18,13 @@ export function buildTopicSuggestPrompt(
       ? context.pastTopics.map((topic) => `- ${topic}`).join('\n')
       : '- (none yet)';
 
+  const topicExamples =
+    context.count === 1
+      ? '["Topic 1"]'
+      : context.count === 2
+        ? '["Topic 1", "Topic 2"]'
+        : '["Topic 1", "Topic 2", "Topic 3"]';
+
   return `Suggest exactly ${context.count} NEW podcast episode topics for the channel "${ctx.config.name}".
 
 Channel niche: ${ctx.config.niche}
@@ -36,6 +43,6 @@ Requirements:
 
 Return JSON:
 {
-  "topics": ["Topic 1", "Topic 2"${context.count >= 3 ? ', "Topic 3"' : ''}]
+  "topics": ${topicExamples}
 }`;
 }

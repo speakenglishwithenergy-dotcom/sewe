@@ -10,7 +10,7 @@ import {
   reviewTopicsInteractive,
 } from './batch/batch-prompt.util';
 import { BatchCount, isBatchCount } from './batch/batch.types';
-import { projectHasReadyVideos } from './batch/batch-videos.util';
+import { projectHasReadyVideos, isBatchShortOnly } from './batch/batch-videos.util';
 import { ChannelService } from './channel/channel.service';
 import { ProjectService } from './project/project.service';
 import { SocialMetadataService } from './social/social-metadata.service';
@@ -20,6 +20,7 @@ import {
   buildScheduleSlotFromIso,
   formatBatchScheduleSlot,
   isScheduleDateValid,
+  nextFutureMonWedFriDates,
   nextMonWedFriDates,
   parseScheduleDateInput,
   scheduledTimeOnDate,
@@ -45,6 +46,7 @@ type BatchCliArgs = {
   count?: BatchCount;
   dates?: string[];
   resume: boolean;
+  yes: boolean;
 };
 
 function parseCountArg(args: string[]): BatchCount | undefined {
@@ -53,7 +55,7 @@ function parseCountArg(args: string[]): BatchCount | undefined {
 
   const raw = Number.parseInt(countArg.replace('--count=', '').trim(), 10);
   if (!isBatchCount(raw)) {
-    logger.error('--count must be 2 or 3');
+    logger.error('--count must be 1, 2, or 3');
     process.exit(1);
   }
 
@@ -66,8 +68,8 @@ function parseDatesArg(args: string[]): string[] | undefined {
 
   const raw = datesArg.replace('--dates=', '').trim();
   const parts = raw.split(',').map((part) => part.trim()).filter(Boolean);
-  if (parts.length !== 2 && parts.length !== 3) {
-    logger.error('--dates must contain 2 or 3 comma-separated values: weekday 2-8 or YYYY-MM-DD');
+  if (parts.length < 1 || parts.length > 3) {
+    logger.error('--dates must contain 1–3 comma-separated values: weekday 2-8 or YYYY-MM-DD');
     process.exit(1);
   }
 
@@ -79,6 +81,7 @@ function parseBatchArgs(): BatchCliArgs {
   const channelArg = args.find((arg) => arg.startsWith('--channel='));
   const channelId = channelArg?.replace('--channel=', '').trim() || DEFAULT_CHANNEL_ID;
   const resume = args.includes('--resume');
+  const yes = args.includes('--yes') || args.includes('-y');
 
   if (!channelId) {
     logger.error('--channel value cannot be empty');
@@ -88,11 +91,13 @@ function parseBatchArgs(): BatchCliArgs {
   if (args.includes('--help') || args.includes('-h')) {
     console.log('Usage:');
     console.log('  npm run batch -- --channel=speak-english-with-energy');
+    console.log('  npm run batch -- --channel=speak-english-with-energy --count=1 --yes');
     console.log('  npm run batch -- --channel=speak-english-with-energy --count=2');
     console.log('  npm run batch -- --channel=speak-english-with-energy --dates=2,4,6');
     console.log('  npm run batch -- --channel=speak-english-with-energy --dates=2026-07-21,2026-07-23');
     console.log('  npm run batch -- --channel=speak-english-with-energy --count=3 --dates=2026-07-21,2026-07-23,2026-07-25');
     console.log('  npm run batch -- --channel=speak-english-with-energy --resume');
+    console.log('  npm run batch -- --channel=speak-english-with-energy --count=1 --yes  # CI / non-interactive');
     process.exit(0);
   }
 
@@ -108,15 +113,25 @@ function parseBatchArgs(): BatchCliArgs {
     logger.info('--resume ignores --count / --dates (uses topics.json schedule)');
   }
 
-  return { channelId, count: count ?? (dates?.length as BatchCount | undefined), dates, resume };
+  return {
+    channelId,
+    count: count ?? (dates?.length as BatchCount | undefined),
+    dates,
+    resume,
+    yes,
+  };
 }
 
 function resolveScheduleSlots(
   timezone: string,
   count: BatchCount,
   cliDates: string[] | undefined,
+  options: { preferFuture: boolean; longTime: string },
 ): BatchScheduleSlot[] {
   if (!cliDates) {
+    if (options.preferFuture) {
+      return nextFutureMonWedFriDates(new Date(), timezone, count, options.longTime);
+    }
     return nextMonWedFriDates(new Date(), timezone, count);
   }
 
@@ -196,12 +211,16 @@ async function publishWithSchedule(
   }
 
   const publisher = new SocialPublisherService();
+  const shortOnly = isBatchShortOnly();
   const results = await publisher.publishProject(
     channelCtx,
     projectDir,
     socialMeta,
     podcastScript,
-    { scheduleOverrides: { long: longAt, short: shortAt } },
+    {
+      scheduleOverrides: { long: longAt, short: shortAt },
+      formats: shortOnly ? ['short'] : undefined,
+    },
     shortScript,
   );
 
@@ -247,7 +266,11 @@ async function markReadyFromDisk(
     id: item.projectId,
     channelId: item.channelId,
   });
-  const ready = await projectHasReadyVideos(projectDir, shortRequired);
+  const ready = await projectHasReadyVideos(
+    projectDir,
+    shortRequired,
+    !isBatchShortOnly(),
+  );
   if (!ready) return null;
 
   if (item.status !== 'generated') {
@@ -492,6 +515,7 @@ async function runNewBatch(input: {
   projectService: ProjectService;
   topicRegistry: TopicRegistryService;
   channelCtx: Awaited<ReturnType<ChannelService['loadChannel']>>;
+  yes: boolean;
 }): Promise<void> {
   const {
     channelId,
@@ -505,17 +529,22 @@ async function runNewBatch(input: {
     projectService,
     topicRegistry,
     channelCtx,
+    yes,
   } = input;
 
   logger.divider('═');
-  console.log(`  📅  ${channelName} — Weekly Batch (${count} episodes)`);
+  console.log(`  📅  ${channelName} — Weekly Batch (${count} episode${count === 1 ? '' : 's'})`);
   logger.divider('═');
   logger.info(`Channel   : ${channelId}`);
   logger.info(`Timezone  : ${timezone}`);
   logger.info(`Batch size: ${count}`);
   logger.info(`Past topics: ${pastTopics.length}`);
+  if (yes) logger.info('Mode      : non-interactive (--yes)');
 
-  const defaultScheduleSlots = resolveScheduleSlots(timezone, count, dates);
+  const defaultScheduleSlots = resolveScheduleSlots(timezone, count, dates, {
+    preferFuture: yes,
+    longTime,
+  });
   const openai = new OpenAIService();
   const topicSuggest = new TopicSuggestService(openai, channelCtx);
 
@@ -523,20 +552,36 @@ async function runNewBatch(input: {
     topicSuggest.suggest(pastTopics, count);
 
   const initialTopics = await regenerate();
-  const confirmedTopics = await reviewTopicsInteractive(initialTopics, regenerate);
+  const confirmedTopics = yes
+    ? initialTopics
+    : await reviewTopicsInteractive(initialTopics, regenerate);
 
   if (!confirmedTopics) {
     logger.info('Batch cancelled.');
     return;
   }
 
-  const scheduleSlots = dates
+  if (yes) {
+    logger.info('Auto-accepted topics:');
+    confirmedTopics.forEach((topic, index) => {
+      console.log(`  ${index + 1}. ${topic}`);
+    });
+  }
+
+  const scheduleSlots = dates || yes
     ? defaultScheduleSlots
     : await reviewScheduleInteractive(defaultScheduleSlots, timezone, longTime);
 
   if (!scheduleSlots) {
     logger.info('Batch cancelled.');
     return;
+  }
+
+  if (yes) {
+    logger.info('Auto-accepted schedule:');
+    scheduleSlots.forEach((slot, index) => {
+      console.log(`  ${index + 1}. ${formatBatchScheduleSlot(slot, timezone)} ${longTime}`);
+    });
   }
 
   await topicRegistry.addPendingBatch(
@@ -612,7 +657,12 @@ async function main(): Promise<void> {
       process.exit(1);
     }
   } else if (incompleteBatch) {
-    shouldResume = await askResumeBatchInteractive(incompleteBatch);
+    if (args.yes) {
+      logger.info('Incomplete batch found — auto-resuming (--yes)');
+      shouldResume = true;
+    } else {
+      shouldResume = await askResumeBatchInteractive(incompleteBatch);
+    }
   }
 
   if (shouldResume && incompleteBatch) {
@@ -629,7 +679,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  const count = args.count ?? await askBatchCountInteractive();
+  const count = args.count ?? (args.yes ? 1 : await askBatchCountInteractive());
   const pastTopics = topicRegistry.listTopicStrings(registry);
 
   await runNewBatch({
@@ -644,6 +694,7 @@ async function main(): Promise<void> {
     projectService,
     topicRegistry,
     channelCtx,
+    yes: args.yes,
   });
 }
 

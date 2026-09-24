@@ -20,24 +20,27 @@ async function firstExisting(candidates: string[]): Promise<string | null> {
 }
 
 /**
- * True when the project already has a long video and (if required) a short video on disk.
+ * True when the project already has the required videos on disk.
  * Used by batch resume to skip re-running generate.
  */
 export async function projectHasReadyVideos(
   projectDir: string,
   shortRequired: boolean,
+  longRequired = true,
 ): Promise<boolean> {
   const scriptPath = path.join(projectDir, 'script.json');
   if (!(await fileExists(scriptPath))) return false;
 
   const script = JSON.parse(await fs.readFile(scriptPath, 'utf-8')) as PodcastScript;
 
-  const longPath = await firstExisting([
-    buildPodcastVideoPath(projectDir, script.title),
-    path.join(projectDir, 'final.mp4'),
-    path.join(projectDir, 'podcast-video.mp4'),
-  ]);
-  if (!longPath) return false;
+  if (longRequired) {
+    const longPath = await firstExisting([
+      buildPodcastVideoPath(projectDir, script.title),
+      path.join(projectDir, 'final.mp4'),
+      path.join(projectDir, 'podcast-video.mp4'),
+    ]);
+    if (!longPath) return false;
+  }
 
   if (!shortRequired) return true;
 
@@ -57,4 +60,9 @@ export async function projectHasReadyVideos(
   }
 
   return (await firstExisting(shortCandidates)) !== null;
+}
+
+/** True when BATCH_GENERATE_FLAGS includes --short (CI short-only runs). */
+export function isBatchShortOnly(): boolean {
+  return /\b--short\b/.test(process.env.BATCH_GENERATE_FLAGS ?? '');
 }

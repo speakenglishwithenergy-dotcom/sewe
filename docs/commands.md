@@ -13,7 +13,7 @@ npm run <script> -- [flags]
 | Command | Purpose |
 |---------|---------|
 | `npm run generate` | Create or resume a podcast/short video project |
-| `npm run batch` | Weekly batch: AI topics → generate then publish each of 2–3 episodes (supports `--resume`) |
+| `npm run batch` | Auto batch: AI topics → generate then publish (1–3 episodes; `--yes` for CI) |
 | `npm run remind` | Send batch reminder email (Tue/Thu/Sat/Sun) |
 | `npm run remind:install` | Install macOS launchd job for weekly Monday reminder |
 | `npm run publish` | Upload an existing project to YouTube, Facebook, and/or TikTok |
@@ -62,12 +62,13 @@ Set `short.enabled: false` in `channel.yaml` to disable short-form generation fo
 
 ## `npm run batch`
 
-Weekly batch workflow: generate and schedule **2 or 3** episodes per run.
+Weekly batch workflow: generate and schedule **1–3** episodes per run.
 
 **Entry point:** `src/batch.ts`
 
 ```bash
 npm run batch -- --channel=speak-english-with-energy
+npm run batch -- --channel=speak-english-with-energy --count=1 --yes
 npm run batch -- --channel=speak-english-with-energy --count=2
 npm run batch -- --channel=speak-english-with-energy --dates=2,4
 npm run batch -- --channel=speak-english-with-energy --dates=2026-07-21,2026-07-23
@@ -75,20 +76,61 @@ npm run batch -- --channel=speak-english-with-energy --count=3 --dates=2,4,6
 npm run batch -- --channel=speak-english-with-energy --resume
 ```
 
+### Flags
+
+| Flag | Purpose |
+|------|---------|
+| `--channel=` | Channel id (default `speak-english-with-energy`) |
+| `--count=1\|2\|3` | Episodes this run (`--yes` defaults to `1` if omitted) |
+| `--dates=` | 1–3 publish dates: weekday `2`–`8` or `YYYY-MM-DD` |
+| `--yes` / `-y` | Non-interactive: auto-accept AI topics + schedule (for CI). Auto-resumes incomplete batches. Picks the next **future** Mon/Wed/Fri slot(s) so evening runs never schedule a past `publishAt`. |
+| `--resume` | Continue incomplete batch from `topics.json` |
+
+### GitHub Actions auto episode
+
+Workflow: `.github/workflows/auto-episode.yml`
+
+- **Schedule:** Mon / Wed / Fri **20:00** Asia/Ho_Chi_Minh (`0 13 * * 1,3,5` UTC)
+- **Command:** `npm run batch -- --channel=… --count=1 --yes`
+- **Default mode:** `short` (short-only — safer on GitHub-hosted runners). Use **Run workflow → mode=full** for long + short.
+- Downloads/caches Supertonic from Hugging Face; installs FFmpeg; commits updated `topics.json`.
+
+**Secrets** (Settings → Secrets and variables → Actions) — mirror `.env` / `.env.example`:
+
+| Secret | Required | Notes |
+|--------|----------|--------|
+| `GEMINI_API_KEY` / `GROQ_API_KEY` | yes (LLM) | Multiple keys comma-separated OK |
+| `OPENAI_API_KEY` | optional | Needed if you pin `LLM_PROVIDER=openai` or OpenAI images |
+| `IMAGE_PROVIDER` + image keys | yes | e.g. Cloudflare / Gemini — must **not** rely on `DISABLE_THUMBNAIL_GENERATION` in CI |
+| `YOUTUBE_CLIENT_ID` / `YOUTUBE_CLIENT_SECRET` / `YOUTUBE_REFRESH_TOKEN` | yes for YT | Same as local OAuth |
+| `YOUTUBE_PUBLISH_PRIVACY` | no | Default `private` recommended for first CI tests |
+| `FACEBOOK_*` / `TIKTOK_*` | if publishing there | Omit unused platforms |
+
+Optional env in the workflow job:
+
+| Env | Purpose |
+|-----|---------|
+| `BATCH_GENERATE_FLAGS=--short` | Short-only generate + publish (set automatically when mode=short) |
+
+Manual test: **Actions → Auto episode (SEWE) → Run workflow**.
+
+> Full long-form encode on `ubuntu-latest` can take hours. Prefer `short` until stable, or a self-hosted runner with GPU/VideoToolbox.
+
 ### What it does
 
 1. If an incomplete batch exists in `topics.json`, either:
    - `--resume` continues it immediately, or
+   - `--yes` auto-resumes, or
    - a normal `batch` run asks `[y]` resume / `[n]` start a new batch
-2. Choose batch size: **2 or 3** episodes (`--count=2|3`, inferred from `--dates`, or interactive prompt) — skipped when resuming
+2. Choose batch size: **1, 2, or 3** episodes (`--count`, inferred from `--dates`, `--yes`→1, or interactive prompt) — skipped when resuming
 3. Loads topic history from `channels/<channel-id>/topics.json` (imports existing projects on first run)
-4. AI suggests 2 or 3 new topics that do not overlap with past topics
-5. Interactive topic review in the terminal:
+4. AI suggests topics that do not overlap with past topics
+5. Interactive topic review (skipped with `--yes`):
    - `[1-2]` or `[1-3]` edit a topic
    - `[r]` regenerate suggestions
    - `[y]` confirm
    - `[q]` quit
-6. Interactive publish-date review (defaults to next Mon/Wed or Mon/Wed/Fri for **long** video):
+6. Interactive publish-date review (skipped with `--yes` or when `--dates` is set; defaults to next Mon/Wed or Mon/Wed/Fri for **long** video):
    - Long video: sáng Thứ hai / Tư / Sáu (`longTime`, default 11:30)
    - Short video: sáng ngày kế tiếp — Thứ ba / Năm / Bảy (cùng `longTime`)
    - `[1-2]` or `[1-3]` change long publish date by **weekday number** or `YYYY-MM-DD`

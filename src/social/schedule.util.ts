@@ -438,6 +438,52 @@ export function nextMonWedFriDates(
   return slots;
 }
 
+/**
+ * Next Mon/Wed/Fri slots whose long-form wall-clock time is still in the future
+ * (with MIN_LEAD_MS buffer). Used by non-interactive / evening CI runs so we
+ * never schedule a publishAt that has already passed.
+ */
+export function nextFutureMonWedFriDates(
+  fromDate: Date,
+  timezone: string,
+  count: number,
+  longTime: string,
+): BatchScheduleSlot[] {
+  const today = getCalendarDateInTimezone(fromDate, timezone);
+  let cursor = today;
+  const slots: BatchScheduleSlot[] = [];
+  const minAt = fromDate.getTime() + MIN_LEAD_MS;
+
+  for (let guard = 0; guard < 28 && slots.length < count; guard++) {
+    const weekday = getWeekdayInTimezone(
+      new Date(Date.UTC(cursor.year, cursor.month - 1, cursor.day, 12)),
+      timezone,
+    );
+
+    if (BATCH_WEEKDAY_NUMBERS.includes(weekday as 1 | 3 | 5)) {
+      const slot: BatchScheduleSlot = {
+        weekday: weekdayNameFromDate(cursor, timezone),
+        date: cursor,
+        dateIso: calendarDateToIso(cursor),
+      };
+      const longAt = scheduledTimeOnDate(longTime, timezone, slot.date);
+      if (longAt.getTime() > minAt) {
+        slots.push(slot);
+      }
+    }
+
+    cursor = addCalendarDays(cursor, 1);
+  }
+
+  if (slots.length < count) {
+    throw new Error(
+      `Could not resolve the next ${count} future Mon/Wed/Fri slots after ${longTime} (${timezone})`,
+    );
+  }
+
+  return slots;
+}
+
 export function formatBatchScheduleSlot(slot: BatchScheduleSlot, timezone: string): string {
   const label = slot.weekday.charAt(0).toUpperCase() + slot.weekday.slice(1);
   return `${label} ${slot.dateIso} (${timezone})`;

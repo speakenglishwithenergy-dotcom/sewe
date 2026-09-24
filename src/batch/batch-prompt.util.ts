@@ -22,7 +22,9 @@ async function askQuestion(rl: readline.Interface, question: string): Promise<st
 }
 
 function formatIndexRange(count: BatchCount): string {
-  return count === 2 ? '1-2' : '1-3';
+  if (count === 1) return '1';
+  if (count === 2) return '1-2';
+  return '1-3';
 }
 
 export async function askBatchCountInteractive(): Promise<BatchCount> {

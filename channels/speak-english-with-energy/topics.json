@@ -255,6 +255,14 @@
       "createdAt": "2026-09-20T09:23:27.904Z",
       "status": "published",
       "projectId": "009-20260920"
+    },
+    {
+      "topic": "One Simple Tip to Speak English with Confidence",
+      "projectId": "011-20260924",
+      "scheduledDate": "2026-09-24",
+      "weekday": "thursday",
+      "createdAt": "2026-09-24T06:03:35.282Z",
+      "status": "failed"
     }
   ]
 }

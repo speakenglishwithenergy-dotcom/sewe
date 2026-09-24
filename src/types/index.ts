@@ -6,7 +6,28 @@ import { ChannelContext, ScriptSectionSchema } from '../channel/channel.types';
 export type Speaker = string;
 
 export function buildSpeakerSchema(speakers: [string, ...string[]]) {
-  return z.enum(speakers);
+  return z.string().min(1).transform((raw, ctx) => {
+    const trimmed = raw.trim();
+    if ((speakers as string[]).includes(trimmed)) return trimmed;
+
+    // Common LLM typos: "Victoria" → "Victor", case mismatches, etc.
+    const lower = trimmed.toLowerCase();
+    const exact = speakers.find((s) => s.toLowerCase() === lower);
+    if (exact) return exact;
+
+    const prefix = speakers.find(
+      (s) => lower.startsWith(s.toLowerCase()) || s.toLowerCase().startsWith(lower),
+    );
+    if (prefix) return prefix;
+
+    ctx.addIssue({
+      code: z.ZodIssueCode.invalid_enum_value,
+      options: speakers,
+      received: raw,
+      message: `Invalid enum value. Expected ${speakers.map((s) => `'${s}'`).join(' | ')}, received '${raw}'`,
+    });
+    return z.NEVER;
+  });
 }
 
 export function buildDialogueLineSchema(speakers: [string, ...string[]]) {
