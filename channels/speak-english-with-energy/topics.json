@@ -339,6 +339,14 @@
       "createdAt": "2026-09-25T13:15:42.541Z",
       "status": "generating",
       "projectId": "001-20260925"
+    },
+    {
+      "topic": "How to Give and Receive Compliments in Everyday English",
+      "scheduledDate": "2026-09-30",
+      "weekday": "wednesday",
+      "createdAt": "2026-09-28T13:11:14.135Z",
+      "status": "failed",
+      "projectId": "001-20260928"
     }
   ]
 }
