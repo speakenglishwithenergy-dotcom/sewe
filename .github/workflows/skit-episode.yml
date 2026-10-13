@@ -127,8 +127,10 @@ jobs:
           name: ${{ steps.skit.outputs.id }}
           path: |
             out/${{ steps.skit.outputs.id }}.mp4
+            out/tiktok-*.png
             ${{ steps.skit.outputs.path }}
           retention-days: 30
+          if-no-files-found: warn
 
       - name: Save skit and history
         if: ${{ inputs.story == '' }}

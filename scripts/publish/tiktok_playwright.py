@@ -177,6 +177,24 @@ def upload(video_path: str, caption: str, headless=True) -> dict:
             # Small pause so TikTok registers the caption
             time.sleep(1)
 
+            # Best-effort: make the video public ("Everyone"), not private.
+            try:
+                for label in ("Everyone", "Public"):
+                    opt = page.locator(f"text=/^{label}$/i").first
+                    if opt.count() and opt.is_visible():
+                        opt.click()
+                        print(f"Visibility set: {label}")
+                        break
+            except Exception:
+                print("  (could not set visibility explicitly; using account default)")
+
+            out_dir = Path(__file__).resolve().parents[2] / "out"
+            out_dir.mkdir(exist_ok=True)
+            try:
+                page.screenshot(path=str(out_dir / "tiktok-before-post.png"))
+            except Exception:
+                pass
+
             # Click Post button
             post_btn = page.locator(
                 "button:has-text('Post'), button:has-text('Upload')"
@@ -185,23 +203,55 @@ def upload(video_path: str, caption: str, headless=True) -> dict:
             post_btn.click()
             print("Post clicked, waiting for confirmation…")
 
-            # Wait for success state
-            page.wait_for_selector(
-                "[class*='success'], [class*='complete'], a[href*='/video/']",
-                timeout=60_000,
-            )
-            print("Posted!")
-
-            # Grab video URL if available
+            # STRONG confirmation only. A loose "complete" class is NOT trusted —
+            # it can mean the file upload finished, not that the post went live.
+            # Accept: a real /video/ link, an explicit success toast, or a redirect
+            # to the content-manager page. Otherwise treat it as a failure.
             video_url = None
+            confirmed = False
+            deadline = time.time() + 90
+            while time.time() < deadline:
+                try:
+                    link = page.locator("a[href*='/video/']").first
+                    if link.count() and link.is_visible():
+                        video_url = link.get_attribute("href")
+                        confirmed = True
+                        break
+                except Exception:
+                    pass
+                try:
+                    toast = page.locator(
+                        "text=/your video (has|is) (been )?(uploaded|posted|published)/i, "
+                        "text=/posted to your profile/i"
+                    ).first
+                    if toast.count() and toast.is_visible():
+                        confirmed = True
+                        break
+                except Exception:
+                    pass
+                url = page.url.lower()
+                if "tiktok.com" in url and ("/content" in url or "/manage" in url):
+                    confirmed = True
+                    break
+                time.sleep(2)
+
             try:
-                video_url = page.locator("a[href*='/video/']").first.get_attribute("href")
+                page.screenshot(path=str(out_dir / "tiktok-after-post.png"))
             except Exception:
                 pass
 
-            # Persist rotated cookies
+            # Persist rotated cookies regardless of outcome.
             ctx.storage_state(path=str(SESSION_FILE))
 
+            if not confirmed:
+                raise RuntimeError(
+                    "TikTok post not confirmed — no video link, success toast, or "
+                    "content-page redirect appeared within 90s. The video may be stuck "
+                    "in Drafts or blocked by TikTok's headless bot check. "
+                    f"See out/tiktok-after-post.png"
+                )
+
+            print(f"Posted!{(' ' + video_url) if video_url else ''}")
             return {"platform": "tiktok_playwright", "status": "PUBLISH_COMPLETE", "url": video_url}
 
         finally:
