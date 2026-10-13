@@ -1,0 +1,142 @@
+name: SEWE skit episode
+
+on:
+  schedule:
+    - cron: "0 1 * * *"    # 08:00 Vietnam time
+    - cron: "0 11 * * *"   # 18:00 Vietnam time
+  workflow_dispatch:
+    inputs:
+      story:
+        description: "Render this story file instead of writing a new one (e.g. stories/demo.json)"
+        required: false
+        default: ""
+      situation:
+        description: "Force the situation (optional, e.g. 'a job interview')"
+        required: false
+        default: ""
+      lesson_type:
+        description: "Force the lesson type (optional)"
+        type: choice
+        options: ["", dialogue, vocab, idiom, grammar, joke]
+        default: ""
+      tts_engine:
+        description: "Voice engine"
+        type: choice
+        options: [kokoro, supertonic]
+        default: kokoro
+      publish:
+        description: "Publish to social platforms after render"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write     # commit the new skit + history
+
+concurrency:
+  group: skit-episode
+  cancel-in-progress: false
+
+jobs:
+  episode:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TTS_ENGINE: ${{ inputs.tts_engine || 'kokoro' }}
+      FPS: "30"
+      X264_PRESET: medium
+      # publish only when manually requested OR when repo variable SKIT_PUBLISH=true
+      PUBLISH: ${{ inputs.publish && 'true' || vars.SKIT_PUBLISH || 'false' }}
+      SKIT_SEED: ${{ github.run_id }}
+      SITUATION: ${{ inputs.situation }}
+      LESSON_TYPE: ${{ inputs.lesson_type }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          pip install -r requirements.txt
+          pip install playwright playwright-stealth
+          playwright install chromium --with-deps
+          npx remotion browser ensure
+
+      - name: Cache voice models
+        uses: actions/cache@v4
+        with:
+          path: models
+          key: kokoro-v1.0
+
+      - name: Download voice models
+        run: |
+          mkdir -p models
+          base=https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0
+          [ -f models/kokoro.onnx ] || curl -sSL -o models/kokoro.onnx "$base/kokoro-v1.0.onnx"
+          [ -f models/voices.bin ]  || curl -sSL -o models/voices.bin  "$base/voices-v1.0.bin"
+          ls -la models
+
+      - name: Write today's skit
+        id: skit
+        env:
+          GROQ_API_KEYS: ${{ secrets.GROQ_API_KEYS }}
+          GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ -n "${{ inputs.story }}" ]; then
+            path="${{ inputs.story }}"
+          else
+            path=$(python3 scripts/generate_skit.py)
+          fi
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+          echo "id=$(python3 -c "import json;print(json.load(open('$path'))['id'])")" >> "$GITHUB_OUTPUT"
+          python3 scripts/summary.py "$path" >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Voices, music and timing
+        run: python3 scripts/skit_tts.py "${{ steps.skit.outputs.path }}"
+
+      - name: Render video
+        run: node src/short/skit/render.mjs "${{ steps.skit.outputs.path }}"
+
+      - name: Publish to social platforms
+        if: ${{ env.PUBLISH == 'true' }}
+        continue-on-error: true
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          YT_PRIVACY: public
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          TIKTOK_SESSION: ${{ secrets.TIKTOK_SESSION }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: python3 scripts/publish.py "${{ steps.skit.outputs.path }}" all
+
+      - name: Upload video
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.skit.outputs.id }}
+          path: |
+            out/${{ steps.skit.outputs.id }}.mp4
+            ${{ steps.skit.outputs.path }}
+          retention-days: 30
+
+      - name: Save skit and history
+        if: ${{ inputs.story == '' }}
+        run: |
+          python3 scripts/record_episode.py "${{ steps.skit.outputs.path }}"
+          git config user.name "sewe-bot"
+          git config user.email "sewe-bot@users.noreply.github.com"
+          git add stories channel/history.json
+          git commit -m "Skit: $(python3 -c "import json;print(json.load(open('${{ steps.skit.outputs.path }}'))['title'])") [skip ci]" || exit 0
+          git pull --rebase origin main
+          git push

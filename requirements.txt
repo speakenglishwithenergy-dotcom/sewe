@@ -1,0 +1,6 @@
+numpy
+scipy
+soundfile
+kokoro-onnx
+# optional engine (TTS_ENGINE=supertonic), downloads its model from Hugging Face
+supertonic

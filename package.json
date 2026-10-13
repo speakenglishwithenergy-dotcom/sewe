@@ -13,15 +13,30 @@
     "tiktok:auth": "tsx scripts/tiktok-oauth.ts",
     "generate:conversations-audio": "tsx src/conversations-audio.ts",
     "shadowing": "tsx src/shadowing.ts",
+    "skit:generate": "python3 scripts/generate_skit.py",
+    "skit:tts": "python3 scripts/skit_tts.py",
+    "skit:render": "node src/short/skit/render.mjs",
+    "skit:publish": "python3 scripts/publish.py",
+    "skit:demo": "node src/short/skit/demo/build-demo.mjs && node src/short/skit/render.mjs src/short/skit/demo/build/timeline.json src/short/skit/demo/build output/demo/skit-demo.mp4",
+    "skit:studio": "remotion studio src/short/skit/remotion/index.ts",
+    "skit:test": "python3 tests/test_skit_validate.py",
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@fontsource/luckiest-guy": "^5.3.0",
+    "@fontsource/nunito": "^5.3.0",
+    "@remotion/bundler": "^4.0.534",
+    "@remotion/cli": "^4.0.534",
+    "@remotion/renderer": "^4.0.534",
     "dotenv": "^16.4.5",
     "form-data": "^4.0.6",
     "googleapis": "^173.0.0",
     "onnxruntime-node": "^1.26.0",
     "openai": "^4.52.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.534",
     "sharp": "^0.33.4",
     "yaml": "^2.9.0",
     "zod": "^3.23.8"
@@ -29,7 +44,15 @@
   "devDependencies": {
     "@types/form-data": "^2.2.1",
     "@types/node": "^20.14.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
     "tsx": "^4.16.2",
     "typescript": "^5.5.3"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "fsevents@2.3.3": true,
+    "onnxruntime-node@1.26.0": true,
+    "sharp@0.33.5": true
   }
 }
