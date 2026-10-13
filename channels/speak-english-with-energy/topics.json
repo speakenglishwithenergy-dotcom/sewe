@@ -323,6 +323,30 @@
       "weekday": "wednesday",
       "createdAt": "2026-09-20T09:23:27.904Z",
       "status": "published"
+    },
+    {
+      "topic": "Small Talk at the Office: 5 Safe Questions to Break the Ice",
+      "scheduledDate": "2026-09-25",
+      "weekday": "friday",
+      "createdAt": "2026-09-24T09:29:49.754Z",
+      "status": "generating",
+      "projectId": "001-20260924"
+    },
+    {
+      "topic": "How to Join a Group Conversation in English Without Feeling Awkward",
+      "scheduledDate": "2026-09-28",
+      "weekday": "monday",
+      "createdAt": "2026-09-25T13:15:42.541Z",
+      "status": "generating",
+      "projectId": "001-20260925"
+    },
+    {
+      "topic": "How to Give and Receive Compliments in Everyday English",
+      "scheduledDate": "2026-09-30",
+      "weekday": "wednesday",
+      "createdAt": "2026-09-28T13:11:14.135Z",
+      "status": "failed",
+      "projectId": "001-20260928"
     }
   ]
 }
