@@ -1,0 +1,100 @@
+{
+ "title": "Drive‑through Idiom: On the House",
+ "lessonType": "idiom",
+ "lessonFocus": "on the house",
+ "characters": {
+  "sam": {
+   "look": "worker",
+   "gender": "m",
+   "scale": 1.0
+  },
+  "alex": {
+   "look": "man",
+   "gender": "m",
+   "scale": 1.0
+  }
+ },
+ "scenes": [
+  {
+   "background": "kitchen",
+   "caption": "Drive‑through confusion",
+   "left": "sam",
+   "right": "alex",
+   "props": {
+    "sam": "paper",
+    "alex": "paper"
+   },
+   "lines": [
+    {
+     "speaker": "sam",
+     "text": "Never say *on the house* at a drive‑through.",
+     "action": "point",
+     "expression": "surprised",
+     "listener": {
+      "action": "shrug",
+      "expression": "surprised"
+     },
+     "pause_after": 1.1
+    },
+    {
+     "speaker": "alex",
+     "text": "I just want fries, *on the house*.",
+     "action": "talk",
+     "expression": "neutral",
+     "listener": {
+      "action": "think",
+      "expression": "surprised"
+     }
+    },
+    {
+     "speaker": "sam",
+     "text": "You think I should put fries *on a house*?",
+     "action": "think",
+     "expression": "surprised",
+     "listener": {
+      "action": "laugh",
+      "expression": "surprised"
+     }
+    },
+    {
+     "speaker": "alex",
+     "text": "No, not literally!",
+     "action": "laugh",
+     "expression": "surprised",
+     "listener": {
+      "action": "facepalm",
+      "expression": "annoyed"
+     }
+    },
+    {
+     "speaker": "sam",
+     "text": "Got it, you mean *free* fries.",
+     "action": "point",
+     "expression": "happy",
+     "listener": {
+      "action": "celebrate",
+      "expression": "happy"
+     }
+    },
+    {
+     "speaker": "alex",
+     "text": "Thanks, that's *on the house*!",
+     "action": "celebrate",
+     "expression": "happy",
+     "listener": {
+      "action": "idle",
+      "expression": "smug"
+     }
+    }
+   ]
+  }
+ ],
+ "recap": {
+  "phrase": "on the house",
+  "meaningVi": "miễn phí, không tính tiền"
+ },
+ "id": "ep001-drive-through-idiom-on-the-house",
+ "episode": 1,
+ "situation": "ordering at a drive-through",
+ "date": "2026-10-13"
+}

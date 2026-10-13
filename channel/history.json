@@ -1,3 +1,13 @@
 {
- "episodes": []
+ "episodes": [
+  {
+   "episode": 1,
+   "date": "2026-10-13",
+   "id": "ep001-drive-through-idiom-on-the-house",
+   "title": "Drive‑through Idiom: On the House",
+   "lessonType": "idiom",
+   "lessonFocus": "on the house",
+   "situation": "ordering at a drive-through"
+  }
+ ]
 }
