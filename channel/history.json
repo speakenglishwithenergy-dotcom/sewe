@@ -8,6 +8,15 @@
    "lessonType": "idiom",
    "lessonFocus": "on the house",
    "situation": "ordering at a drive-through"
+  },
+  {
+   "episode": 2,
+   "date": "2026-10-13",
+   "id": "ep002-return-gift-like-a-pro",
+   "title": "Return Gift Like a Pro",
+   "lessonType": "grammar",
+   "lessonFocus": "I'd like to return",
+   "situation": "returning a gift"
   }
  ]
 }

@@ -1,0 +1,90 @@
+{
+ "title": "Return Gift Like a Pro",
+ "lessonType": "grammar",
+ "lessonFocus": "I'd like to return",
+ "characters": {
+  "mia": {
+   "look": "woman",
+   "gender": "f",
+   "scale": 1.0
+  },
+  "sam": {
+   "look": "worker",
+   "gender": "m",
+   "scale": 1.0
+  }
+ },
+ "scenes": [
+  {
+   "background": "office",
+   "caption": "Returning a Gift",
+   "left": "mia",
+   "right": "sam",
+   "props": {
+    "mia": "paper",
+    "sam": "paper"
+   },
+   "lines": [
+    {
+     "speaker": "mia",
+     "text": "Never say *I want to return*.",
+     "action": "point",
+     "expression": "surprised",
+     "listener": {
+      "action": "shrug",
+      "expression": "neutral"
+     },
+     "pause_after": 1.1
+    },
+    {
+     "speaker": "sam",
+     "text": "But I'm just trying to be honest!",
+     "action": "talk",
+     "expression": "neutral",
+     "listener": {
+      "action": "facepalm",
+      "expression": "annoyed"
+     }
+    },
+    {
+     "speaker": "mia",
+     "text": "Polite English uses *I'd like to return*.",
+     "action": "think",
+     "expression": "happy",
+     "listener": {
+      "action": "think",
+      "expression": "happy"
+     }
+    },
+    {
+     "speaker": "sam",
+     "text": "Got it, *I'd like to return* this gift.",
+     "action": "celebrate",
+     "expression": "happy",
+     "listener": {
+      "action": "laugh",
+      "expression": "happy"
+     }
+    },
+    {
+     "speaker": "mia",
+     "text": "Perfect! Let's process your refund.",
+     "action": "talk",
+     "expression": "happy",
+     "listener": {
+      "action": "idle",
+      "expression": "happy"
+     }
+    }
+   ]
+  }
+ ],
+ "recap": {
+  "phrase": "I'd like to return",
+  "meaningVi": "muốn trả lại (cách lịch sự)"
+ },
+ "id": "ep002-return-gift-like-a-pro",
+ "episode": 2,
+ "situation": "returning a gift",
+ "date": "2026-10-13"
+}
