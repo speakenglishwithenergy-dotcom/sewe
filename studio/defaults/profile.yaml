@@ -1,0 +1,124 @@
+id: studio-default
+name: DevTalk English
+niche: English shadowing and spoken video for developers
+
+# Voices = who speaks each line (TTS + subtitles). Not "podcast hosts".
+# For monologue: one voice. Add more voices only when script.format is dialogue or story.
+voices:
+  - name: Alex
+    voice: M4
+    role: Primary speaker — dev telling a personal story in natural B1-B2 English
+
+script:
+  # monologue | dialogue | tutorial | story — drives how the AI writes lines
+  format: story
+  languageLevel: B1-B2 spoken English
+  targetMinWords: 1000
+  targetMinLines: 55
+  lineRules: |
+    - Spoken VIDEO script for shadowing — each line is one subtitle/TTS beat (1–2 sentences, ~14–20 words)
+    - NOT a podcast interview, NOT a lesson with a teacher explaining grammar
+    - Alex tells a real dev story to the viewer; sound like a dev vlog or honest chat
+    - Concrete details (what happened, what you felt) — no generic motivational phrases
+    - Do NOT include IPA in output
+    - Use continuesStory on each line for natural pause grouping in audio
+  flowExample: |
+    Story monologue beats (GOOD):
+    Alex: "So I almost didn't post my first video in English."
+    Alex: "I kept thinking everyone would focus on my accent."
+    Alex: "Then one comment said my mistake actually helped them speak up."
+  closingLine: "Thanks for shadowing with me — see you next time on {name}."
+  sections:
+    - id: hook
+      label: Hook
+      lineCount: 10
+      brief: Open with a specific moment or confession tied to the topic. Viewer must care in 30 seconds.
+    - id: setup
+      label: Setup
+      lineCount: 12
+      brief: Context — what you were doing, what you believed before things changed.
+    - id: conflict
+      label: Conflict
+      lineCount: 12
+      brief: The fear, mistake, or obstacle. Real example, not abstract.
+    - id: shift
+      label: Shift
+      lineCount: 12
+      brief: What changed — action you took, mindset shift, one thing listeners can try.
+    - id: outro
+      label: Outro
+      lineCount: 10
+      brief: One clear takeaway in plain words. Warm sign-off — no hard sell.
+
+branding:
+  subtitleColors:
+    highlight: "#FF7A00"
+    keyword: "#FF7A00"
+    ipa: "#2ba6e1"
+    background: "#0D1B3D"
+  subtitleStyle:
+    primary: "#FFFFFF"
+    outline: "#0D1B3D"
+    fontSize: 16
+    outlineWidth: 2
+    shadow: 1
+    alignment: 2
+    marginL: 0
+    marginR: 0
+    marginV: 30
+    lineWidth: 70
+    includeIpa: true
+
+assets:
+  background: assets/background.png
+
+publish:
+  youtubeChannelUrl: https://www.youtube.com/@DevTalkEnglish
+  facebookPageUrl: https://www.youtube.com/@DevTalkEnglish
+  tiktokChannelUrl: https://www.youtube.com/@DevTalkEnglish
+  youtubeLongPlaylistId: PLACEHOLDER_LONG
+  youtubeShortPlaylistId: PLACEHOLDER_SHORT
+  titleSuffix: " | DevTalk English"
+  coreTags:
+    - learn english
+    - english for developers
+    - devtalk english
+    - shadowing english
+    - programming english
+    - english speaking practice
+  coreHashtags:
+    - "#DevTalkEnglish"
+    - "#LearnEnglish"
+    - "#EnglishForDevelopers"
+  shortCoreHashtags:
+    - "#DevTalkEnglish"
+    - "#LearnEnglish"
+    - "#Shorts"
+  facebookCoreHashtags:
+    - "#DevTalkEnglish"
+    - "#LearnEnglish"
+  facebookShortCoreHashtags:
+    - "#DevTalkEnglish"
+    - "#LearnEnglish"
+    - "#Reels"
+  chapterLabels:
+    - Hook
+    - Setup
+    - Conflict
+    - Shift
+    - Outro
+  defaultBullets:
+    - Real dev stories you can shadow line by line
+    - Natural B1-B2 English with light tech vocabulary
+    - Honest talk about learning English as a developer
+  description:
+    learnHeader: "📌 In this video you'll learn:"
+    chaptersHeader: "⏱ Chapters:"
+    subscribeCta: "🔔 Subscribe for more dev stories in English!"
+    shortCta: "🎧 More English practice on Speak English With Energy"
+    linksHeader: "🔗 Connect with us:"
+  facebook:
+    learnHeader: "📌 You'll learn:"
+    followCta: "🎬 DevTalk English on YouTube"
+    youtubeCta: "🎧 Main English learning channel"
+    tiktokCta: "🎵 More English practice"

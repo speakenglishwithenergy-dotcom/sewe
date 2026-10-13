@@ -1,0 +1,46 @@
+{
+  "topic": "Why I Started a Programming Channel in English (Even Though I’m Not Fluent)",
+  "hookAngles": [
+    "Confessions of a non-native English speaker who dared to teach code.",
+    "Why my imperfect English makes my programming channel better.",
+    "The dev who turned a language barrier into an opportunity."
+  ],
+  "viralAngle": "Embracing language imperfections to create a unique learning experience for developers.",
+  "sections": [
+    {
+      "id": "intro",
+      "label": "Intro & hook",
+      "brief": "Alex opens with a relatable story about struggling with English in his first job interview. Mia expresses curiosity about why Alex would start a channel in a language he’s not fluent in. Alex promises to share the surprising benefits he's discovered by doing so and invites listeners to explore how embracing imperfections can lead to unexpected opportunities.",
+      "lineCount": 11
+    },
+    {
+      "id": "main1",
+      "label": "The decision",
+      "brief": "Alex narrates his journey from frustration to decision: the pivotal moment he decided to start a channel despite language barriers. He shares specific scenarios where English was a hurdle. Mia asks what pushed him to move forward with his idea. Alex explains the gap he noticed in resources for non-native English-speaking developers, highlighting a personal story that made him realize the need for such content.",
+      "lineCount": 14
+    },
+    {
+      "id": "main2",
+      "label": "The fear",
+      "brief": "Alex delves into his initial fears: fear of judgment, making mistakes, and not being understood. Mia enquires how he handled criticism. Alex recounts a particular incident where a viewer's comment nearly made him quit. Mia offers reassurance, emphasizing the relatability of his experience. Alex reflects on how these challenges pushed him to improve his English significantly.",
+      "lineCount": 14
+    },
+    {
+      "id": "main3",
+      "label": "What changed",
+      "brief": "Discussing the turning point, Alex shares how his mindset shifted from focusing on perfection to valuing authenticity. He talks about the unexpected support from viewers who found his content encouraging. Mia asks about the impact on his self-confidence. Alex highlights specific growth moments, illustrating how his community grew stronger because of his vulnerability and authenticity.",
+      "lineCount": 14
+    },
+    {
+      "id": "closing",
+      "label": "Closing",
+      "brief": "Mia summarizes Alex’s story: transforming limitations into strengths and the power of authenticity. They both encourage listeners to start projects despite fears. Alex shares a call to action, inviting listeners to try something they’re afraid of. Mia wraps up with a reminder that every developer's voice is unique and valuable, regardless of language fluency.",
+      "lineCount": 11
+    }
+  ],
+  "keyTakeaways": [
+    "Embrace language imperfections as a strength in content creation.",
+    "Authenticity can build strong community connections.",
+    "Overcoming fears can lead to unexpected personal growth."
+  ]
+}

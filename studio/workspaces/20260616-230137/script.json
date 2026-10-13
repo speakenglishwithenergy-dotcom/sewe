@@ -1,0 +1,378 @@
+{
+  "title": "Non-Fluent But Bold: Launching My Dev Channel In English",
+  "description": "In this episode of DevTalk English, Alex shares his journey of starting a programming channel in English despite not being fluent. Discover how embracing language imperfections can create a unique learning experience for developers. Mia joins Alex to explore how authenticity builds strong community connections and how overcoming fears can lead to unexpected personal growth. Tune in for an inspiring story!\n\n#Programming #LanguageLearning #DevStories #ContentCreation #CommunityBuilding",
+  "thumbnailText": "NON-FLUENT\nBUT BOLD\nLAUNCHING MY\nDEV CHANNEL",
+  "thumbnailScene": "A developer confidently talking into a camera with code snippets and language textbooks in the background",
+  "script": [
+    {
+      "speaker": "Mia",
+      "text": "Welcome back to DevTalk English, everyone!",
+      "continuesStory": false
+    },
+    {
+      "speaker": "Alex",
+      "text": "Today, we're diving into why I started my channel in English, despite not being fluent.",
+      "continuesStory": false
+    },
+    {
+      "speaker": "Alex",
+      "text": "You know, it all began with my first job interview in English.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "I was super nervous. I mixed up 'bug' and 'feature' like three times.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "And let me tell you, my interviewer was not impressed.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Mia",
+      "text": "Oh no, sounds tough! What happened then?",
+      "continuesStory": false
+    },
+    {
+      "speaker": "Alex",
+      "text": "Well, I didn't get the job, but it got me thinking about my language skills.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "I realized I had to improve, but I didn't want to wait until I was perfect.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "So I thought, why not start sharing my coding journey in English?",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Mia",
+      "text": "And did you find any surprising benefits?",
+      "continuesStory": false
+    },
+    {
+      "speaker": "Alex",
+      "text": "Absolutely, Mia. Embracing my imperfect English led to unexpected opportunities.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "I remember this one project where I struggled with an API because all docs were in English.",
+      "continuesStory": false
+    },
+    {
+      "speaker": "Alex",
+      "text": "I spent hours just trying to understand basic usage instructions and still missed deadlines.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "That frustration was a turning point. I knew I couldn't be alone in feeling lost with English resources.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Mia",
+      "text": "Wow, so you felt a real gap there?",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "Yes, exactly! There were so few resources for developers learning in English as a second language.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "I thought, 'If I’m struggling, others must be too.' It was a lightbulb moment.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Mia",
+      "text": "So you wanted to help others like you?",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "Yes, totally. I wanted to create something for developers who feel left out due to language barriers.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "I remember one friend who almost gave up coding because of English documentation.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "He was such a talented developer, but the language kept blocking his progress.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Mia",
+      "text": "That must have been frustrating for him.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "Exactly. Watching him struggle made me realize the urgency of creating accessible content.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "So I decided to just go for it, imperfections and all, and start my channel.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Mia",
+      "text": "And now you're reaching so many developers. That's amazing, Alex!",
+      "continuesStory": false
+    },
+    {
+      "speaker": "Alex",
+      "text": "But honestly, I was terrified of the criticism at first.",
+      "continuesStory": false
+    },
+    {
+      "speaker": "Mia",
+      "text": "What did people say?",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "Most comments were supportive, but one viewer really got to me.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "They said my accent made my tutorials hard to follow.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "I almost hit delete on everything right then.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Mia",
+      "text": "Wow, that must have hurt.",
+      "continuesStory": false
+    },
+    {
+      "speaker": "Alex",
+      "text": "It did, but I realized I needed to focus on the positives.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "Other viewers commented about how my content was helpful.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "One even said my mistakes made them feel more at ease.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Mia",
+      "text": "That's really nice. Mistakes are part of learning, right?",
+      "continuesStory": false
+    },
+    {
+      "speaker": "Alex",
+      "text": "Exactly! I decided to embrace the learning curve publicly.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "Facing those fears has actually improved my English a lot.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "Now, I'm more confident even when I deploy code or do a code review.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Mia",
+      "text": "That's so encouraging. You've come a long way, Alex!",
+      "continuesStory": false
+    },
+    {
+      "speaker": "Mia",
+      "text": "Wow, it seems like the support really changed things for you.",
+      "continuesStory": false
+    },
+    {
+      "speaker": "Alex",
+      "text": "Yeah, it was a big turning point. I realized people valued authenticity over perfection.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "Once, I posted a video with a bug in my code, and instead of criticism, I got help.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "Viewers suggested solutions and shared similar experiences. It felt like a team effort.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Mia",
+      "text": "That's amazing! Your mistakes actually brought people together.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "Exactly. It was like forming a community around learning and growing together.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "This support made me more confident in other areas, like presenting new APIs.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "Before, I would overthink every word, but now I focus more on the message.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Mia",
+      "text": "Your focus shifted from language to connection. That’s powerful!",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "Yes, exactly. People connecting over code, even with language barriers.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "One viewer said seeing my struggles made them feel less alone in theirs.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "That’s when I knew my channel was making a real impact.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Mia",
+      "text": "And you've inspired so many others to start despite imperfections.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "Thanks, Mia. It's been a journey, but I'm grateful for every step.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Mia",
+      "text": "So you turned your limits into strengths and stayed true to yourself.",
+      "continuesStory": false
+    },
+    {
+      "speaker": "Alex",
+      "text": "Exactly! Authenticity became my strength, and it resonated with so many.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "It's all about showing up as you are and connecting genuinely.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Mia",
+      "text": "That's such a refreshing perspective, Alex.",
+      "continuesStory": false
+    },
+    {
+      "speaker": "Alex",
+      "text": "Thanks, Mia. I want to encourage our listeners to start projects they fear.",
+      "continuesStory": false
+    },
+    {
+      "speaker": "Alex",
+      "text": "Try that new API or share your code — even if you're scared at first.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "It's the learning process that truly matters, not perfection.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Mia",
+      "text": "And every developer's voice is unique and brings value.",
+      "continuesStory": false
+    },
+    {
+      "speaker": "Mia",
+      "text": "Don't let language hold you back from sharing your ideas.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "Absolutely. Let's keep pushing boundaries together!",
+      "continuesStory": false
+    },
+    {
+      "speaker": "Alex",
+      "text": "I remember the first video I posted; it was about debugging JavaScript.",
+      "continuesStory": false
+    },
+    {
+      "speaker": "Alex",
+      "text": "My accent was heavy, and I stumbled over some words.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "But the comments were surprisingly supportive!",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Mia",
+      "text": "Really? Viewers were nice?",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "Yeah, they appreciated the content and even offered tips.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "It was like having an unexpected team cheering for me.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Mia",
+      "text": "That must've felt amazing!",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "It did, and it motivated me to keep uploading regularly.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Alex",
+      "text": "Each video, I noticed small improvements in my English and confidence.",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Mia",
+      "text": "So it was a win-win: improving skills and sharing knowledge!",
+      "continuesStory": true
+    },
+    {
+      "speaker": "Mia",
+      "text": "Thanks for listening to this episode of DevTalk English. See you next time!",
+      "continuesStory": false
+    }
+  ]
+}

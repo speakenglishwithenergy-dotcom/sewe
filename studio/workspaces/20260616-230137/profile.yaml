@@ -1,0 +1,129 @@
+id: studio-default
+name: DevTalk English
+niche: English shadowing material for developers — real dev stories in natural spoken English
+
+hosts:
+  - name: Alex
+    voice: M4
+    personality: male developer, honest, slightly self-deprecating, tells personal stories with concrete details, speaks B1-B2 naturally with light dev vocabulary
+  - name: Mia
+    voice: F4
+    personality: female supportive listener, asks short curious questions, paraphrases simply (A2-B1), never lectures — reacts like a friend hearing the story for the first time
+
+script:
+  targetMinWords: 1100
+  targetMinLines: 62
+  languageLevel: B1-B2 (Alex) / A2-B1 (Mia reactions)
+  closingTemplate: "Thanks for listening — see you next time on {channelName}!"
+  dialogueRules: |
+    - HYBRID FORMAT: Alex is the main storyteller (~75–85% of lines); Mia reacts briefly (~15–25%)
+    - Alex speaks at B1-B2 — natural spoken English with light dev vocabulary (bug, deploy, API, code review)
+    - Mia speaks at A2-B1 when she reacts — short questions, empathy, simple paraphrases; never lectures
+    - Only Alex and Mia speak — no narrator
+    - Alex MAY speak 3–6 consecutive lines when telling a story — do NOT interrupt him mid-story
+    - Mia gets 1–3 lines per section — curious "wait, really?", supportive reactions, or a simpler restatement
+    - Do NOT force ping-pong Q&A — this is mostly Alex's monologue with Mia as a warm listener
+    - Each line: 1–2 sentences (~14–20 words per line)
+    - Sound human, not AI: use specific details — avoid generic motivational phrases
+    - Do NOT include IPA — text only
+  dialogueFlowExample: |
+    Hybrid flow — GOOD (greeting + Alex tells, Mia reacts briefly):
+    Mia: "Hey everyone, welcome back to DevTalk English!"
+    Alex: "So I decided to start a YouTube channel in English — even though my English wasn't fluent."
+    Alex: "I kept telling myself I had to wait until I sounded perfect."
+    Mia: "So you were scared people would judge your English?"
+    Alex: "Exactly. I thought one mistake on camera would prove I wasn't good enough."
+  sections:
+    - id: intro
+      label: Intro & hook
+      lineCount: 11
+      brief: Mia opens with a brief warm greeting. Alex launches into a personal hook about the topic. Mia asks ONE short curious question near the end.
+    - id: main1
+      label: The decision
+      lineCount: 14
+      brief: Alex tells the origin story with concrete details. Mia reacts 1–2 times with empathy or a simple paraphrase.
+    - id: main2
+      label: The fear
+      lineCount: 14
+      brief: Alex names the biggest fear or misconception. Push back with a real example. Mia asks ONE "wait, really?" moment.
+    - id: main3
+      label: What changed
+      lineCount: 14
+      brief: Alex shares what actually helped — shadowing, imperfect practice, small wins. One actionable tip. Mia restates the key idea in simpler English.
+    - id: closing
+      label: Closing
+      lineCount: 11
+      brief: Alex recaps main points and lands one clear takeaway. Mia gives a warm one-line reaction. Brief goodbye and channel sign-off.
+
+branding:
+  subtitleColors:
+    highlight: "#FF7A00"
+    keyword: "#FF7A00"
+    ipa: "#2ba6e1"
+    background: "#0D1B3D"
+  subtitleStyle:
+    primary: "#FFFFFF"
+    outline: "#0D1B3D"
+    fontSize: 16
+    outlineWidth: 2
+    shadow: 1
+    alignment: 2
+    marginL: 0
+    marginR: 0
+    marginV: 30
+    lineWidth: 70
+    includeIpa: true
+
+assets:
+  background: assets/background.png
+
+publish:
+  youtubeChannelUrl: https://www.youtube.com/@DevTalkEnglish
+  facebookPageUrl: https://www.youtube.com/@DevTalkEnglish
+  tiktokChannelUrl: https://www.youtube.com/@DevTalkEnglish
+  youtubeLongPlaylistId: PLACEHOLDER_LONG
+  youtubeShortPlaylistId: PLACEHOLDER_SHORT
+  titleSuffix: " | DevTalk English"
+  coreTags:
+    - learn english
+    - english for developers
+    - devtalk english
+    - shadowing english
+    - programming english
+    - english speaking practice
+  coreHashtags:
+    - "#DevTalkEnglish"
+    - "#LearnEnglish"
+    - "#EnglishForDevelopers"
+  shortCoreHashtags:
+    - "#DevTalkEnglish"
+    - "#LearnEnglish"
+    - "#Shorts"
+  facebookCoreHashtags:
+    - "#DevTalkEnglish"
+    - "#LearnEnglish"
+  facebookShortCoreHashtags:
+    - "#DevTalkEnglish"
+    - "#LearnEnglish"
+    - "#Reels"
+  chapterLabels:
+    - Intro
+    - The decision
+    - The fear
+    - What changed
+    - Closing
+  defaultBullets:
+    - Real dev stories you can shadow line by line
+    - Natural B1-B2 English with light tech vocabulary
+    - Honest talk about learning English as a developer
+  description:
+    learnHeader: "📌 In this episode you'll learn:"
+    chaptersHeader: "⏱ Chapters:"
+    subscribeCta: "🔔 Subscribe for more dev stories in English!"
+    shortCta: "🎧 More English practice on Speak English With Energy"
+    linksHeader: "🔗 Connect with us:"
+  facebook:
+    learnHeader: "📌 You'll learn:"
+    followCta: "🎬 DevTalk English on YouTube"
+    youtubeCta: "🎧 Main English learning channel"
+    tiktokCta: "🎵 More English practice"
