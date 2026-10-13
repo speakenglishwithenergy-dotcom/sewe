@@ -1,14 +1,14 @@
 {
- "title": "Drive‑through Idiom: On the House",
- "lessonType": "idiom",
- "lessonFocus": "on the house",
+ "title": "Stop Saying *'I look for'*",
+ "lessonType": "grammar",
+ "lessonFocus": "I'm looking for",
  "characters": {
-  "sam": {
-   "look": "worker",
-   "gender": "m",
+  "mia": {
+   "look": "woman",
+   "gender": "f",
    "scale": 1.0
   },
-  "alex": {
+  "tom": {
    "look": "man",
    "gender": "m",
    "scale": 1.0
@@ -16,85 +16,62 @@
  },
  "scenes": [
   {
-   "background": "kitchen",
-   "caption": "Drive‑through confusion",
-   "left": "sam",
-   "right": "alex",
-   "props": {
-    "sam": "paper",
-    "alex": "paper"
-   },
+   "background": "park",
+   "caption": "Tourist Help",
+   "left": "mia",
+   "right": "tom",
+   "props": {},
    "lines": [
     {
-     "speaker": "sam",
-     "text": "Never say *on the house* at a drive‑through.",
+     "speaker": "mia",
+     "text": "Never say *'I look for'*.",
      "action": "point",
      "expression": "surprised",
      "listener": {
       "action": "shrug",
-      "expression": "surprised"
+      "expression": "neutral"
      },
      "pause_after": 1.1
     },
     {
-     "speaker": "alex",
-     "text": "I just want fries, *on the house*.",
-     "action": "talk",
-     "expression": "neutral",
-     "listener": {
-      "action": "think",
-      "expression": "surprised"
-     }
-    },
-    {
-     "speaker": "sam",
-     "text": "You think I should put fries *on a house*?",
+     "speaker": "tom",
+     "text": "I... I look for the museum?",
      "action": "think",
-     "expression": "surprised",
+     "expression": "worried",
      "listener": {
       "action": "laugh",
-      "expression": "surprised"
-     }
-    },
-    {
-     "speaker": "alex",
-     "text": "No, not literally!",
-     "action": "laugh",
-     "expression": "surprised",
-     "listener": {
-      "action": "facepalm",
-      "expression": "annoyed"
-     }
-    },
-    {
-     "speaker": "sam",
-     "text": "Got it, you mean *free* fries.",
-     "action": "point",
-     "expression": "happy",
-     "listener": {
-      "action": "celebrate",
       "expression": "happy"
      }
     },
     {
-     "speaker": "alex",
-     "text": "Thanks, that's *on the house*!",
+     "speaker": "mia",
+     "text": "You should say *'I'm looking for the museum.'* That's natural.",
+     "action": "talk",
+     "expression": "happy",
+     "listener": {
+      "action": "think",
+      "expression": "happy"
+     }
+    },
+    {
+     "speaker": "tom",
+     "text": "Got it! *I'm looking for the museum* now!",
      "action": "celebrate",
      "expression": "happy",
      "listener": {
-      "action": "idle",
-      "expression": "smug"
+      "action": "celebrate",
+      "expression": "happy"
      }
     }
    ]
   }
  ],
  "recap": {
-  "phrase": "on the house",
-  "meaningVi": "miễn phí, không tính tiền"
+  "phrase": "I'm looking for",
+  "meaningVi": "đang tìm (cái gì)"
  },
- "id": "ep001-drive-through-idiom-on-the-house",
+ "id": "ep001-stop-saying-i-look-for",
  "episode": 1,
- "situation": "ordering at a drive-through",
+ "situation": "helping a tourist",
  "date": "2026-10-13"
 }

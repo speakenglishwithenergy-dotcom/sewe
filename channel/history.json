@@ -1,4 +1,18 @@
 {
  "episodes": [
+  {
+   "episode": 1,
+   "date": "2026-10-13",
+   "id": "ep001-stop-saying-i-look-for",
+   "title": "Stop Saying *'I look for'*",
+   "lessonType": "grammar",
+   "lessonFocus": "I'm looking for",
+   "situation": "helping a tourist",
+   "published": {
+    "youtube": "https://youtu.be/AvNaRDlemBQ",
+    "facebook": "https://www.facebook.com/reel/1434276501992899",
+    "tiktok": true
+   }
+  }
  ]
 }
