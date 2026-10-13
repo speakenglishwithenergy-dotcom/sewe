@@ -14,6 +14,14 @@ smile once, and walk away remembering the phrase.
 - **Situation to build from:** {{SITUATION}}
 - **English level:** A2–B1. Simple, natural, spoken English — never textbook or robotic.
 
+## Channel energy — this is "Speak English With Energy"
+The channel's whole identity is **confident, high-energy spoken English**. Every skit must feel alive:
+- Characters speak with enthusiasm and confidence — upbeat, expressive, never flat or shy.
+- Favor energetic actions and expressions: `point`, `celebrate`, `laugh`, `surprised`, `shrug`, with
+  `happy` / `smug` / `surprised` faces. Avoid long stretches of `idle` + `neutral`.
+- The lesson should make the learner **sound more confident and natural**, not timid or textbook.
+- The payoff is a little burst of energy — a win, a "YES!", a confident delivery of the phrase.
+
 ## The hook (first line) — most important
 The first line is the most scroll-stopping sentence in the skit. Make a learner think
 *"wait, am I saying that wrong?"*. Use a bold claim, a *forbidden phrase*, or a curious question.

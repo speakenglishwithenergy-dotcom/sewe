@@ -1,40 +1,38 @@
 {
-  "id": "demo-coffee",
-  "title": "Order Coffee Politely",
+  "id": "demo-energy",
+  "title": "Stop Saying I'm Fine",
   "lessonType": "dialogue",
-  "lessonFocus": "Can I get a ...? / for here or to go?",
+  "lessonFocus": "I'm doing great, thanks!",
   "fps": 30,
   "characters": {
-    "ben": { "look": "man", "gender": "m", "scale": 1.0, "voice": "Daniel" },
-    "mia": { "look": "barista", "gender": "f", "scale": 1.0, "voice": "Samantha" }
+    "coach": { "look": "woman", "gender": "f", "scale": 1.0, "voice": "Samantha" },
+    "sam": { "look": "man", "gender": "m", "scale": 1.0, "voice": "Daniel" }
   },
   "scenes": [
     {
-      "background": "kitchen",
-      "caption": "AT THE CAFE",
-      "left": "mia",
-      "right": "ben",
+      "background": "office",
+      "caption": "SPEAK WITH ENERGY",
+      "left": "coach",
+      "right": "sam",
       "lines": [
-        { "speaker": "mia", "text": "Never say *\"I want coffee\"* again.", "action": "point", "expression": "smug", "listener": { "action": "idle", "expression": "surprised" } },
-        { "speaker": "ben", "text": "Wait... *why not?*", "action": "shrug", "expression": "worried", "listener": { "action": "idle", "expression": "smug" } },
-        { "speaker": "mia", "text": "It sounds rude. Say: *Can I get* a latte?", "action": "talk", "expression": "happy", "listener": { "action": "think", "expression": "neutral" } },
-        { "speaker": "ben", "text": "Ohh... *Can I get* a latte, please?", "action": "talk", "expression": "neutral", "listener": { "action": "idle", "expression": "happy" } },
-        { "speaker": "mia", "text": "*Perfect!* For here or to go?", "action": "celebrate", "expression": "happy", "listener": { "action": "idle", "expression": "surprised" } },
-        { "speaker": "ben", "text": "To go — I'm *so late!*", "action": "shrug", "expression": "worried", "listener": { "action": "laugh", "expression": "happy" } }
+        { "speaker": "coach", "text": "Stop saying *\"I'm fine.\"*", "action": "point", "expression": "smug", "listener": { "action": "idle", "expression": "surprised" } },
+        { "speaker": "sam", "text": "But... it's *correct,* right?", "action": "shrug", "expression": "worried", "listener": { "action": "cross_arms", "expression": "smug" } },
+        { "speaker": "coach", "text": "Correct, but *boring!* Say it with energy!", "action": "celebrate", "expression": "happy", "listener": { "action": "think", "expression": "neutral" } },
+        { "speaker": "sam", "text": "Okay... *I'm doing great, thanks!*", "action": "talk", "expression": "happy", "listener": { "action": "point", "expression": "happy" } },
+        { "speaker": "coach", "text": "*YES!* Now you sound *alive!*", "action": "celebrate", "expression": "surprised", "listener": { "action": "laugh", "expression": "happy" } }
       ]
     },
     {
       "background": "park",
-      "caption": "TWO MINUTES LATER",
-      "left": "ben",
-      "props": { "ben": "coffee" },
+      "caption": "LATER",
+      "left": "sam",
       "lines": [
-        { "speaker": "ben", "text": "Polite English? *Easy.*", "action": "celebrate", "expression": "happy", "pause_after": 0.4 }
+        { "speaker": "sam", "text": "*Great* beats *fine* every time!", "action": "celebrate", "expression": "happy", "pause_after": 0.4 }
       ]
     }
   ],
   "recap": {
-    "phrase": "Can I get a latte, please?",
-    "meaningVi": "Cho tôi một ly latte nhé (lịch sự)"
+    "phrase": "I'm doing great, thanks!",
+    "meaningVi": "Tôi rất ổn, cảm ơn! (nói đầy năng lượng)"
   }
 }

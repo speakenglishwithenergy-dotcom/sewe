@@ -225,7 +225,10 @@ export const HumanFigure: React.FC<{
   return (
     <g>
       <ellipse cx={x} cy={floorY + 8} rx={(110 - air * 0.6) * scale} ry={(16 - air * 0.08) * scale} fill="rgba(60,30,10,0.16)" />
-      <g transform={`translate(${x} ${hipY + pose.y * scale}) scale(${scale * facing} ${scale})`}>
+      <g
+        transform={`translate(${x} ${hipY + pose.y * scale}) scale(${scale * facing} ${scale})`}
+        style={{ filter: 'drop-shadow(0px 10px 7px rgba(20,22,40,0.28))' }}
+      >
         {/* back arm (behind body) */}
         {arm(back, true)}
         {/* legs */}
