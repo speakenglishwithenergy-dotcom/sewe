@@ -109,10 +109,12 @@ def voice_gender(engine, voice):
 def cast_voices(story, engine):
     used, cast = set(), {}
     for cid, c in story["characters"].items():
-        gender = c.get("gender") or LOOK_GENDER.get(c.get("look", ""), "male")
+        raw = (c.get("gender") or LOOK_GENDER.get(c.get("look", ""), "male")).strip().lower()
+        gender = {"m": "male", "f": "female", "male": "male", "female": "female"}.get(raw, "male")
         c["gender"] = gender
         bucket = f"{gender}_{'young' if c.get('look') in YOUNG_LOOKS else 'adult'}"
-        wanted = (c.get("voice") or {}).get(engine)
+        v = c.get("voice")
+        wanted = v.get(engine) if isinstance(v, dict) else None
         if wanted and voice_gender(engine, wanted) == gender and wanted not in used:
             voice = wanted
         else:
