@@ -12,6 +12,15 @@
     "youtube": "https://youtu.be/AvNaRDlemBQ",
     "facebook": "https://www.facebook.com/reel/1434276501992899"
    }
+  },
+  {
+   "episode": 2,
+   "date": "2026-10-14",
+   "id": "ep002-polite-order-fix",
+   "title": "Polite Order Fix",
+   "lessonType": "dialogue",
+   "lessonFocus": "I think there's a mistake",
+   "situation": "complaining politely about an order"
   }
  ]
 }
