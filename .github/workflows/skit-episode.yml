@@ -27,7 +27,7 @@ on:
       publish:
         description: "Publish to social platforms after render"
         type: boolean
-        default: false
+        default: true
 
 permissions:
   contents: write     # commit the new skit + history
@@ -44,8 +44,9 @@ jobs:
       TTS_ENGINE: ${{ inputs.tts_engine || 'kokoro' }}
       FPS: "30"
       X264_PRESET: medium
-      # publish only when manually requested OR when repo variable SKIT_PUBLISH=true
-      PUBLISH: ${{ inputs.publish && 'true' || vars.SKIT_PUBLISH || 'false' }}
+      # Schedule always publishes. Manual runs follow the publish input (default on).
+      # github.event_name is checked first so a missing workflow_dispatch input cannot turn this off.
+      PUBLISH: ${{ github.event_name != 'workflow_dispatch' && 'true' || inputs.publish && 'true' || 'false' }}
       SKIT_SEED: ${{ github.run_id }}
       SITUATION: ${{ inputs.situation }}
       LESSON_TYPE: ${{ inputs.lesson_type }}

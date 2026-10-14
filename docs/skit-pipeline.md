@@ -41,12 +41,12 @@ Edit the scene in `src/short/skit/demo/demo-skit.json`.
 
 ## Daily automation
 `.github/workflows/skit-episode.yml` runs at **08:00 and 18:00 Vietnam time** (2 videos/day) and on
-demand. It generates → voices → renders → (optionally) publishes → commits the skit + history.
+demand. It generates → voices → renders → publishes → commits the skit + history.
 
 ### Secrets / variables (repo → Settings → Secrets and variables → Actions)
 - **LLM (required):** `GROQ_API_KEYS` and/or `GEMINI_API_KEYS` (comma-separated keys allowed).
-- **Publishing is OFF by default.** Set repo **variable** `SKIT_PUBLISH` to `true` to publish on the
-  schedule, or run the workflow manually with `publish: true`. Then add the platform secrets:
+- **Publishing is ON by default** for the 08:00 and 18:00 schedule. A manual run publishes unless
+  `publish` is unchecked. Platform secrets:
   - YouTube: `YT_CLIENT_ID`, `YT_CLIENT_SECRET`, `YT_REFRESH_TOKEN`
   - Facebook Reels: `FB_PAGE_ID`, `FB_PAGE_TOKEN`
   - TikTok: `TIKTOK_SESSION` (Playwright session, base64)
