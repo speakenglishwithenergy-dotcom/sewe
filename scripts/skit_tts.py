@@ -339,13 +339,12 @@ def spoken(text):
 # ------------------------------------------------------------------ main
 def apply_bible(story):
     """Skits use flexible per-skit characters. The bible only carries the channel identity
-    (series name/badge). The ending is a bilingual recap card built from story["recap"]."""
+    (series name/badge). The ending card shows only the English phrase from story["recap"]."""
     recap = story.get("recap") or {}
     if recap.get("phrase"):
         story.setdefault("outro", {
             "label": "SAY THIS",
             "text": recap["phrase"],
-            "meaningVi": recap.get("meaningVi", ""),
         })
     path = ROOT / "channel" / "bible.json"
     bible = json.loads(path.read_text()) if path.exists() else {}

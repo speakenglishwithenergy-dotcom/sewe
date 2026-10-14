@@ -26,7 +26,7 @@ export type Timeline = {
   id: string; title: string; fps: number; audio: string; audio_duration: number; outro_start: number;
   duration_in_frames: number; lead_in: number;
   characters: Record<string, Character>; lines: Line[]; scenes: Scene[]; transitions: number[];
-  outro?: { actions?: Record<string, string>; expressions?: Record<string, Expression>; text: string; meaningVi?: string; label?: string };
+  outro?: { actions?: Record<string, string>; expressions?: Record<string, Expression>; text: string; label?: string };
   hook?: { hold_start?: number; end: number; main_start: number; caption: string } | null;
   series?: { name: string; episode?: number; score?: { kid: number; adults: number }; end_card?: string } | null;
 };
@@ -486,11 +486,6 @@ export const SkitVideo: React.FC<{ timeline: Timeline }> = ({ timeline: tl }) =>
           }}>
             {tl.outro.text ?? 'Follow for more'}
           </div>
-          {tl.outro.meaningVi && (
-            <div style={{ marginTop: 22, fontFamily: 'Nunito', fontWeight: 900, fontSize: 44, lineHeight: 1.15, color: '#3a4a63' }}>
-              {tl.outro.meaningVi}
-            </div>
-          )}
         </div>
       )}
 

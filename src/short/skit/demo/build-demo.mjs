@@ -167,7 +167,7 @@ const timeline = {
   scenes,
   transitions,
   outro: skit.recap
-    ? { label: 'SAY THIS', text: skit.recap.phrase, meaningVi: skit.recap.meaningVi }
+    ? { label: 'SAY THIS', text: skit.recap.phrase }
     : { text: 'Follow to learn more!' },
 };
 
