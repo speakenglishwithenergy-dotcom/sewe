@@ -1,0 +1,89 @@
+{
+ "title": "Polite Order Fix",
+ "lessonType": "dialogue",
+ "lessonFocus": "I think there's a mistake",
+ "characters": {
+  "alex": {
+   "look": "woman",
+   "gender": "f",
+   "scale": 1.0
+  },
+  "sam": {
+   "look": "barista",
+   "gender": "m",
+   "scale": 1.0
+  }
+ },
+ "scenes": [
+  {
+   "background": "kitchen",
+   "caption": "Coffee Complaint",
+   "left": "alex",
+   "right": "sam",
+   "props": {
+    "sam": "coffee"
+   },
+   "lines": [
+    {
+     "speaker": "alex",
+     "text": "Never *accuse* the barista for coffee.",
+     "action": "point",
+     "expression": "surprised",
+     "listener": {
+      "action": "shrug",
+      "expression": "annoyed"
+     },
+     "pause_after": 1.1
+    },
+    {
+     "speaker": "sam",
+     "text": "I’m sorry, I mixed up the order.",
+     "action": "talk",
+     "expression": "sad",
+     "listener": {
+      "action": "think",
+      "expression": "neutral"
+     }
+    },
+    {
+     "speaker": "alex",
+     "text": "Oh no! *I think there's a mistake*.",
+     "action": "talk",
+     "expression": "sad",
+     "listener": {
+      "action": "shrug",
+      "expression": "worried"
+     }
+    },
+    {
+     "speaker": "sam",
+     "text": "Let me fix it. One caramel latte, right?",
+     "action": "point",
+     "expression": "happy",
+     "listener": {
+      "action": "laugh",
+      "expression": "happy"
+     }
+    },
+    {
+     "speaker": "alex",
+     "text": "Excuse me, *I think there's a mistake*—my latte missing caramel.",
+     "action": "talk",
+     "expression": "smug",
+     "listener": {
+      "action": "celebrate",
+      "expression": "happy"
+     }
+    }
+   ]
+  }
+ ],
+ "recap": {
+  "phrase": "I think there's a mistake",
+  "meaningVi": "tôi nghĩ có nhầm lẫn"
+ },
+ "id": "ep002-polite-order-fix",
+ "episode": 2,
+ "situation": "complaining politely about an order",
+ "date": "2026-10-14"
+}
