@@ -38,6 +38,12 @@ PROPS = {"paper", "test_paper", "icecream", "coffee"}
 # characters are cast per skit (flexible). These are the drawable looks the LLM may use.
 LOOKS = {"dad", "mom", "man", "woman", "teen_girl", "teen_boy", "kid", "kid_girl",
          "boss", "worker", "barista", "grandpa", "teacher"}
+# Hair and clothes are fixed per look, so the drawn person has one gender.
+# Voice casting in skit_tts.py uses the same map — keep the two in sync.
+LOOK_GENDER = {
+    "dad": "m", "man": "m", "teen_boy": "m", "kid": "m", "boss": "m", "worker": "m", "grandpa": "m",
+    "mom": "f", "woman": "f", "teen_girl": "f", "kid_girl": "f", "barista": "f", "teacher": "f",
+}
 
 LESSON_TYPES = ["dialogue", "vocab", "idiom", "grammar", "joke"]
 
@@ -358,8 +364,18 @@ def validate(story):
     for cid, c in chars.items():
         if (c or {}).get("look") not in LOOKS:
             errs.append(f"character '{cid}': look must be one of {sorted(LOOKS)}")
-        if str((c or {}).get("gender", "")).lower() not in GENDERS:
+        stated = str((c or {}).get("gender", "")).lower()
+        if stated not in GENDERS:
             errs.append(f"character '{cid}': gender must be m/f")
+        else:
+            drawn = LOOK_GENDER.get((c or {}).get("look", ""))
+            short = {"male": "m", "female": "f"}.get(stated, stated[:1])
+            if drawn and short != drawn:
+                errs.append(
+                    f"character '{cid}': look '{c.get('look')}' is drawn as "
+                    f"{'female' if drawn == 'f' else 'male'}, so gender must be {drawn} (got {short}). "
+                    f"Change the look or the gender so the picture matches the voice."
+                )
 
     recap = story.get("recap") or {}
     if not (recap.get("phrase") or "").strip():

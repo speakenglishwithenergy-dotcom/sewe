@@ -69,6 +69,10 @@ The first line is the most scroll-stopping sentence in the skit. Make a learner 
 
 ## Rules (checked automatically)
 - 1–3 characters (2 is ideal). `id` is a short lowercase name (e.g. `ben`, `mia`). Pick looks from {{LOOKS}}.
+- `gender` must match how that look is drawn, or the voice will not match the picture.
+  Male looks (gender `m`): dad, man, teen_boy, kid, boss, worker, grandpa.
+  Female looks (gender `f`): mom, woman, teen_girl, kid_girl, barista, teacher.
+  A barista or teacher is always a woman; a boss or worker is always a man.
 - 1–3 scenes. Only characters placed on `left`/`right`/`center` may speak in that scene.
 - 4–14 lines total. Each line 1–14 words. The opening line max 8 words.
 - `action`/`expression` only from the lists above. Make them ACT the line (point when insisting,

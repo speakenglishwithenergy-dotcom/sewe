@@ -109,8 +109,15 @@ def voice_gender(engine, voice):
 def cast_voices(story, engine):
     used, cast = set(), {}
     for cid, c in story["characters"].items():
-        raw = (c.get("gender") or LOOK_GENDER.get(c.get("look", ""), "male")).strip().lower()
-        gender = {"m": "male", "f": "female", "male": "male", "female": "female"}.get(raw, "male")
+        # The figure is gendered by its look (barista/teacher are drawn female, boss/worker male).
+        # An explicit gender that disagrees is ignored so the voice matches the picture.
+        look = c.get("look", "")
+        drawn = LOOK_GENDER.get(look, "male")
+        raw = (c.get("gender") or drawn).strip().lower()
+        stated = {"m": "male", "f": "female", "male": "male", "female": "female"}.get(raw, drawn)
+        if stated != drawn:
+            print(f"  ! {cid}: gender '{stated}' does not match look '{look}' ({drawn}); voicing the look")
+        gender = drawn
         c["gender"] = gender
         bucket = f"{gender}_{'young' if c.get('look') in YOUNG_LOOKS else 'adult'}"
         v = c.get("voice")

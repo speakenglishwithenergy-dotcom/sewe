@@ -36,8 +36,14 @@ check("greeting opener fails", any("greeting" in e for e in gs.validate(greet)))
 
 # unknown look fails
 bad_look = json.loads(json.dumps(good))
-bad_look["characters"]["ben"]["look"] = "robot"
+bad_look["characters"]["sam"]["look"] = "robot"
 check("unknown look fails", any("look" in e for e in gs.validate(bad_look)))
+
+# female-drawn look with a male gender fails (voice would not match the picture)
+mismatch = json.loads(json.dumps(good))
+mismatch["characters"]["sam"]["look"] = "barista"
+mismatch["characters"]["sam"]["gender"] = "m"
+check("look/gender mismatch fails", any("match" in e for e in gs.validate(mismatch)))
 
 # too-long opening line fails
 long_open = json.loads(json.dumps(good))
