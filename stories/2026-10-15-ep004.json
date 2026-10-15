@@ -1,0 +1,87 @@
+{
+ "title": "Never Say *I'm early*",
+ "lessonType": "joke",
+ "lessonFocus": "better late than never",
+ "characters": {
+  "bob": {
+   "look": "worker",
+   "gender": "m",
+   "scale": 1.0
+  },
+  "anna": {
+   "look": "woman",
+   "gender": "f",
+   "scale": 1.0
+  }
+ },
+ "scenes": [
+  {
+   "background": "office",
+   "caption": "Apology",
+   "left": "bob",
+   "right": "anna",
+   "props": {},
+   "lines": [
+    {
+     "speaker": "bob",
+     "text": "Never say *'I'm early'* when you're late.",
+     "action": "point",
+     "expression": "annoyed",
+     "listener": {
+      "action": "shrug",
+      "expression": "surprised"
+     },
+     "pause_after": 1.1
+    },
+    {
+     "speaker": "anna",
+     "text": "Traffic jam! I'm really sorry.",
+     "action": "laugh",
+     "expression": "happy",
+     "listener": {
+      "action": "think",
+      "expression": "neutral"
+     }
+    },
+    {
+     "speaker": "bob",
+     "text": "No problem—just remember *better late than never*.",
+     "action": "point",
+     "expression": "smug",
+     "listener": {
+      "action": "celebrate",
+      "expression": "happy"
+     }
+    },
+    {
+     "speaker": "anna",
+     "text": "Got it—*better late than never*!",
+     "action": "celebrate",
+     "expression": "happy",
+     "listener": {
+      "action": "celebrate",
+      "expression": "happy"
+     }
+    },
+    {
+     "speaker": "bob",
+     "text": "Exactly, show up late, but don't skip it.",
+     "action": "talk",
+     "expression": "happy",
+     "listener": {
+      "action": "idle",
+      "expression": "happy"
+     }
+    }
+   ]
+  }
+ ],
+ "recap": {
+  "phrase": "better late than never",
+  "meaningVi": "muộn còn hơn không tới"
+ },
+ "id": "ep004-never-say-i-m-early",
+ "episode": 4,
+ "situation": "apologizing for being late",
+ "date": "2026-10-15"
+}

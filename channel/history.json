@@ -40,6 +40,19 @@
     "facebook": "https://www.facebook.com/reel/2120850778513881",
     "tiktok": true
    }
+  },
+  {
+   "episode": 4,
+   "date": "2026-10-15",
+   "id": "ep004-never-say-i-m-early",
+   "title": "Never Say *I'm early*",
+   "lessonType": "joke",
+   "lessonFocus": "better late than never",
+   "situation": "apologizing for being late",
+   "published": {
+    "youtube": "https://youtu.be/RgRJt3ToMJE",
+    "facebook": "https://www.facebook.com/reel/1106487672348063"
+   }
   }
  ]
 }
