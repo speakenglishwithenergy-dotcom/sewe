@@ -26,6 +26,20 @@
     "facebook": "https://www.facebook.com/reel/2925144847843401",
     "tiktok": true
    }
+  },
+  {
+   "episode": 3,
+   "date": "2026-10-15",
+   "id": "ep003-ask-to-repeat-confidently",
+   "title": "Ask to Repeat Confidently",
+   "lessonType": "vocab",
+   "lessonFocus": "*Could you say that again?*",
+   "situation": "asking someone to repeat themselves",
+   "published": {
+    "youtube": "https://youtu.be/DOUaNeK4Gdk",
+    "facebook": "https://www.facebook.com/reel/2120850778513881",
+    "tiktok": true
+   }
   }
  ]
 }

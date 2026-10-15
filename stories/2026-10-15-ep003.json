@@ -1,0 +1,79 @@
+{
+ "title": "Ask to Repeat Confidently",
+ "lessonType": "vocab",
+ "lessonFocus": "*Could you say that again?*",
+ "characters": {
+  "teen": {
+   "look": "teen_boy",
+   "gender": "m",
+   "scale": 1.0
+  },
+  "barista": {
+   "look": "barista",
+   "gender": "f",
+   "scale": 1.0
+  }
+ },
+ "scenes": [
+  {
+   "background": "office",
+   "caption": "Coffee Order",
+   "left": "teen",
+   "right": "barista",
+   "props": {
+    "barista": "coffee"
+   },
+   "lines": [
+    {
+     "speaker": "teen",
+     "text": "Stop saying *'huh?'* – it sounds rude!",
+     "action": "point",
+     "expression": "surprised",
+     "listener": {
+      "action": "shrug",
+      "expression": "surprised"
+     },
+     "pause_after": 1.1
+    },
+    {
+     "speaker": "barista",
+     "text": "Your latte’s ready, extra hot, oat milk.",
+     "action": "talk",
+     "expression": "happy",
+     "listener": {
+      "action": "idle",
+      "expression": "worried"
+     }
+    },
+    {
+     "speaker": "teen",
+     "text": "Sorry, I missed that. *Could you say that again?*",
+     "action": "talk",
+     "expression": "worried",
+     "listener": {
+      "action": "laugh",
+      "expression": "happy"
+     }
+    },
+    {
+     "speaker": "barista",
+     "text": "Sure! Your latte’s ready, extra hot, oat milk.",
+     "action": "talk",
+     "expression": "happy",
+     "listener": {
+      "action": "celebrate",
+      "expression": "happy"
+     }
+    }
+   ]
+  }
+ ],
+ "recap": {
+  "phrase": "*Could you say that again?*",
+  "meaningVi": "Bạn có thể nói lại được không?"
+ },
+ "id": "ep003-ask-to-repeat-confidently",
+ "episode": 3,
+ "situation": "asking someone to repeat themselves",
+ "date": "2026-10-15"
+}
