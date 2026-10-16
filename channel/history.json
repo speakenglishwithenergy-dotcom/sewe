@@ -67,6 +67,19 @@
     "facebook": "https://www.facebook.com/reel/2571297060017856",
     "tiktok": true
    }
+  },
+  {
+   "episode": 6,
+   "date": "2026-10-16",
+   "id": "ep006-first-day-learn-the-ropes",
+   "title": "First Day, Learn the Ropes",
+   "lessonType": "idiom",
+   "lessonFocus": "learn the ropes",
+   "situation": "a first day at a new job",
+   "published": {
+    "youtube": "https://youtu.be/9hxxvZ3ftpU",
+    "facebook": "https://www.facebook.com/reel/2191042218498499"
+   }
   }
  ]
 }

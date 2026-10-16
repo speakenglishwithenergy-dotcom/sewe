@@ -1,0 +1,90 @@
+{
+ "title": "First Day, Learn the Ropes",
+ "lessonType": "idiom",
+ "lessonFocus": "learn the ropes",
+ "characters": {
+  "boss": {
+   "look": "boss",
+   "gender": "m",
+   "scale": 1.0
+  },
+  "lisa": {
+   "look": "woman",
+   "gender": "f",
+   "scale": 1.0
+  }
+ },
+ "scenes": [
+  {
+   "background": "office",
+   "caption": "First Day Confusion",
+   "left": "boss",
+   "right": "lisa",
+   "props": {
+    "boss": "paper",
+    "lisa": "coffee"
+   },
+   "lines": [
+    {
+     "speaker": "boss",
+     "text": "Never *say* *learn the ropes* literally!",
+     "action": "point",
+     "expression": "surprised",
+     "listener": {
+      "action": "shrug",
+      "expression": "surprised"
+     },
+     "pause_after": 1.1
+    },
+    {
+     "speaker": "lisa",
+     "text": "You want me to bring a rope?",
+     "action": "laugh",
+     "expression": "happy",
+     "listener": {
+      "action": "facepalm",
+      "expression": "annoyed"
+     }
+    },
+    {
+     "speaker": "boss",
+     "text": "No, *learn the ropes* means get the basics fast.",
+     "action": "talk",
+     "expression": "neutral",
+     "listener": {
+      "action": "think",
+      "expression": "neutral"
+     }
+    },
+    {
+     "speaker": "lisa",
+     "text": "Got it! I'll *learn the ropes* today!",
+     "action": "celebrate",
+     "expression": "happy",
+     "listener": {
+      "action": "celebrate",
+      "expression": "happy"
+     }
+    },
+    {
+     "speaker": "boss",
+     "text": "Thanks! Ready to start.",
+     "action": "idle",
+     "expression": "happy",
+     "listener": {
+      "action": "idle",
+      "expression": "happy"
+     }
+    }
+   ]
+  }
+ ],
+ "recap": {
+  "phrase": "learn the ropes",
+  "meaningVi": "nắm bắt công việc, hiểu cách làm"
+ },
+ "id": "ep006-first-day-learn-the-ropes",
+ "episode": 6,
+ "situation": "a first day at a new job",
+ "date": "2026-10-16"
+}
