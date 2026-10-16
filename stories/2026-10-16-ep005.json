@@ -1,0 +1,77 @@
+{
+ "title": "Stop using *some* now",
+ "lessonType": "grammar",
+ "lessonFocus": "Do you have any apartments?",
+ "characters": {
+  "tom": {
+   "look": "man",
+   "gender": "m",
+   "scale": 1.0
+  },
+  "sara": {
+   "look": "woman",
+   "gender": "f",
+   "scale": 1.0
+  }
+ },
+ "scenes": [
+  {
+   "background": "living_room",
+   "caption": "Renting question",
+   "left": "tom",
+   "right": "sara",
+   "props": {},
+   "lines": [
+    {
+     "speaker": "tom",
+     "text": "Stop using *some* when you ask about apartments!",
+     "action": "surprised",
+     "expression": "surprised",
+     "listener": {
+      "action": "think",
+      "expression": "neutral"
+     },
+     "pause_after": 1.1
+    },
+    {
+     "speaker": "sara",
+     "text": "Ask like this: *Do you have any apartments?*",
+     "action": "talk",
+     "expression": "happy",
+     "listener": {
+      "action": "think",
+      "expression": "neutral"
+     }
+    },
+    {
+     "speaker": "tom",
+     "text": "Got it: *Do you have any apartments?*",
+     "action": "point",
+     "expression": "happy",
+     "listener": {
+      "action": "celebrate",
+      "expression": "happy"
+     }
+    },
+    {
+     "speaker": "sara",
+     "text": "Exactly! Now you sound like a native.",
+     "action": "celebrate",
+     "expression": "smug",
+     "listener": {
+      "action": "laugh",
+      "expression": "happy"
+     }
+    }
+   ]
+  }
+ ],
+ "recap": {
+  "phrase": "Do you have any apartments?",
+  "meaningVi": "Bạn có bất kỳ căn hộ nào không?"
+ },
+ "id": "ep005-stop-using-some-now",
+ "episode": 5,
+ "situation": "renting an apartment",
+ "date": "2026-10-16"
+}

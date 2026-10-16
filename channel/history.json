@@ -53,6 +53,20 @@
     "youtube": "https://youtu.be/RgRJt3ToMJE",
     "facebook": "https://www.facebook.com/reel/1106487672348063"
    }
+  },
+  {
+   "episode": 5,
+   "date": "2026-10-16",
+   "id": "ep005-stop-using-some-now",
+   "title": "Stop using *some* now",
+   "lessonType": "grammar",
+   "lessonFocus": "Do you have any apartments?",
+   "situation": "renting an apartment",
+   "published": {
+    "youtube": "https://youtu.be/oGehXnM5nLA",
+    "facebook": "https://www.facebook.com/reel/2571297060017856",
+    "tiktok": true
+   }
   }
  ]
 }
