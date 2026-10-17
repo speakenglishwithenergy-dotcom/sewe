@@ -1,0 +1,99 @@
+{
+ "title": "Coffee Order Power Phrase",
+ "lessonType": "dialogue",
+ "lessonFocus": "I'll have a …",
+ "characters": {
+  "alex": {
+   "look": "man",
+   "gender": "m",
+   "scale": 1.0
+  },
+  "barista": {
+   "look": "barista",
+   "gender": "f",
+   "scale": 1.0
+  }
+ },
+ "scenes": [
+  {
+   "background": "park",
+   "caption": "Coffee Order",
+   "left": "alex",
+   "right": "barista",
+   "props": {
+    "barista": "coffee"
+   },
+   "lines": [
+    {
+     "speaker": "alex",
+     "text": "Never say *'I want coffee'*.",
+     "action": "point",
+     "expression": "surprised",
+     "listener": {
+      "action": "shrug",
+      "expression": "surprised"
+     },
+     "pause_after": 1.1
+    },
+    {
+     "speaker": "barista",
+     "text": "Just say *I'll have a latte, please*.",
+     "action": "talk",
+     "expression": "happy",
+     "listener": {
+      "action": "think",
+      "expression": "neutral"
+     }
+    },
+    {
+     "speaker": "alex",
+     "text": "Can I get a latte?",
+     "action": "talk",
+     "expression": "neutral",
+     "listener": {
+      "action": "idle",
+      "expression": "happy"
+     }
+    },
+    {
+     "speaker": "barista",
+     "text": "That works, but *I'll have a latte* sounds natural.",
+     "action": "point",
+     "expression": "smug",
+     "listener": {
+      "action": "think",
+      "expression": "happy"
+     }
+    },
+    {
+     "speaker": "alex",
+     "text": "Okay, *I'll have a latte, please*!",
+     "action": "celebrate",
+     "expression": "happy",
+     "listener": {
+      "action": "celebrate",
+      "expression": "happy"
+     }
+    },
+    {
+     "speaker": "barista",
+     "text": "Your coffee's on the way!",
+     "action": "idle",
+     "expression": "happy",
+     "listener": {
+      "action": "idle",
+      "expression": "happy"
+     }
+    }
+   ]
+  }
+ ],
+ "recap": {
+  "phrase": "I'll have a latte",
+  "meaningVi": "Tôi sẽ gọi một ly latte"
+ },
+ "id": "ep007-coffee-order-power-phrase",
+ "episode": 7,
+ "situation": "ordering coffee at a cafe",
+ "date": "2026-10-17"
+}

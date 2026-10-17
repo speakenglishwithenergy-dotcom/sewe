@@ -80,6 +80,20 @@
     "youtube": "https://youtu.be/9hxxvZ3ftpU",
     "facebook": "https://www.facebook.com/reel/2191042218498499"
    }
+  },
+  {
+   "episode": 7,
+   "date": "2026-10-17",
+   "id": "ep007-coffee-order-power-phrase",
+   "title": "Coffee Order Power Phrase",
+   "lessonType": "dialogue",
+   "lessonFocus": "I'll have a …",
+   "situation": "ordering coffee at a cafe",
+   "published": {
+    "youtube": "https://youtu.be/xHkG1v1o7-o",
+    "facebook": "https://www.facebook.com/reel/1044057065321602",
+    "tiktok": true
+   }
   }
  ]
 }
