@@ -2,9 +2,8 @@
 
 Usage:  python3 scripts/generate_skit.py            -> prints the story path
 
-A skit is a 2-character flat-2D scene (~20-45s) that teaches ONE real English phrase,
-word, idiom or grammar pattern through a tiny, funny, relatable story — plus a bilingual
-recap (English target + Vietnamese meaning) at the end.
+A skit is a 2-character flat-2D scene (~20-35s) that teaches ONE easy English phrase
+through a tiny everyday moment — plus a bilingual recap and a short follow invite.
 
 Free LLM providers, tried in this order: Groq, then Gemini.
 Each provider can have several API keys. When a key fails (bad key, rate limit, quota,
@@ -17,7 +16,7 @@ LLM_MOCK_FILE=<json> skips the API and uses that file as the answer (for testing
 
 Each run picks a fresh lesson type + everyday situation. Past skits are listed in the prompt
 so a target phrase is not retold. The skit is checked against the rules (cast, actions, line
-length, a strong hook, a bilingual recap, ~20-45s). Errors are sent back to the model to fix,
+length, a strong hook, a bilingual recap, a short follow line, ~20-35s). Errors are sent back to the model to fix,
 up to 3 times. Then a "tough editor" pass sharpens the hook and the dialogue; its version is
 kept only if it still passes the checks.
 """
@@ -393,8 +392,8 @@ def validate(story):
         if ln.get("expression") not in EXPRESSIONS:
             errs.append(f"{where}: unknown expression '{ln.get('expression')}'")
         n = len(words(ln.get("text", "")))
-        if n == 0 or n > 14:
-            errs.append(f"{where}: line has {n} words, must be 1-14: \"{ln.get('text')}\"")
+        if n == 0 or n > 12:
+            errs.append(f"{where}: line has {n} words, must be 1-12: \"{ln.get('text')}\"")
         for lis in [ln.get("listener")] + list((ln.get("listeners") or {}).values()):
             if lis and (lis.get("action") not in ACTIONS or lis.get("expression") not in EXPRESSIONS):
                 errs.append(f"{where}: bad listener reaction {lis}")
@@ -416,8 +415,8 @@ def validate(story):
                 errs.append(f"{where}: unknown prop '{prop}'")
         return on
 
-    if not 1 <= len(story["scenes"]) <= 3:
-        errs.append("use 1 to 3 scenes")
+    if not 1 <= len(story["scenes"]) <= 2:
+        errs.append("use 1 scene (2 only if the phrase cannot land in the first)")
     total = 0
     for si, sc in enumerate(story["scenes"]):
         on = check_scene(sc, f"scene {si + 1}")
@@ -425,9 +424,9 @@ def validate(story):
             check_line(ln, f"scene {si + 1} line {i + 1}", on)
             total += 1
     if total < 4:
-        errs.append(f"use 4-14 lines in total (found {total}); add a short beat so the lesson lands")
-    elif total > 14:
-        errs.append(f"use 4-14 lines in total (found {total}); cut lines that do not teach or entertain")
+        errs.append(f"use 4-10 lines in total (found {total}); add a short beat so the lesson lands")
+    elif total > 10:
+        errs.append(f"use 4-10 lines in total (found {total}); cut lines that do not teach the one phrase")
 
     main = [ln for sc in story["scenes"] for ln in sc.get("lines", [])]
     opener = main[0] if main else None
@@ -443,20 +442,21 @@ def validate(story):
     spoken = sum(len(words(ln.get("text", ""))) for ln in main)
     pauses = sum(float(ln.get("pause_after", 0.35) or 0.35) for ln in main)
     est = spoken / 2.6 + pauses + 5
-    if not 18 <= est <= 48:
-        hint = ("add one short beat so the lesson lands" if est < 18 else "cut lines that do not teach or entertain")
-        errs.append(f"estimated length {est:.0f}s, aim for 20-45s: {hint}")
+    if not 18 <= est <= 40:
+        hint = ("add one short beat so the lesson lands" if est < 18 else "cut extra lines — one moment, one phrase")
+        errs.append(f"estimated length {est:.0f}s, aim for 20-35s: {hint}")
     return errs
 
 
 # ------------------------------------------------------------------ editor pass
-EDITOR = """You are now the toughest short-form editor for an English-learning channel. Read the skit above out loud in your head.
+EDITOR = """You are a short-form editor for an English-learning channel. Read the skit out loud. Make it simpler, closer to real life, and easier to stay for.
 Fix anything that is:
-- weak opening: replace the first line with the single most scroll-stopping sentence in the skit. A learner must think "wait, am I saying that wrong?". A bold claim, a forbidden phrase (e.g. *"Never say X"*), or a curious question. Max 8 words, one or two words in *CAPS or *emphasis**, pause_after 1.1. Not a greeting, not a topic label;
-- unclear teaching: the target phrase must be said naturally IN the dialogue and emphasised with *asterisks*; the recap at the end must match it. One clear lesson only — cut anything that muddies it;
-- unnatural: any line a real person would not say, broken grammar, robotic or textbook phrasing, narration of actions. Keep it A2-B1 simple;
-- not fun: it should feel like a tiny relatable moment with a small laugh or twist, not a boring lesson.
-Keep the same lesson, characters, JSON format and all the rules from the brief. 4-14 lines, about 20-45 seconds. Never pad to fill time.
+- too complicated: cut plot, backstory, a second joke, a grammar lecture, or a twist that needs explaining. One scene, one phrase, 5-8 short lines;
+- weak opening: the first line makes a learner think "wait, I say that." A bold claim or a forbidden phrase (e.g. Never say *"X"*). Max 8 words, one or two words in *emphasis*, pause_after 1.1. Not a greeting, not "subscribe";
+- unclear teaching: the target phrase is said once, naturally, in *asterisks*. The recap matches it. Nothing else is taught;
+- unnatural or hard: A2 words only. Every line is something a real person would say. Prefer 4-8 words a line;
+- missing follow: the LAST spoken line is a warm, short invite such as "Follow. One easy phrase a day." It is not a sales pitch and it is not the lesson.
+Keep the same lesson, characters, JSON format and all the rules from the brief. About 20-35 seconds. Never pad.
 Make the actions and expressions act the lines. Keep recap.phrase and recap.meaningVi accurate.
 Answer with the full improved JSON only."""
 
@@ -489,9 +489,10 @@ def main():
     print(f"Skit #{episode}, {lesson_type}, situation: {situation}", file=sys.stderr)
 
     messages = [
-        {"role": "system", "content": "You write short, funny, natural English-learning skits for a vertical video channel. "
-                                       "Every skit teaches ONE real phrase, word, idiom or grammar point through a tiny relatable scene, "
-                                       "opens with the most scroll-stopping line, and ends with a bilingual recap. You answer with JSON only."},
+        {"role": "system", "content": "You write short, simple, natural English-learning skits for a vertical video channel. "
+                                       "Every skit teaches ONE easy phrase through one everyday moment a learner already knows, "
+                                       "opens with a familiar mistake, and ends with a short warm follow invite plus a bilingual recap. "
+                                       "You answer with JSON only."},
         {"role": "user", "content": build_prompt(history, situation, lesson_type, episode)},
     ]
     story, errs = None, ["no answer"]

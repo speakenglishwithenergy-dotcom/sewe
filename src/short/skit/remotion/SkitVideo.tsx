@@ -26,7 +26,7 @@ export type Timeline = {
   id: string; title: string; fps: number; audio: string; audio_duration: number; outro_start: number;
   duration_in_frames: number; lead_in: number;
   characters: Record<string, Character>; lines: Line[]; scenes: Scene[]; transitions: number[];
-  outro?: { actions?: Record<string, string>; expressions?: Record<string, Expression>; text: string; label?: string };
+  outro?: { actions?: Record<string, string>; expressions?: Record<string, Expression>; text: string; label?: string; note?: string; follow?: string };
   hook?: { hold_start?: number; end: number; main_start: number; caption: string } | null;
   series?: { name: string; episode?: number; score?: { kid: number; adults: number }; end_card?: string } | null;
 };
@@ -486,6 +486,21 @@ export const SkitVideo: React.FC<{ timeline: Timeline }> = ({ timeline: tl }) =>
           }}>
             {tl.outro.text ?? 'Follow for more'}
           </div>
+          {tl.outro.note && (
+            <div style={{
+              marginTop: 16, fontFamily: 'Nunito', fontWeight: 900, fontSize: 36, lineHeight: 1.25, color: INK,
+            }}>
+              {tl.outro.note}
+            </div>
+          )}
+          {(tl.outro.follow || tl.series?.end_card) && (
+            <div style={{
+              marginTop: 22, display: 'inline-block', background: '#e63946', color: '#fff', fontFamily: 'Luckiest Guy',
+              fontSize: 34, letterSpacing: 1, padding: '10px 18px 4px', borderRadius: 14, border: `5px solid ${INK}`,
+            }}>
+              {tl.outro.follow || tl.series?.end_card}
+            </div>
+          )}
         </div>
       )}
 
