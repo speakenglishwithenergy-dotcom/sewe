@@ -94,6 +94,20 @@
     "facebook": "https://www.facebook.com/reel/1044057065321602",
     "tiktok": true
    }
+  },
+  {
+   "episode": 8,
+   "date": "2026-10-17",
+   "id": "ep008-hotel-check-in-phrase",
+   "title": "Hotel Check‑In Phrase",
+   "lessonType": "vocab",
+   "lessonFocus": "I have a reservation",
+   "situation": "checking in at a hotel",
+   "published": {
+    "youtube": "https://youtu.be/zh7QCI3f5Mw",
+    "facebook": "https://www.facebook.com/reel/4723876667938256",
+    "tiktok": true
+   }
   }
  ]
 }

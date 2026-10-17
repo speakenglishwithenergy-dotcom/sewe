@@ -1,0 +1,109 @@
+{
+ "title": "Hotel Check‑In Phrase",
+ "lessonType": "vocab",
+ "lessonFocus": "I have a reservation",
+ "characters": {
+  "tom": {
+   "look": "man",
+   "gender": "m",
+   "scale": 1.0
+  },
+  "anna": {
+   "look": "woman",
+   "gender": "f",
+   "scale": 1.0
+  }
+ },
+ "scenes": [
+  {
+   "background": "office",
+   "caption": "Hotel check‑in",
+   "left": "tom",
+   "right": "anna",
+   "props": {
+    "tom": "paper"
+   },
+   "lines": [
+    {
+     "speaker": "tom",
+     "text": "Never say *'I have a room'*",
+     "action": "facepalm",
+     "expression": "surprised",
+     "listener": {
+      "action": "shrug",
+      "expression": "neutral"
+     },
+     "pause_after": 1.1
+    },
+    {
+     "speaker": "tom",
+     "text": "Hi, I’m Tom. I booked a night.",
+     "action": "talk",
+     "expression": "happy",
+     "listener": {
+      "action": "point",
+      "expression": "happy"
+     }
+    },
+    {
+     "speaker": "anna",
+     "text": "Sure, can I see your ID?",
+     "action": "talk",
+     "expression": "neutral",
+     "listener": {
+      "action": "idle",
+      "expression": "neutral"
+     }
+    },
+    {
+     "speaker": "tom",
+     "text": "*I have a reservation*.",
+     "action": "talk",
+     "expression": "neutral",
+     "listener": {
+      "action": "celebrate",
+      "expression": "happy"
+     }
+    },
+    {
+     "speaker": "anna",
+     "text": "Great, here’s your key.",
+     "action": "celebrate",
+     "expression": "happy",
+     "listener": {
+      "action": "celebrate",
+      "expression": "happy"
+     }
+    },
+    {
+     "speaker": "tom",
+     "text": "Thanks! See you tomorrow.",
+     "action": "talk",
+     "expression": "happy",
+     "listener": {
+      "action": "point",
+      "expression": "neutral"
+     }
+    },
+    {
+     "speaker": "tom",
+     "text": "Follow for the next one.",
+     "action": "idle",
+     "expression": "happy",
+     "listener": {
+      "action": "idle",
+      "expression": "neutral"
+     }
+    }
+   ]
+  }
+ ],
+ "recap": {
+  "phrase": "I have a reservation",
+  "meaningVi": "Tôi có đặt phòng"
+ },
+ "id": "ep008-hotel-check-in-phrase",
+ "episode": 8,
+ "situation": "checking in at a hotel",
+ "date": "2026-10-17"
+}
